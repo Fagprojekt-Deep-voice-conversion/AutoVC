@@ -33,8 +33,8 @@ This function needs:
 
 Before training it is a good idea to load a pretrained model for transfer learning:
 ```
-`g_checkpoint = torch.load(pretrained_model_path, map_location=torch.device(device))` <br/>
-`model.load_state_dict(g_checkpoint['model_state'])`
+g_checkpoint = torch.load(pretrained_model_path, map_location=torch.device(device))
+model.load_state_dict(g_checkpoint['model_state'])
 ```
 If multiple workers are used also remember to call `model.share_memory()` (Dont think we'll need this).
 
