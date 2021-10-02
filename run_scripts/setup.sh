@@ -26,8 +26,10 @@ python3 -m venv AutoVC-env
 
 source AutoVC-env/bin/activate
 
-python -m pip install torch==1.4.0 sklearn tqdm librosa torchvision webrtcvad scipy matplotlib pandas seaborn wavenet_vocoder numba==0.43.0
-
+python -m pip install --upgrade pip
+# python -m pip install torch==1.4.0 sklearn tqdm librosa torchvision==0.5.0 webrtcvad scipy matplotlib pandas seaborn wavenet_vocoder 
+# python -m pip install numba==0.49.1 #numba==0.43.0
+python -m pip install site
 
 deactivate
 
