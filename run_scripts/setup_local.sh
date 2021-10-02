@@ -21,14 +21,14 @@ fi
 
 
 ### Make python environment
-module load python3 # only use if on HPC
-python3 -m venv AutoVC-env
+python -m venv test-env # assumed deafult python used is python 3.6
 
-source AutoVC-env/bin/activate
+source test-env/bin/activate
 
 python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
-# python -m pip install torch==1.4.0 sklearn tqdm librosa torchvision==0.5.0 webrtcvad scipy matplotlib pandas seaborn wavenet_vocoder 
+python -m pip install -r requirements_local.txt
+# python -m pip install torch==1.4.0+cu92 torchvision==0.5.0+cu92 -f https://download.pytorch.org/whl/cu92/torch_stable.html # torch with cuda 9.2
+# python -m pip install sklearn tqdm librosa webrtcvad scipy matplotlib pandas seaborn wavenet_vocoder 
 # python -m pip install numba==0.49.1 ###numba==0.43.0
 
 deactivate
