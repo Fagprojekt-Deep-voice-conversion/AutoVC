@@ -3,3 +3,4 @@
 *.ckpt
 *.pth
 *.pyc
+AutoVC-env/*
