@@ -21,13 +21,15 @@ fi
 
 
 ### Make python environment
-module load python3
-python3 -m venv AutoVC-env
+module load python3 # only use if on HPC
+# python3 -m venv AutoVC-env
+python3 -m venv test-env
 
-source AutoVC-env/bin/activate
+# source AutoVC-env/bin/activate
+source test-env/bin/activate
 
-python -m pip install torch==1.4.0 sklearn tqdm librosa torchvision webrtcvad scipy matplotlib pandas seaborn wavenet_vocoder numba==0.43.0
-
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
 
 deactivate
 
