@@ -6,3 +6,7 @@
 
 # environments
 AutoVC-env/*    
+
+# data
+data/HaegueYang_10sek/*
+data/SMK_train/HaegueYang/*
