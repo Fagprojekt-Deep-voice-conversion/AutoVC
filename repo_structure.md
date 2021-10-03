@@ -4,18 +4,23 @@
 AutoVC
     ├── AutoVC/
     ├── data/
+    │   ├── VCTK-data/ 
+    │   │   ├── VCTK-data/ 
     ├── pytorch_models/
-    ├── results/
-    ├── utils/
-
-
-
-
-
-    │   ├── cooling_reports/ 
-    │   │   └── CoolingReport2019.xls
-    │   │   └── CoolingReport2020.xls
-    │   ├── aggregated_data/
+    │   ├── AutoVC/
+    │   │   ├── autovc.ckpt
     │   │   └── ...
+    │   ├── SpeakerEncoder/
+    │   │   ├── SpeakerEncoder.pt
+    │   │   └── ...
+    │   ├── WaveRNN/
+    │   │   ├── WaveRNN_Pretrained.pyt
+    │   │   └── ...
+    ├── results/
+    ├── scripts/
+    ├── utils/
+    ├── .gitignore
+    ├── requirements.txt
+    ├── README.md
     └── ...
 ```
