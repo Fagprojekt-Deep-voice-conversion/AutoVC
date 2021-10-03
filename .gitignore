@@ -1,6 +1,8 @@
-
+# models
 *.pt
 *.ckpt
 *.pth
 *.pyc
-AutoVC-env/*
+
+# environments
+AutoVC-env/*    
