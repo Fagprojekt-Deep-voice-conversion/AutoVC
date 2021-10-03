@@ -43,20 +43,16 @@ run_dir=/work1/s183920/AutoVC/run_scripts
 
 
 ### Load modules
-module load python3
-module load cuda
+# module load python3
+# module load cuda
 
 ### Run setup
-sh setup.sh $run_dir || exit 1
-source AutoVC-env/bin/activate
+# sh setup.sh $run_dir || exit 1
+source ../AutoVC-env/bin/activate
 echo $PWD
 
 ### Run python script
 python3 ../Run_AutoVC.py --pretrained_model_path Models/AutoVC/AutoVC_seed40_200k.pt --epochs 50 --test_size 24 --mins 30 --model_path_name AutoVC_SMK2 --data_path ../data/SMK_train/ --loss_path_name loss_SMK --save_every 50000
-
-
-
-
 
 
 
