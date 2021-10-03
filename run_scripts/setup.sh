@@ -22,14 +22,12 @@ fi
 
 ### Make python environment
 module load python3 # only use if on HPC
-# python3 -m venv AutoVC-env
-python3 -m venv test-env
+python3 -m venv AutoVC-env
 
-# source AutoVC-env/bin/activate
-source test-env/bin/activate
+source AutoVC-env/bin/activate
 
-python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
+# python -m pip install --upgrade pip
+python -m pip install -r ../requirements.txt
 
 deactivate
 

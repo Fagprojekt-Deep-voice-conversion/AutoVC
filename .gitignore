@@ -4,5 +4,7 @@
 *.pth
 *.pyc
 AutoVC-env/*
+run_scripts/AutoVC-env/*
+
 data/HaegueYang_10sek/*
 data/SMK_train/*
