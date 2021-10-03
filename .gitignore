@@ -5,3 +5,4 @@
 *.pyc
 AutoVC-env/*
 data/HaegueYang_10sek/*
+data/SMK_train/*
