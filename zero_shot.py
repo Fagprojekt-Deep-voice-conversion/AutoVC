@@ -55,7 +55,7 @@ def Zero_shot(source, target, model, voc_model, save_path, name_path = None, onl
 if __name__ == "__main__":
     model, voc_model = Instantiate_Models(model_path = 'Models/AutoVC/AutoVC_SMK.pt')
     
-    Zero_shot("./data/mette_183.wav","./data/chopfolder/chooped7.wav", model, voc_model, ".")
+    Zero_shot("./data/samples/mette_183.wav","./data/samples/chooped7.wav", model, voc_model, ".")
 
 
     
