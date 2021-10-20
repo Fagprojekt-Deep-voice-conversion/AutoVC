@@ -53,9 +53,11 @@ def Zero_shot(source, target, model, voc_model, save_path, name_path = None, onl
 
 # model, voc_model = Instantiate_Models(model_path = 'Models/AutoVC/autoVC30min_step72.pt')
 if __name__ == "__main__":
-    model, voc_model = Instantiate_Models(model_path = 'Models/AutoVC/AutoVC_SMK.pt')
+    # model, voc_model = Instantiate_Models(model_path = 'Models/AutoVC/AutoVC_SMK.pt')
+    # model, voc_model = Instantiate_Models(model_path = 'Models/AutoVC/AutoVC_SMK2_original_step20.85k.pt')
+    model, voc_model = Instantiate_Models(model_path = 'Models/AutoVC/AutoVC_SMK3average__step26.825k.pt')
     
-    Zero_shot("./data/samples/mette_183.wav","./data/samples/chooped7.wav", model, voc_model, ".")
+    Zero_shot("./data/samples/helle_15.wav","./data/samples/chooped7.wav", model, voc_model, ".")
 
 
     
