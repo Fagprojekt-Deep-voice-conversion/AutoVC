@@ -9,11 +9,17 @@ The main idea is to loss every information about the speaker identity and then p
 
 easy usage do this....
 
+This package uses [Weights & Biases (wandb)](https://docs.wandb.ai/) for profiling the code and a wandb account is therefore encouraged. If you do not want to create a wandb account, the code can be run `code -wandb mode=offline`
+
 For a more detailed explanation of how each part of the model works see [docs/usage](docs/usage_old.md)
 
 ## Ethical usage
 
 This package should not be used for harmful or illegal purposes. To avoid this, please make sure that the voices used for conversations can be used under a legal copyright.
+
+## Examples
+
+Examples can be seen in wandb at [link_to_example](wandb/example.com).
 
 ## Documentation
 
