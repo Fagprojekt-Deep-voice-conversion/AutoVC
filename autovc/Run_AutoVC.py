@@ -26,9 +26,9 @@ print("""
 import os, sys
 os.chdir(sys.path[0])
 import torch
-from Generator_autoVC.model_vc import Generator
+from autovc.auto_encoder.model_vc import Generator
 from Train_and_Loss import TrainLoader, loss, Train
-from dataload import DataLoad2
+from autovc.utils.dataloaders import DataLoad2
 import numpy as np
 
 import argparse

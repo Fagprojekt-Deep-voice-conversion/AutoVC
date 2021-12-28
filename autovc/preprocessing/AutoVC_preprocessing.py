@@ -1,7 +1,7 @@
 import librosa
 import librosa.filters
 import numpy as np
-from Generator_autoVC.hparams import hparams
+from autovc.utils.hparams import hparams_autoVC as hparams
 from scipy.io import wavfile
 #from nnmnkwii import preprocessing as P
 
@@ -48,12 +48,12 @@ def trim(quantized):
     return quantized[start:end]
 
 
-def preemphasis(x, coef=0.85):
-    return P.preemphasis(x, coef)
+# def preemphasis(x, coef=0.85):
+#     return P.preemphasis(x, coef)
 
 
-def inv_preemphasis(x, coef=0.85):
-    return P.inv_preemphasis(x, coef)
+# def inv_preemphasis(x, coef=0.85):
+#     return P.inv_preemphasis(x, coef)
 
 
 def adjust_time_resolution(quantized, mel):

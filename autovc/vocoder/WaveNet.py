@@ -5,7 +5,7 @@ sys.path.insert(0, parent_dir)
 
 import torch
 from tqdm import tqdm
-from hparams import hparams_autoVC as hparams
+from autovc.utils.hparams import hparams_autoVC as hparams
 from wavenet_vocoder import builder
 
 torch.set_num_threads(4)

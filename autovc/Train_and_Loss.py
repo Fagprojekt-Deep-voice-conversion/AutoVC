@@ -7,9 +7,9 @@ import numpy as np
 import torch
 from tqdm import tqdm
 from Speaker_identity import SpeakerIdentity
-from Preprocessing_WAV import Mel_Batch
+from autovc.preprocessing.Preprocessing_WAV import Mel_Batch
 import pickle
-from dataload import DataLoad2
+from autovc.utils.dataloaders import DataLoad2
 
 path = sys.path[0]
 os.chdir(path)

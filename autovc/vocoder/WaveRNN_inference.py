@@ -4,9 +4,9 @@ parent_dir = os.path.dirname(current_dir)
 sys.path.insert(0, parent_dir) 
 import torch
 print(sys.path[0])
-from vocoder.WaveRNN_model import WaveRNN
+from autovc.vocoder.WaveRNN_model import WaveRNN
 
-from hparams import hparams_waveRNN as hp
+from autovc.utils.hparams import hparams_waveRNN as hp
 import librosa
 import numpy as np
 

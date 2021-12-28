@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from autovc.utils.net_layers import ConvNorm, LinearNorm
+from autovc.utils.net_layers import ConvNorm
 
 
 class Encoder(nn.Module):

@@ -1,10 +1,10 @@
 from conversion import *
 import torch
-from Preprocessing_WAV import WaveRNN_Mel, AutoVC_Mel
+from autovc.preprocessing.Preprocessing_WAV import WaveRNN_Mel, AutoVC_Mel
 import matplotlib.pyplot as plt
 import numpy as np
 
-def Zero_shot(source, target, model, voc_model, save_path, name_path = None, only_conversion = True):
+def zero_shot(source, target, model, voc_model, save_path, name_path = None, only_conversion = True):
     """
     params:
     source: filepath to source file
@@ -44,18 +44,12 @@ def Zero_shot(source, target, model, voc_model, save_path, name_path = None, onl
                 name = f"{save_path}/{key}"
                 print(f"\n Generating {key} sound")
                 Generate(Out, name, voc_model)
-            
-        
-        
-        
-        
-        
 
 # model, voc_model = Instantiate_Models(model_path = 'Models/AutoVC/autoVC30min_step72.pt')
 if __name__ == "__main__":
-    model, voc_model = Instantiate_Models(model_path = 'Models/AutoVC/AutoVC_SMK.pt')
+    model, voc_model = Instantiate_Models(model_path = '../models/AutoVC/AutoVC_SMK.pt')
     
-    Zero_shot("./data/samples/mette_183.wav","./data/samples/chooped7.wav", model, voc_model, ".")
+    zero_shot("../data/samples/mette_183.wav","../data/samples/chooped7.wav", model, voc_model, ".")
 
 
     

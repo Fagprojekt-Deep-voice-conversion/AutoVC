@@ -1,5 +1,5 @@
 from scipy.ndimage.morphology import binary_dilation
-from hparams import hparams_SpeakerEncoder as hp
+from autovc.utils.hparams import hparams_SpeakerEncoder as hp
 from pathlib import Path
 from typing import Optional, Union
 import numpy as np

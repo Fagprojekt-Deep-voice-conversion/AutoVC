@@ -1,16 +1,16 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import librosa, time, torch
-from dataload import DataLoad2
-from Preprocessing_WAV import AutoVC_Mel, WaveRNN_Mel
-from Generator_autoVC.model_vc import Generator
-from vocoder.WaveNet import build_model
-from vocoder.WaveNet import wavegen
-from Speaker_encoder.audio import preprocess_wav
-from Speaker_encoder.inference import load_model as load_encoder
-from Speaker_encoder.inference import embed_utterance
-from vocoder.WaveRNN_model import WaveRNN
-from hparams import hparams_waveRNN as hp
+from autovc.utils.dataloaders import DataLoad2
+from autovc.preprocessing.Preprocessing_WAV import AutoVC_Mel, WaveRNN_Mel
+from autovc.auto_encoder.model_vc import Generator
+from autovc.vocoder.WaveNet import build_model
+from autovc.vocoder.WaveNet import wavegen
+from autovc.speaker_encoder.audio import preprocess_wav
+from autovc.speaker_encoder.inference import load_model as load_encoder
+from autovc.speaker_encoder.inference import embed_utterance
+from autovc.vocoder.WaveRNN_model import WaveRNN
+from autovc.utils.hparams import hparams_waveRNN as hp
 import pickle
 import os 
 import pandas as pd
@@ -24,7 +24,7 @@ def Instantiate_Models(model_path,  vocoder = "wavernn"):
         
         # Instantiate WaveNet Model
         voc_model = build_model().to(device)
-        checkpoint = torch.load("Models/WaveNet/WaveNetVC_pretrained.pth", map_location=torch.device(device))
+        checkpoint = torch.load("../models/WaveNet/WaveNetVC_pretrained.pth", map_location=torch.device(device))
         voc_model.load_state_dict(checkpoint["state_dict"])
 
     elif vocoder == "wavernn": 
@@ -43,7 +43,7 @@ def Instantiate_Models(model_path,  vocoder = "wavernn"):
                             sample_rate=hp.sample_rate,
                             mode='MOL').to(device)
 
-        voc_model.load('Models/WaveRNN/WaveRNN_Pretrained.pyt')
+        voc_model.load('../models/WaveRNN/WaveRNN_Pretrained.pyt')
     else:
         raise RuntimeError("No vocoder chosen")
 
@@ -56,7 +56,7 @@ def Instantiate_Models(model_path,  vocoder = "wavernn"):
         model.load_state_dict(g_checkpoint['model_state'])
 
     # Prepare Speaker Encoder Module
-    load_encoder("Models/SpeakerEncoder/SpeakerEncoder.pt").float()
+    load_encoder("../models/SpeakerEncoder/SpeakerEncoder.pt").float()
         
     return model, voc_model
 
@@ -177,7 +177,7 @@ def Experiment(Model_path, train_length = None, test_data = None, name_list = No
 
 if __name__ == "__main__":
     # (data, labels), (_, _) = DataLoad2("../data")
-    model, voc_model = Instantiate_Models(model_path = 'Models/AutoVC/autoVC_seed40_200k.pt', vocoder = "wavernn")
+    model, voc_model = Instantiate_Models(model_path = 'models/AutoVC/autoVC_seed40_200k.pt', vocoder = "wavernn")
     source, target = './data/english.wav', './data/danish.wav'
 
     Conversion(source, target, model, voc_model, voc_type = "wavernn", task = "English_English", subtask = "Male_Male")

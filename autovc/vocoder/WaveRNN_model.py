@@ -5,8 +5,8 @@ sys.path.insert(0, parent_dir)
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from vocoder.utils.distribution import sample_from_discretized_mix_logistic
-from vocoder.utils.display import *
+from autovc.vocoder.utils.distribution import sample_from_discretized_mix_logistic
+from autovc.vocoder.utils.display import *
 import numpy as np
 from pathlib import Path
 from typing import Union

@@ -4,10 +4,10 @@ sys.path.append(os.path.abspath(os.curdir))
 import torch
 import numpy as np
 from tqdm import tqdm
-from Speaker_encoder.inference import load_model as load_encoder
-from Speaker_encoder.audio import preprocess_wav
+from autovc.speaker_encoder.inference import load_model as load_encoder
+from autovc.speaker_encoder.audio import preprocess_wav
 import librosa
-from Speaker_encoder.inference import embed_utterance
+from autovc.speaker_encoder.inference import embed_utterance
 from sklearn.manifold import TSNE
 import matplotlib.pyplot as plt
 import seaborn as sns

@@ -1,6 +1,6 @@
-from hparams import  hparams_SpeakerEncoder as hp
-from Speaker_encoder.model import SpeakerEncoder
-from Speaker_encoder import audio
+from autovc.utils.hparams import  hparams_SpeakerEncoder as hp
+from autovc.speaker_encoder.model import SpeakerEncoder
+from autovc.speaker_encoder import audio
 from pathlib import Path
 import numpy as np
 import torch
