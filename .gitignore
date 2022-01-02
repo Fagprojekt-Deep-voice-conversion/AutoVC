@@ -1,11 +1,17 @@
-
+# python 
 *.pt
 *.ckpt
 *.pth
 *.pyc
-AutoVC-env/*
-run_scripts/AutoVC-env/*
 
 
+# data
 data/*
 !data/samples/*
+
+# envs
+AutoVC-env/*
+run_scripts/AutoVC-env/*
+wandb-env/*
+
+# other
