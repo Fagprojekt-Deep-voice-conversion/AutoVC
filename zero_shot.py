@@ -53,12 +53,47 @@ def Zero_shot(source, target, model, voc_model, save_path, name_path = None, onl
 
 # model, voc_model = Instantiate_Models(model_path = 'Models/AutoVC/autoVC30min_step72.pt')
 if __name__ == "__main__":
+
+    import shutil, os, re
+
+
     # model, voc_model = Instantiate_Models(model_path = 'Models/AutoVC/AutoVC_SMK.pt')
     # model, voc_model = Instantiate_Models(model_path = 'Models/AutoVC/AutoVC_SMK2_original_step20.85k.pt')
-    model, voc_model = Instantiate_Models(model_path = 'Models/AutoVC/AutoVC_SMK3average__step26.825k.pt')
-    
-    Zero_shot("./data/samples/helle_15.wav","./data/samples/chooped7.wav", model, voc_model, ".")
 
-
+    model_paths = [
+        'Models/AutoVC/AutoVC_SMK_20211104_original_step42.05k.pt',
+        'Models/AutoVC/AutoVC_SMK_20211025_original_step29.275k.pt',
+        'Models/AutoVC/AutoVC_SMK3_original_step26.825k.pt'
+        ]
+    sources = [
+        "./data/samples/hilde_1.wav",
+        "./data/SMK_speakers/hilde_7sek/hilde_18.wav",
+        "./data/samples/hilde_301.wav",
+        ]
+    targets = [
+        "./data/samples/HaegueYang_5.wav",
+        "./data/SMK_speakers/HaegueYang_10sek/HaegueYang_8.wav",
+        "./data/samples/HaegueSMK.wav"
+        ]
     
+    save_dir = "./data/conversion/"
+
+    # model_path = model_paths[0]
+    # source = sources[0]
+    # target = targets[0]
+
+    for model_path in model_paths:
+        save_dir = "./data/conversion/" + re.findall(r"(.*)_original", model_path.split("/")[-1])[0] + "/"
+        # for source, target in zip(sources, targets):
+        for source in sources:
+            for target in targets:
+                model, voc_model = Instantiate_Models(model_path = model_path)
+                Zero_shot(source,target, model, voc_model, ".")
+
+                os.makedirs(save_dir, exist_ok=True)
+                src_name = re.findall(r"(.*).wav", source.split("/")[-1])[0]
+                trg_name = re.findall(r"(.*).wav", target.split("/")[-1])[0]
+                shutil.copyfile(source, save_dir + src_name + "_source.wav")
+                shutil.copyfile(target, save_dir + trg_name +  "_target.wav")
+                shutil.copyfile("./conversion.wav", save_dir + f"./{src_name}_to_{trg_name}_conversion.wav")
     

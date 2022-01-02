@@ -149,6 +149,7 @@ def Train(model, trainloader, init_lr, n_steps, save_every, models_dir, loss_dir
     avg_params = flatten_params(model)
     while step < n_steps:
         for X, c_org in tqdm(trainloader):
+            # try: # gave runtime error, as X was empty, should do this in another way instead of using try
 
             """ Outputs and loss"""
             mel, post, codes = model(X, c_org, c_org)
@@ -190,6 +191,8 @@ def Train(model, trainloader, init_lr, n_steps, save_every, models_dir, loss_dir
 
             if step >= n_steps:
                 break
+            # except:
+            #     continue
 
 
 
