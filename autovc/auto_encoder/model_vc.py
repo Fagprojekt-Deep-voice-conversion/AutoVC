@@ -39,14 +39,15 @@ class Generator(nn.Module):
         """
 
         """ Pass x and c_org through encoder and obtain downsampled C1 -> and C1 <- as in figure 3"""
-        codes = self.encoder(x, c_org)
+        codes_forward, codes_backward= self.encoder(x, c_org)
 
         """ 
         If no target provide output the content codes from the content encoder 
         This is for the loss function to easily produce content codes from the final output of AutoVC
         """
         if c_trg is None:
-            content_codes = torch.cat([torch.cat(code, dim=-1) for code in codes], dim=-1)
+            content_codes= torch.cat([torch.cat(codes_forward, dim = -1), torch.cat(codes_backward, dim = -1)], dim = -1)
+            # content_codes = torch.cat([torch.cat(code, dim=-1) for code in codes], dim=-1)
             return content_codes
 
         """ 
@@ -61,19 +62,19 @@ class Generator(nn.Module):
             - Forward: (0-31 = 31, 32-63 = 63, 64-100 = 95)
             - Backward: (0-31 = 0, 32-63 = 32, 64-95 = 64, 96-100 = 96)
         """
-        tmp = []
-        for code in codes:
-            L = len(code)
-            diff = x.size(1) - L * self.freq
-            Up_Sampling = [sample.unsqueeze(1).expand(-1, self.freq + bool( (i+1) == L) * diff, -1) for i, sample in enumerate(code)]
-            tmp.append(torch.cat(Up_Sampling, dim = 1))
+        codes_forward_upsampled = torch.cat([c.unsqueeze(-1).expand(-1,-1, self.freq) for c in codes_forward], dim = -1)
+        last_part = codes_forward[-1].unsqueeze(-1).expand(-1,-1, x.size(-1) - codes_forward_upsampled.size(-1))
+        codes_forward_upsampled = torch.cat([codes_forward_upsampled, last_part], dim = -1)
 
-        """ Concatenates upsampled content codes with target embedding. Dim = (batch_size, input time frames, 320) """
-        code_exp = torch.cat(tmp, dim=-1)
-        encoder_outputs = torch.cat((code_exp, c_trg.unsqueeze(1).expand(-1,x.size(1),-1)), dim=-1)
+        codes_backward_upsampled = torch.cat([c.unsqueeze(-1).expand(-1,-1, self.freq) for c in codes_backward], dim = -1)[:,:,:x.size(-1)]
+
+
+        """ Concatenates upsampled content codes with target embedding. Dim = (batch_size, 320, input time frames) """
+        code_exp = torch.cat([codes_forward_upsampled, codes_backward_upsampled], dim=1)
+        encoder_outputs = torch.cat((code_exp,c_trg.unsqueeze(-1).expand(-1,-1,x.size(-1))), dim=1)
 
         """ Sends concatenate encoder outputs through the decoder """
-        mel_outputs = self.decoder(encoder_outputs)
+        mel_outputs = self.decoder(encoder_outputs.transpose(1,2))
 
 
         """ Sends the decoder outputs through the 5 layer postnet and adds this output with decoder output for stabilisation (section 4.3)"""
@@ -88,8 +89,8 @@ class Generator(nn.Module):
         """
         mel_outputs = mel_outputs.unsqueeze(1)
         mel_outputs_postnet = mel_outputs_postnet.unsqueeze(1)
-        content_codes = torch.cat([torch.cat(code, dim = -1) for code in codes], dim = -1)
-
+        # content_codes = torch.cat([torch.cat(code, dim = -1) for code in codes], dim = -1)
+        content_codes= torch.cat([torch.cat(codes_forward, dim = -1), torch.cat(codes_backward, dim = -1)], dim = -1)
         return mel_outputs, mel_outputs_postnet, content_codes
 
 
