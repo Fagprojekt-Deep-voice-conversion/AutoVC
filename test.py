@@ -4,7 +4,7 @@ from autovc.preprocessing import *
 from autovc.preprocessing.preprocess_wav import *
 from autovc.speaker_encoder.audio import preprocess_wav
 import torch
-from autovc.utils.dataloader2 import DataLoaderAutoVC
+from autovc.utils.dataloader2 import TrainDataLoader
 from autovc.Speaker_identity import *
 if __name__ == "__main__":
     D = DataLoaderAutoVC('data')
