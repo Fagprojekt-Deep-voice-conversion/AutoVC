@@ -1,6 +1,6 @@
 import os, sys
-os.chdir(".")
-sys.path.append(os.path.abspath(os.curdir))
+# os.chdir(".")
+# sys.path.append(os.path.abspath(os.curdir))
 import torch
 import numpy as np
 from tqdm import tqdm
@@ -10,16 +10,7 @@ import librosa
 from autovc.speaker_encoder.inference import embed_utterance
 from sklearn.manifold import TSNE
 import matplotlib.pyplot as plt
-import seaborn as sns
-
-
-path = sys.path[0]
-os.chdir(path)
-
-# Check for GPU
-use_cuda = torch.cuda.is_available()
-device = torch.device("cuda" if use_cuda else "cpu")
-encoder = load_encoder("Models/SpeakerEncoder/SpeakerEncoder.pt").float()
+# import seaborn as sns
 
 def SpeakerIdentity(Data):
     if type(Data) is str:
@@ -45,3 +36,12 @@ def EvalEmbedding(embedding, labels):
     sns.scatterplot(X[:, 0], X[:, 1], hue=labels)
     plt.title("t-SNE")
     plt.show()
+
+if __name__ == '__main__':
+    path = sys.path[0]
+    os.chdir(path)
+
+    # Check for GPU
+    use_cuda = torch.cuda.is_available()
+    device = torch.device("cuda" if use_cuda else "cpu")
+    encoder = load_encoder("Models/SpeakerEncoder/SpeakerEncoder.pt").float()

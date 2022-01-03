@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import librosa, time, torch
 from autovc.utils.dataloaders import DataLoad2
-from autovc.preprocessing.Preprocessing_WAV import AutoVC_Mel, WaveRNN_Mel
+from autovc.preprocessing.preprocess_wav import WaveRNN_Mel
 from autovc.auto_encoder.model_vc import Generator
 from autovc.vocoder.WaveNet import build_model
 from autovc.vocoder.WaveNet import wavegen
@@ -15,6 +15,8 @@ import pickle
 import os 
 import pandas as pd
 import soundfile as sf
+
+
 def Instantiate_Models(model_path,  vocoder = "wavernn"):
     use_cuda = torch.cuda.is_available()
     device = torch.device("cuda" if use_cuda else "cpu")
@@ -43,7 +45,7 @@ def Instantiate_Models(model_path,  vocoder = "wavernn"):
                             sample_rate=hp.sample_rate,
                             mode='MOL').to(device)
 
-        voc_model.load('../models/WaveRNN/WaveRNN_Pretrained.pyt')
+        voc_model.load('Models/WaveRNN/WaveRNN_Pretrained.pyt')
     else:
         raise RuntimeError("No vocoder chosen")
 
@@ -56,13 +58,13 @@ def Instantiate_Models(model_path,  vocoder = "wavernn"):
         model.load_state_dict(g_checkpoint['model_state'])
 
     # Prepare Speaker Encoder Module
-    load_encoder("../models/SpeakerEncoder/SpeakerEncoder.pt").float()
+    load_encoder("Models/SpeakerEncoder/SpeakerEncoder.pt").float()
         
     return model, voc_model
 
 def embed(path):
-    y = librosa.load(path, sr = 16000)[0]
-    y = preprocess_wav(y)
+    y, _ = librosa.load(path, sr = 16000)
+    y    = preprocess_wav(y)
     return torch.tensor(embed_utterance(y)).unsqueeze(0)
 
 def Generate(m, fpath, model, modeltype = "wavernn"):
