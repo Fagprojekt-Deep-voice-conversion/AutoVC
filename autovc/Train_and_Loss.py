@@ -17,52 +17,55 @@ os.chdir(path)
 use_cuda = torch.cuda.is_available()
 device = torch.device("cuda" if use_cuda else "cpu")
 
-def TrainLoader(Data, labels, batch_size = 2, shuffle = True, num_workers = 1, pin_memory = False, vocoder = "autovc"):
+###########################################          ###########################################
+########################################### Outdated ###########################################
+###########################################          ###########################################
+# def TrainLoader(Data, labels, batch_size = 2, shuffle = True, num_workers = 1, pin_memory = False, vocoder = "autovc"):
 
-    Data, labels = np.array(Data)[np.argsort(labels)], np.array(labels)[np.argsort(labels)]
-    embeddings, uncorrupted = SpeakerIdentity(Data)
-    labels = labels[uncorrupted]
-    emb = []
-    # for person in sorted(set(labels)):
-        # index = np.where(labels == person)
-    #     X = embeddings[index].cpu()
-    #     X = X.mean(0).unsqueeze(0).expand(len(index[0]), -1)
-    #     emb.append(X)
-    # emb = torch.cat(emb, dim = 0).to(device)
-    emb = embeddings
-    Mels, uncorrupted = Mel_Batch(list(Data[uncorrupted]), vocoder = vocoder)
-    emb = emb[uncorrupted]
+#     Data, labels = np.array(Data)[np.argsort(labels)], np.array(labels)[np.argsort(labels)]
+#     embeddings, uncorrupted = SpeakerIdentity(Data)
+#     labels = labels[uncorrupted]
+#     emb = []
+#     # for person in sorted(set(labels)):
+#         # index = np.where(labels == person)
+#     #     X = embeddings[index].cpu()
+#     #     X = X.mean(0).unsqueeze(0).expand(len(index[0]), -1)
+#     #     emb.append(X)
+#     # emb = torch.cat(emb, dim = 0).to(device)
+#     emb = embeddings
+#     Mels, uncorrupted = Mel_Batch(list(Data[uncorrupted]), vocoder = vocoder)
+#     emb = emb[uncorrupted]
 
 
-    C = torch.utils.data.DataLoader(ConcatDataset(Mels, emb), shuffle = shuffle,
-                                    batch_size = batch_size, collate_fn = collate,
-                                    num_workers = num_workers,
-                                    pin_memory = pin_memory)
-    return C, uncorrupted
+#     C = torch.utils.data.DataLoader(ConcatDataset(Mels, emb), shuffle = shuffle,
+#                                     batch_size = batch_size, collate_fn = collate,
+#                                     num_workers = num_workers,
+#                                     pin_memory = pin_memory)
+#     return C, uncorrupted
 
-def collate(batch):
-    batch = list(zip(*batch))
-    lengths = torch.tensor([t.shape[1] for t in batch[0]])
-    m = lengths.max()
-    Mels = []
-    for t in batch[0]:
-        pad = torch.nn.ConstantPad2d((0, 0, 0, m - t.size(1)), 0)
-        t = pad(t)
-        Mels.append(t)
-    Mels = torch.cat(Mels, dim = 0)
-    embeddings = torch.cat([t.unsqueeze(0) for t in batch[1]], dim = 0)
+# def collate(batch):
+#     batch = list(zip(*batch))
+#     lengths = torch.tensor([t.shape[1] for t in batch[0]])
+#     m = lengths.max()
+#     Mels = []
+#     for t in batch[0]:
+#         pad = torch.nn.ConstantPad2d((0, 0, 0, m - t.size(1)), 0)
+#         t = pad(t)
+#         Mels.append(t)
+#     Mels = torch.cat(Mels, dim = 0)
+#     embeddings = torch.cat([t.unsqueeze(0) for t in batch[1]], dim = 0)
 
-    return [Mels, embeddings]
+#     return [Mels, embeddings]
 
-class ConcatDataset(torch.utils.data.Dataset):
-    def __init__(self, *datasets):
-        self.datasets = datasets
+# class ConcatDataset(torch.utils.data.Dataset):
+#     def __init__(self, *datasets):
+#         self.datasets = datasets
 
-    def __getitem__(self, i):
-        return tuple(d[i] for d in self.datasets)
+#     def __getitem__(self, i):
+#         return tuple(d[i] for d in self.datasets)
 
-    def __len__(self):
-        return min(len(d) for d in self.datasets)
+#     def __len__(self):
+#         return min(len(d) for d in self.datasets)
 
 
 
