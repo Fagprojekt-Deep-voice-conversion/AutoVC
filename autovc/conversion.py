@@ -45,7 +45,7 @@ def Instantiate_Models(model_path,  vocoder = "wavernn"):
                             sample_rate=hp.sample_rate,
                             mode='MOL').to(device)
 
-        voc_model.load('Models/WaveRNN/WaveRNN_Pretrained.pyt')
+        voc_model.load('../models/WaveRNN/WaveRNN_Pretrained.pyt')
     else:
         raise RuntimeError("No vocoder chosen")
 
@@ -58,7 +58,7 @@ def Instantiate_Models(model_path,  vocoder = "wavernn"):
         model.load_state_dict(g_checkpoint['model_state'])
 
     # Prepare Speaker Encoder Module
-    load_encoder("Models/SpeakerEncoder/SpeakerEncoder.pt").float()
+    load_encoder("../models/SpeakerEncoder/SpeakerEncoder.pt").float()
         
     return model, voc_model
 
