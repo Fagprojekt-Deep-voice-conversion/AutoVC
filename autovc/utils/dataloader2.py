@@ -3,8 +3,7 @@ import torch
 import os
 from torch.utils.data import DataLoader, Dataset
 from autovc.preprocessing.preprocess_wav import WaveRNN_Mel
-from autovc.speaker_encoder.inference import *
-from autovc.speaker_encoder.audio import *
+from autovc.speaker_encoder.model import SpeakerEncoder
 from torch.nn.functional import pad
 
 class TrainDataLoader(Dataset):
@@ -20,13 +19,14 @@ class TrainDataLoader(Dataset):
         super(TrainDataLoader, self).__init__()
 
         # Initialise the Speaker Identiy Encoder for embeddings.
-        _model = load_model(weights_fpath = speaker_encoder_path, device = device)
+        speaker_encoder = SpeakerEncoder(device = device)
+        speaker_encoder.load_model(speaker_encoder_path)
 
         # Load wav files. Create spectograms and embeddings
         self.wav_files = [os.path.join(dirpath, filename) for dirpath , _, directory in os.walk(data_dir_path) for filename in directory]
 
         self.mel_spectograms = [torch.from_numpy(WaveRNN_Mel(wav)) for wav in self.wav_files]
-        self.embeddings      = [torch.from_numpy(embed_utterance(preprocess_wav(wav))) for wav in self.wav_files]
+        self.embeddings      = [speaker_encoder.embed_utterance(wav) for wav in self.wav_files]
 
     def __len__(self):
         return len(self.wav_files)
