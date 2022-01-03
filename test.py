@@ -7,7 +7,7 @@ import torch
 from autovc.utils.dataloader2 import TrainDataLoader
 from autovc.Speaker_identity import *
 if __name__ == "__main__":
-    D = DataLoaderAutoVC('data')
+    D = TrainDataLoader('data')
     D.data_loader(batch_size=2)
     [a for a in D.data_loader(batch_size = 2)]
     print(D.mel_spectograms)
