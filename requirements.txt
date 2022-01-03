@@ -10,6 +10,7 @@ pandas
 seaborn 
 wavenet_vocoder 
 numba==0.49.1 # for trouble, see below
+wandb
 
 
 # If having trouble, try these:
