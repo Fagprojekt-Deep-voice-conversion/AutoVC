@@ -1,6 +1,6 @@
 from conversion import *
 import torch
-from autovc.preprocessing.Preprocessing_WAV import WaveRNN_Mel, AutoVC_Mel
+from autovc.preprocessing.preprocess_wav import WaveRNN_Mel
 import matplotlib.pyplot as plt
 import numpy as np
 from autovc.wavernn.synthesize import synthesize

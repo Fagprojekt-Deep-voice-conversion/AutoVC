@@ -57,7 +57,7 @@ class Encoder(nn.Module):
         """
 
         """ Concatenates Spectrogram and speaker embedding"""
-        x = x.squeeze(1).transpose(2,1)
+        # x = x.squeeze(1).transpose(2,1)
         c_org = c_org.unsqueeze(-1).expand(-1, -1, x.size(-1))
         x = torch.cat((x, c_org), dim=1)
 
@@ -90,7 +90,4 @@ class Encoder(nn.Module):
         codesA = [out_forward[:, i, :] for i in range(self.freq-1, outputs.size(1), self.freq)]  # (31, 63, 95, ...)
         codesB = [out_backward[:, i, :] for i in range(0, outputs.size(1), self.freq)]  # (0, 32, 64, ... )
 
-        """ Return a list of containing C1 -> and C1 <- as in figure 3"""
-        codes = [codesA, codesB]
-
-        return codes
+        return codesA, codesB
