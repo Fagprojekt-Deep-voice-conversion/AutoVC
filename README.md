@@ -5,6 +5,16 @@ The reconstruction loss is simply the similarity between input and output.
 The main idea is to loss every information about the speaker identity and then provide this information after the bottleneck. Providing the identity of a different speaker should thus result in voice conversion.
 
 
+## Install 
+
+This package is not supported by pypi and to the repository must therefore be downloaded. After downloading use `cd ...` to navigate to the `AutoVC` folder and type the command
+
+```
+pip install -e .
+```
+
+The `-e` flag can be deprecated as it only tells the package to track changes and is thus only necesary if any modifications are made to any of the scripts.
+
 ## Usage
 
 easy usage do this....
