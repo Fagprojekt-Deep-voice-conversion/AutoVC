@@ -4,13 +4,23 @@ Params are stored as a dictionary, so that they can easily be passed to the func
 These default params shpould not be changed unless a better combination has been found, thus testing of new params should be passed in the functions.
 """
 
+from argparse import Namespace
+
 class ClassProperty(object):
     def __init__(self, func):
         self.func = func
     def __get__(self, inst, cls):
         return self.func(cls)
 
+class ParamCollection(Namespace):
+	def update(self, d: dict):
+		self.__dict__.update(d)
 
+
+# class ParamCollection(ClassProperty):
+# 	def __init__(self, func):
+# 		super().__init__(func)
+# 		self.func = 
 
 class AutoVCParams:
 	# Vocoder
@@ -29,8 +39,8 @@ class AutoVCParams:
 	win_length 						= 1024
 	window 							= 'hann'
 	power							= 1
-	hop_size 						=  256
-	min_level_db 					=  -100
+	hop_size 						= 256
+	min_level_db 					= -100
 	ref_level_db 					= 16
 	rescaling 						= True # x is an input waveform and rescaled by x / np.abs(x).max() * rescaling_max
 	rescaling_max 					=  0.999
@@ -112,9 +122,10 @@ class WaveRNNParams:
 	clip_grad_norm 		= 4  # set to None if no gradient clipping needed
 
 	# Generating / Synthesizing
-	gen_batched 		= True  # very fast (realtime+) single utterance batched generation
+	batched 		= True  # very fast (realtime+) single utterance batched generation
 	target 				= 11_000  # target number of samples to be generated in each batch entry
 	overlap 			= 550  # number of samples for crossfading between batches
+	mu_law 				= False # whether to use mu_law
 	
 	@ClassProperty
 	def model(self):
@@ -124,7 +135,12 @@ class WaveRNNParams:
                  "feat_dims", "compute_dims", "res_out_dims", "res_blocks",
                  "hop_length", "sample_rate", "mode"
 		]
-		return {key : self.__getattribute__(self, key) for key in keys}
+		return ParamCollection(**{key : self.__getattribute__(self, key) for key in keys})
+
+	@ClassProperty
+	def synthesize(self):
+		keys = ["batched", "target", "overlap", "mu_law"]
+		return ParamCollection(**{key : self.__getattribute__(self, key) for key in keys})
 
 ############### SPEAKER ENCODER ###############
 
@@ -160,4 +176,4 @@ class SpeakerEncoderParams:
 if __name__ == "__main__":
 	p = WaveRNNParams.model
 	p.update({"sample_rate" : 2})
-	print(p)
+	print(p.__dict__)

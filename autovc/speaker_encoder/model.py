@@ -21,12 +21,14 @@ class SpeakerEncoder(nn.Module):
     Not consistenet with AutoVC but the best i could find...
     Trained on GE2E loss for 1.5 M step
     """
-    def __init__(self, device = None, **kwargs):
+    def __init__(self, device = None, loss_device = None, **kwargs):
         super().__init__()
         if device is None:
             self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         elif isinstance(device, str):
             self.device = torch.device(device)
+        else:
+            self.device = device
         
         # Network defition
         self.lstm = nn.LSTM(input_size  = kwargs.get('mel_n_channels', hp.mel_n_channels),

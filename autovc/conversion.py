@@ -59,7 +59,7 @@ def Instantiate_Models(model_path,  vocoder = "wavernn"):
     model.load_state_dict(g_checkpoint['model_state'])
 
     # Prepare Speaker Encoder Module
-    load_encoder("Models/SpeakerEncoder/SpeakerEncoder.pt").float()
+    load_encoder("../models/SpeakerEncoder/SpeakerEncoder.pt").float()
         
     return model, None#voc_model
 
