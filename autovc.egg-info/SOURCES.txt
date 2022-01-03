@@ -1,6 +1,0 @@
-README.md
-setup.py
-autovc.egg-info/PKG-INFO
-autovc.egg-info/SOURCES.txt
-autovc.egg-info/dependency_links.txt
-autovc.egg-info/top_level.txt
