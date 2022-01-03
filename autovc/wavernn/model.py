@@ -1,12 +1,13 @@
-import os,sys,inspect
-current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-parent_dir = os.path.dirname(current_dir)
-sys.path.insert(0, parent_dir) 
+# import os,sys,inspect
+# current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+# parent_dir = os.path.dirname(current_dir)
+# sys.path.insert(0, parent_dir) 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from autovc.vocoder.utils.distribution import sample_from_discretized_mix_logistic
-from autovc.vocoder.utils.display import *
+from autovc.wavernn.distribution import sample_from_discretized_mix_logistic
+from autovc.wavernn.display import *
+from autovc.utils.hparams_NEW import WaveRNNParams as hparams
 import numpy as np
 from pathlib import Path
 from typing import Union
@@ -167,12 +168,16 @@ class WaveRNN(nn.Module):
         x = F.relu(self.fc2(x))
         return self.fc3(x)
 
-    def generate(self, mels, batched, target, overlap, mu_law):
+    # def generate(self, mels, batched, target, overlap, **kwargs):
+    def generate(self, mels, **kwargs):
+        # setup
         self.eval()
+        params = hparams.synthesize
+        params.update(kwargs)
+        mu_law = params.mu_law if self.mode == 'RAW' else False
+
 
         device = next(self.parameters()).device  # use same device as parameters
-
-        mu_law = mu_law if self.mode == 'RAW' else False
 
         output = []
         start = time.time()
@@ -186,9 +191,9 @@ class WaveRNN(nn.Module):
             mels = self.pad_tensor(mels.transpose(1, 2), pad=self.pad, side='both')
             mels, aux = self.upsample(mels.transpose(1, 2))
 
-            if batched:
-                mels = self.fold_with_overlap(mels, target, overlap)
-                aux = self.fold_with_overlap(aux, target, overlap)
+            if params.batched:
+                mels = self.fold_with_overlap(mels, params.target, params.overlap)
+                aux = self.fold_with_overlap(aux, params.target, params.overlap)
 
             b_size, seq_len, _ = mels.size()
 
@@ -246,10 +251,11 @@ class WaveRNN(nn.Module):
         output = output.astype(np.float64)
 
         if mu_law:
-            output = decode_mu_law(output, self.n_classes, False)
+            raise NotImplementedError
+            # output = decode_mu_law(output, self.n_classes, False)
 
-        if batched:
-            output = self.xfade_and_unfold(output, target, overlap)
+        if params.batched:
+            output = self.xfade_and_unfold(output, params.target, params.overlap)
         else:
             output = output[0]
 
