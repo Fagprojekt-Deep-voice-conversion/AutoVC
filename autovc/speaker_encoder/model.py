@@ -21,7 +21,7 @@ class SpeakerEncoder(nn.Module):
     Not consistenet with AutoVC but the best i could find...
     Trained on GE2E loss for 1.5 M step
     """
-    def __init__(self, device = None, loss_device = None, **kwargs):
+    def __init__(self, device = None, **kwargs):
         super().__init__()
         if device is None:
             self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
