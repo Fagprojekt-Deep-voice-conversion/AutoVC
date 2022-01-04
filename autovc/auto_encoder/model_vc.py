@@ -7,6 +7,7 @@ Everything is shown in figure 3 in the Paper - please have this by hand when rea
 
 import torch
 import torch.nn as nn
+
 from autovc.utils.net_layers import *
 from autovc.auto_encoder.encoder import Encoder
 from autovc.auto_encoder.decoder import Decoder
@@ -17,7 +18,7 @@ class Generator(nn.Module):
     """
     Generator network. The entire thing pieced together (figure 3a and 3c)
     """
-    def __init__(self, dim_neck = 32, dim_emb = 256, dim_pre = 512, freq = 32):
+    def __init__(self, dim_neck = 32, dim_emb = 256, dim_pre = 512, freq = 32, **kwargs):
         """
         params:
         dim_neck: dimension of bottleneck (set to 32 in the paper)
@@ -29,6 +30,16 @@ class Generator(nn.Module):
         self.encoder = Encoder(dim_neck, dim_emb, freq)
         self.decoder = Decoder(dim_neck, dim_emb, dim_pre)
         self.postnet = Postnet()
+
+        self.criterion1 = nn.MSELoss()
+        self.criterion2 = nn.L1Loss()
+        self.optimiser = torch.optim.Adam(self.parameters(),
+                                          lr= kwargs.get('init_lr', 1e-3),
+                                          betas = (0.9, 0.999),
+                                          eps = 1e-8,
+                                          weight_decay=0.0,
+                                          amsgrad = False)
+        
 
     def forward(self, x, c_org, c_trg):
         """
@@ -97,9 +108,142 @@ class Generator(nn.Module):
     def load_model(self, weights_fpath, device):
         checkpoint = torch.load(weights_fpath, map_location = device)
         self.load_state_dict(checkpoint["model_state"])
+
         
+    def loss(self, X, c_org, out_decoder, out_postnet, content_codes,  mu = 1, lambd = 1):
+        """
+        Loss function as proposed in AutoVC
+        L = Reconstruction Error + mu * Prenet reconstruction Error + lambda * content Reconstruction error
+        mu and lambda are set to 1 in the paper.
+
+        params:
+            X:              A batch of mel spectograms to convert
+            c_org:          Speaker embedding batches of X
+            out_decoder:    The output of the decoder (Converted spectogram)
+            out_postnet:    The output of the postnet (Converted spectogram)
+            content_codes:  The output of the encoder (Content embedding)
+
+        returns the loss function as proposed in AutoVC
+        """
+
+        # Create content codes from reconstructed spectogram
+        reconstructed_content_codes = self(out_postnet, c_org, None)
        
+        # Reconstruction error: 
+        #     The mean of the squared p2 norm of (Postnet outputs - Original Mel Spectrograms)
+        reconstruction_loss1  = self.criterion1(out_postnet, X)
+        
+        # Prenet Reconstruction error
+        #     The mean of the squared p2 norm of (Decoder outputs - Original Mel Spectrograms)
+        reconstruction_loss2 = self.criterion1(out_decoder, X)
+        
+        # Content reconstruction Error
+        #     The mean of the p1 norm of (Content codes of postnet output - Content codes)
+        content_loss = self.criterion2(reconstructed_content_codes, content_codes)
+
+        return reconstruction_loss1 + mu * reconstruction_loss2 + lambd * content_loss
+
+
+    def learn(self, trainloader, n_epochs, save_every = 1000, models_dir = None , model_path_name = None):
+        if torch.cuda.is_available():
+            print(f"Training beginning on {torch.cuda.get_device_name(0)}")
+        else:
+            print(f"Training beginning on cpu")
+        step = 0
+        ema = 0.9999
+
+        self.train()
+        avg_params = self.flatten_params()
+
+        for epoch in range(n_epochs):
+            for X, c_org in trainloader:
+                # Comutet output using the speaker embedding only of the source
+                out_decoder, out_postnet, content_codes = self(X, c_org, c_org)
+
+                # Computes the AutoVC reconstruction loss
+                loss = self.loss(X = X, c_org = c_org, out_decoder = out_decoder, out_postnet = out_postnet, content_codes = content_codes)
+                
+                # Compute gradients, clip and take a step
+                self.optimiser.zero_grad()
+                loss.backward()
+                torch.nn.utils.clip_grad_norm_(self.parameters(), max_norm = 1) # Clip gradients (avoid exploiding gradients)
+                self.optimiser.step()
+
+                # Save exponentially smoothed parameters - can be used to avoid too large changes of parameters
+                avg_params = ema * avg_params + (1-ema) * self.flatten_params()
+                step += 1
+                print("Step:", step)
+
+                '''
+                Add save model stuff and log loss with W&B below.
+                To save the exponentially smothed params use self.load_flattenend_params first.
+                
+                '''
+
+    
+        #         if step % 10 == 0:
+        #             """ Append current error to L for plotting """
+        #             r = error.cpu().detach().numpy()
+        #             running_loss.append(r)
+        #             pickle.dump(running_loss, open(loss_fpath, "wb"))
+
+        #         if step % save_every == 0:
+        #             original_param = flatten_params(model)
+        #             load_params(model, avg_params)
+        #             print("Saving the model (step %d)" % step)
+        #             torch.save({
+        #                 "step": step + 1,
+        #                 "model_state": model.state_dict(),
+        #                 "optimizer_state": optimiser.state_dict(),
+        #             }, models_dir + "/" + model_path_name + "average_"+ f"_step{step / 1000}k" ".pt")
+        #             load_params(model, original_param)
+        #             torch.save({
+        #                 "step": step + 1,
+        #                 "model_state": model.state_dict(),
+        #                 "optimizer_state": optimiser.state_dict(),
+        #             }, models_dir + "/" + model_path_name + "_original" +f"_step{step / 1000}k" ".pt")
+
+        #         if step >= n_steps:
+        #             break
 
 
 
+        # pickle.dump(running_loss, open(loss_fpath, "wb"))
+        # print("Saving the model (step %d)" % step)
+        # torch.save({
+        #     "step": step + 1,
+        #     "model_state": model.state_dict(),
+        #     "optimizer_state": optimiser.state_dict(),
+        # }, models_dir + "/" + model_path_name + "_original" + f"_step{step / 1000}k" ".pt")
+        # load_params(model, avg_params)
 
+        # torch.save({
+        #     "step": step + 1,
+        #     "model_state": model.state_dict(),
+        #     "optimizer_state": optimiser.state_dict(),
+        # }, models_dir + "/" + model_path_name + "average_" + f"_step{step / 1000}k" ".pt")
+
+
+    def flatten_params(self):
+        '''
+        Flattens the parameter to a single vector
+        '''
+        return torch.cat([param.data.view(-1) for param in self.parameters()], 0)
+
+    def load_flattened_params(self, flattened_params):
+        '''
+        Loads parameters from flattened params
+        '''
+        offset = 0
+        for param in self.parameters():
+            param.data.copy_(flattened_params[offset:offset + param.nelement()].view(param.size()))
+            offset += param.nelement()
+
+
+def noam_learning_rate_decay(init_lr, global_step, warmup_steps=4000):
+    # Noam scheme from tensor2tensor:
+    warmup_steps = float(warmup_steps)
+    step = global_step + 1.
+    lr = init_lr * warmup_steps ** 0.5 * np.minimum(
+        step * warmup_steps ** -1.5, step ** -0.5)
+    return lr
