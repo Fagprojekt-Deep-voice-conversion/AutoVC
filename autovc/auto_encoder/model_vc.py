@@ -17,7 +17,7 @@ class Generator(nn.Module):
     """
     Generator network. The entire thing pieced together (figure 3a and 3c)
     """
-    def __init__(self, dim_neck, dim_emb, dim_pre, freq):
+    def __init__(self, dim_neck = 32, dim_emb = 256, dim_pre = 512, freq = 32):
         """
         params:
         dim_neck: dimension of bottleneck (set to 32 in the paper)

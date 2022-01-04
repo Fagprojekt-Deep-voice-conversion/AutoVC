@@ -19,7 +19,7 @@ if __name__ == "__main__":
     device = 'cpu'
 
     # AutoVC
-    model = Generator(32, 256, 512, 32)
+    model = Generator()
 
     # SpeakerEncoder
     S = SpeakerEncoder(device = device)
