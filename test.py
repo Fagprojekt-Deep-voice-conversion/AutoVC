@@ -55,8 +55,8 @@ if __name__ == "__main__":
     # Convert:
     #   out is the converted output
     #   post_out is the refined (by postnet) out put
-    #   codes are the content vector
-    out, post_out, codes = model(torch.from_numpy(X).unsqueeze(0), c_source, c_target)
+    #   content_codes is the content vector - the content encoder output
+    out, post_out, content_codes = model(torch.from_numpy(X).unsqueeze(0), c_source, c_target)
     
     # Use the Vocoder to generate waveform (use post_out as input)
     waveform = voc_model.generate(post_out, batched = True, target = 11_000, overlap = 550, mu_law= False)
