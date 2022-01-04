@@ -27,6 +27,8 @@ class SpeakerEncoder(nn.Module):
             self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         elif isinstance(device, str):
             self.device = torch.device(device)
+        else:
+            self.device = device
         
         # Network defition
         self.lstm = nn.LSTM(input_size  = kwargs.get('mel_n_channels', hp.mel_n_channels),

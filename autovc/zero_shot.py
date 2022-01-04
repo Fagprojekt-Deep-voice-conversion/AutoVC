@@ -3,6 +3,7 @@ import torch
 from autovc.preprocessing.preprocess_wav import WaveRNN_Mel
 import matplotlib.pyplot as plt
 import numpy as np
+from autovc.wavernn.synthesize import synthesize
 
 def zero_shot(source, target, model, voc_model, save_path, name_path = None, only_conversion = True):
     """
@@ -34,16 +35,16 @@ def zero_shot(source, target, model, voc_model, save_path, name_path = None, onl
             name = f"{save_path}/{key}"
             print(f"\n Generating {key} sound")
             if name_path is not None:
-                Generate(Out, f"{save_path}/{name_path}", voc_model)
+                synthesize(Out, f"{save_path}/{name_path}", voc_model)
 
             else:
-                Generate(Out, name, voc_model)
+                synthesize(Out, name, voc_model)
         else:
             Out = X.unsqueeze(0)
             if not only_conversion:
                 name = f"{save_path}/{key}"
                 print(f"\n Generating {key} sound")
-                Generate(Out, name, voc_model)
+                synthesize(Out, name, voc_model)
 
 # model, voc_model = Instantiate_Models(model_path = 'Models/AutoVC/autoVC30min_step72.pt')
 if __name__ == "__main__":
