@@ -179,8 +179,9 @@ def Experiment(Model_path, train_length = None, test_data = None, name_list = No
 
 if __name__ == "__main__":
     # (data, labels), (_, _) = DataLoad2("../data")
-    model, voc_model = Instantiate_Models(model_path = 'models/AutoVC/autoVC_seed40_200k.pt', vocoder = "wavernn")
-    source, target = './data/english.wav', './data/danish.wav'
+    model, voc_model = Instantiate_Models(model_path = '../models/AutoVC/autoVC_seed40_200k.pt', vocoder = "wavernn")
+    # source, target = './data/english.wav', './data/danish.wav'
+    source, target = "../data/samples/mette_183.wav","../data/samples/chooped7.wav"
 
     Conversion(source, target, model, voc_model, voc_type = "wavernn", task = "English_English", subtask = "Male_Male")
 
