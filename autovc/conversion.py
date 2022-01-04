@@ -4,8 +4,7 @@ import librosa, time, torch
 from autovc.utils.dataloaders import DataLoad2
 from autovc.preprocessing.preprocess_wav import WaveRNN_Mel
 from autovc.auto_encoder.model_vc import Generator
-from autovc.vocoder.WaveNet import build_model
-from autovc.vocoder.WaveNet import wavegen
+
 # from autovc.speaker_encoder.audio import preprocess_wav
 # from autovc.speaker_encoder.inference import load_model as load_encoder
 # from autovc.speaker_encoder.inference import embed_utterance

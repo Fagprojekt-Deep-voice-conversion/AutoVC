@@ -2,7 +2,6 @@ from autovc.conversion import *
 from autovc.zero_shot import *
 from autovc.preprocessing import *
 from autovc.preprocessing.preprocess_wav import *
-from autovc.speaker_encoder.audio import preprocess_wav
 import torch
 from autovc.utils.dataloader2 import TrainDataLoader
 from autovc.speaker_encoder.model import *
@@ -59,7 +58,7 @@ if __name__ == "__main__":
     out, post_out, content_codes = model(torch.from_numpy(X).unsqueeze(0), c_source, c_target)
     
     # Use the Vocoder to generate waveform (use post_out as input)
-    waveform = voc_model.generate(post_out, batched = True, target = 11_000, overlap = 550, mu_law= False)
+    waveform = voc_model.generate(post_out)
 
     # Generate .wav file frowm waveform
     sf.write('conversion11.wav', np.asarray(waveform), samplerate = hp.sample_rate)

@@ -9,7 +9,7 @@ from scipy.optimize import brentq
 from torch import nn
 import numpy as np
 import torch
-from autovc.speaker_encoder.audio import *
+from autovc.speaker_encoder.utils import *
 
 class SpeakerEncoder(nn.Module):
     """
@@ -111,7 +111,7 @@ class SpeakerEncoder(nn.Module):
         Computes an embedding for a single utterance.
         
         # TODO: handle multiple wavs to benefit from batching on GPU
-        :param wav: a preprocessed (see audio.py) utterance waveform as a numpy array of float32
+        :param wav: a preprocessed (see utils.py) utterance waveform as a numpy array of float32
         :param using_partials: if True, then the utterance is split in partial utterances of 
         <partial_utterance_n_frames> frames and the utterance embedding is computed from their 
         normalized average. If False, the utterance is instead computed from feeding the entire 
