@@ -1,14 +1,11 @@
-from autovc.conversion import *
-from autovc.zero_shot import *
-from autovc.preprocessing import *
-from autovc.preprocessing.preprocess_wav import *
-import torch
-from autovc.utils.dataloader2 import TrainDataLoader
-from autovc.speaker_encoder.model import *
+
+from autovc.preprocessing.preprocess_wav import WaveRNN_Mel
+from autovc.speaker_encoder.model import SpeakerEncoder
 from autovc.auto_encoder.model_vc import Generator
 from autovc.vocoder.WaveRNN_model import WaveRNN
 from autovc.utils.hparams import hparams_waveRNN as hp
 import soundfile as sf
+import torch
 
 if __name__ == "__main__":
     # Models
