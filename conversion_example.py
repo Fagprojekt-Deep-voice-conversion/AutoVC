@@ -2,7 +2,7 @@
 from autovc.preprocessing.preprocess_wav import WaveRNN_Mel
 from autovc.speaker_encoder.model import SpeakerEncoder
 from autovc.auto_encoder.model_vc import Generator
-from autovc.vocoder.WaveRNN_model import WaveRNN
+from autovc.wavernn.model import WaveRNN
 from autovc.utils.hparams import hparams_waveRNN as hp
 import soundfile as sf
 import torch
