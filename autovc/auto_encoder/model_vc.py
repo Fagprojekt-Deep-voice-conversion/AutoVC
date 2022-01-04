@@ -74,12 +74,12 @@ class Generator(nn.Module):
         encoder_outputs = torch.cat((code_exp,c_trg.unsqueeze(-1).expand(-1,-1,x.size(-1))), dim=1)
 
         """ Sends concatenate encoder outputs through the decoder """
-        mel_outputs = self.decoder(encoder_outputs.transpose(1,2))
+        mel_outputs = self.decoder(encoder_outputs.transpose(1,2)).transpose(2,1)
 
 
         """ Sends the decoder outputs through the 5 layer postnet and adds this output with decoder output for stabilisation (section 4.3)"""
-        mel_outputs_postnet = self.postnet(mel_outputs.transpose(2,1))
-        mel_outputs_postnet = mel_outputs + mel_outputs_postnet.transpose(2,1)
+        mel_outputs_postnet = self.postnet(mel_outputs)
+        mel_outputs_postnet = mel_outputs + mel_outputs_postnet
 
         """ 
         Prepares final output
@@ -87,11 +87,18 @@ class Generator(nn.Module):
         mel_outputs_postnet: decoder outputs + postnet outputs
         contetn_codes: the codes from the content encoder
         """
-        mel_outputs = mel_outputs.unsqueeze(1)
-        mel_outputs_postnet = mel_outputs_postnet.unsqueeze(1)
+        mel_outputs = mel_outputs
+        mel_outputs_postnet = mel_outputs_postnet
         # content_codes = torch.cat([torch.cat(code, dim = -1) for code in codes], dim = -1)
         content_codes= torch.cat([torch.cat(codes_forward, dim = -1), torch.cat(codes_backward, dim = -1)], dim = -1)
         return mel_outputs, mel_outputs_postnet, content_codes
+
+
+    def load_model(self, weights_fpath, device):
+        checkpoint = torch.load(weights_fpath, map_location = device)
+        self.load_state_dict(checkpoint["model_state"])
+        
+       
 
 
 
