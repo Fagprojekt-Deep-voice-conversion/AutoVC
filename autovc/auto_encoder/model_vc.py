@@ -13,6 +13,7 @@ from autovc.auto_encoder.encoder import Encoder
 from autovc.auto_encoder.decoder import Decoder
 from autovc.auto_encoder.postnet import Postnet
 from autovc.utils.lr_scheduler import NoamLrScheduler as Noam 
+from autovc.utils.hparams_NEW import 
 
 
 

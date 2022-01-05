@@ -179,6 +179,22 @@ class WaveRNN(nn.Module):
 
 
     def generate(self, mels, **kwargs):
+        """
+        Generate waveform from melspectrogram
+
+        Params
+        ------
+        mels:
+            melspectrogram
+        batched:
+            whether to batch data
+        target:
+            target number of samples to be generated in each batch entry
+        overlap:
+            number of samples for crossfading between batches
+        mu_law:
+            whether to use mu_law
+        """
         # setup
         self.eval()
         self.params.update({**kwargs, "mu_law" : self.params.mu_law if self.params.mode == 'RAW' else False})

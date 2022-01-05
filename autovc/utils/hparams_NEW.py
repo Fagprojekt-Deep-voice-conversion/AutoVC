@@ -44,67 +44,72 @@ class ParamCollection:
 
 class AutoVCParams(ParamCollection):
 	# Vocoder
-	name 							= "wavenet_vocoder"
-	builder 						= "wavenet"
-	input_type 						= "raw"
-	quantize_channels 				= 65536  # 65536 or 256
+	# name 							= "wavenet_vocoder"
+	# builder 						= "wavenet"
+	# input_type 						= "raw"
+	# quantize_channels 				= 65536  # 65536 or 256
+	def __init__(self) -> None:
+		super().__init__()
+		# Audio
+		self.sample_rate 					= 16000
+		self.silence_threshold 				= 2 # this is only valid for mulaw is True
+		self.num_mels 						= 80
+		self.fmin 							= 90
+		self.fmax 							= 7600
+		self.fft_size 						= 1024
+		self.win_length 					= 1024
+		self.window 						= 'hann'
+		self.power							= 1
+		self.hop_size 						= 256
+		self.min_level_db 					= -100
+		self.ref_level_db 					= 16
+		self.rescaling 						= True # x is an input waveform and rescaled by x / np.abs(x).max() * rescaling_max
+		self.rescaling_max 					=  0.999
+		self.allow_clipping_in_normalization = True # mel-spectrogram is normalized to [0, 1] for each utterance and clipping may happen depends on min_level_db and ref_level_db, causing clipping noise. If False, assertion is added to ensure no clipping happens.o0
 
-	# Audio
-	sample_rate 					= 16000
-	silence_threshold 				= 2 # this is only valid for mulaw is True
-	num_mels 						= 80
-	fmin 							= 90
-	fmax 							= 7600
-	fft_size 						= 1024
-	win_length 						= 1024
-	window 							= 'hann'
-	power							= 1
-	hop_size 						= 256
-	min_level_db 					= -100
-	ref_level_db 					= 16
-	rescaling 						= True # x is an input waveform and rescaled by x / np.abs(x).max() * rescaling_max
-	rescaling_max 					=  0.999
-	allow_clipping_in_normalization = True # mel-spectrogram is normalized to [0, 1] for each utterance and clipping may happen depends on min_level_db and ref_level_db, causing clipping noise. If False, assertion is added to ensure no clipping happens.o0
+		# Model
+		self.log_scale_min 					= float(-32.23619130191664)
+		self.out_channels 					= 10 * 3
+		self.layers 						= 24
+		self.stacks 						= 4
+		self.residual_channels 				= 512
+		self.gate_channels 					= 512  # split into 2 gropus internally for gated activation
+		self.skip_out_channels 				= 256
+		self.dropout 						= 1 - 0.95
+		self.kernel_size 					= 3
+		self.weight_normalization			= True # If True, apply weight normalization as same as DeepVoice3
+		self.legacy 						= True # Use legacy code or not. Default is True since we already provided a modelbased on the legacy code that can generate high-quality audio. Ref: https://github.com/r9y9/wavenet_vocoder/pull/73
 
-	# Model
-	log_scale_min 					= float(-32.23619130191664)
-	out_channels 					= 10 * 3
-	layers 							= 24
-	stacks 							= 4
-	residual_channels 				= 512
-	gate_channels 					= 512  # split into 2 gropus internally for gated activation
-	skip_out_channels 				= 256
-	dropout 						= 1 - 0.95
-	kernel_size 					= 3
-	weight_normalization			= True # If True, apply weight normalization as same as DeepVoice3
-	legacy 							= True # Use legacy code or not. Default is True since we already provided a modelbased on the legacy code that can generate high-quality audio. Ref: https://github.com/r9y9/wavenet_vocoder/pull/73
+		# Local conditioning (set negative value to disable))
+		self.cin_channels 					= 80 
+		self.upsample_conditional_features 	= True # If True, use transposed convolutions to upsample conditional features, otherwise repeat features to adjust time resolution
+		self.upsample_scales 				= [4, 4, 4, 4] # should np.prod(upsample_scales) == hop_size
+		self.freq_axis_kernel_size 			= 3 # Freq axis kernel size for upsampling network
 
-	# Local conditioning (set negative value to disable))
-	cin_channels 					= 80 
-	upsample_conditional_features 	= True # If True, use transposed convolutions to upsample conditional features, otherwise repeat features to adjust time resolution
-	upsample_scales 				= [4, 4, 4, 4] # should np.prod(upsample_scales) == hop_size
-	freq_axis_kernel_size 			= 3 # Freq axis kernel size for upsampling network
+		# Global conditioning (set negative value to disable)
+		# currently limited for speaker embedding this should only be enabled for multi-speaker dataset
+		self.gin_channels 					= -1  # i.e., speaker embedding dim
+		self.n_speakers 					= -1
 
-	# Global conditioning (set negative value to disable)
-	# currently limited for speaker embedding this should only be enabled for multi-speaker dataset
-	gin_channels 					= -1  # i.e., speaker embedding dim
-	n_speakers 						= -1
+		# Training:
+		self.batch_size 					= 2,
+		self.clip_thresh 					= -1
 
-	# Training:
-	batch_size 						= 2,
-	adam_beta1 						= 0.9,
-	adam_beta2 						= 0.999,
-	adam_eps 						= 1e-8,
-	amsgrad 						= False
-	initial_learning_rate 			= 1e-3
-	lr_schedule 					= "noam_learning_rate_decay" # see lrschedule.py for available lr_schedule
-	weight_decay 					= 0.0
-	clip_thresh 					= -1
-	# max time steps can either be specified as sec or steps if both are None, then full audio samples are used in a batch
-	max_time_sec 					=  None
-	max_time_steps 					= 8000
-	exponential_moving_average 		= True # Hold moving averaged parameters and use them for evaluation
-	ema_decay 						= 0.9999 # averaged = decay * averaged + (1 - decay) * x
+		# Optimizer
+		self.adam_beta1 					= 0.9,
+		self.adam_beta2 					= 0.999,
+		self.adam_eps 						= 1e-8,
+		self.amsgrad 						= False
+		self.initial_learning_rate 			= 1e-3
+		self.weight_decay 					= 0.0
+		self.lr_schedule 					= "noam_learning_rate_decay" # see lrschedule.py for available lr_schedule
+		
+		
+		# max time steps can either be specified as sec or steps if both are None, then full audio samples are used in a batch
+		self.max_time_sec 					=  None
+		self.max_time_steps 				= 8000
+		self.exponential_moving_average 	= True # Hold moving averaged parameters and use them for evaluation
+		self.ema_decay 						= 0.9999 # averaged = decay * averaged + (1 - decay) * x
 
 ############### WAVE RNN ###############
 
@@ -176,33 +181,35 @@ class WaveRNNParams(ParamCollection):
 ############### SPEAKER ENCODER ###############
 
 class SpeakerEncoderParams(ParamCollection):
-	# Mel-filterbank
-	mel_window_length 			= 25  # In milliseconds
-	mel_window_step 			= 10  # In milliseconds
-	mel_n_channels 				= 40
+	def __init__(self) -> None:
+		super().__init__()
+		# Mel-filterbank
+		self.mel_window_length 			= 25  # In milliseconds
+		self.mel_window_step 			= 10  # In milliseconds
+		self.mel_n_channels 			= 40
 
-	# Audio
-	sampling_rate 				= 16000
-	partials_n_frames 			= 160  # x*10 ms.  Number of spectrogram frames in a partial utterance
-	inference_n_frames 			= 80  # x*10 ms. Number of spectrogram frames at inference
+		# Audio
+		self.sampling_rate 				= 16000
+		self.partials_n_frames 			= 160  # x*10 ms.  Number of spectrogram frames in a partial utterance
+		self.inference_n_frames 		= 80  # x*10 ms. Number of spectrogram frames at inference
 
-	# Voice Activation Detection
-	vad_window_length 			= 20  # In milliseconds. Window size of the VAD. Must be either 10, 20 or 30 milliseconds. This sets the granularity of the VAD. Should not need to be changed.
-	vad_moving_average_width 	= 8# Number of frames to average together when performing the moving average smoothing. The larger this value, the larger the VAD variations must be to not get smoothed out.
-	vad_max_silence_length 		= 2 # Maximum number of consecutive silent frames a segment can have.
+		# Voice Activation Detection
+		self.vad_window_length 			= 20  # In milliseconds. Window size of the VAD. Must be either 10, 20 or 30 milliseconds. This sets the granularity of the VAD. Should not need to be changed.
+		self.vad_moving_average_width 	= 8# Number of frames to average together when performing the moving average smoothing. The larger this value, the larger the VAD variations must be to not get smoothed out.
+		self.vad_max_silence_length 	= 2 # Maximum number of consecutive silent frames a segment can have.
 
-	# Audio volume normalization
-	audio_norm_target_dBFS 		= -30
+		# Audio volume normalization
+		self.audio_norm_target_dBFS 	= -30
 
-	# Model parameters
-	model_hidden_size 			= 256
-	model_embedding_size		= 256
-	model_num_layers 			= 3
+		# Model parameters
+		self.model_hidden_size 			= 256
+		self.model_embedding_size		= 256
+		self.model_num_layers 			= 3
 
-	# Training parameters
-	learning_rate_init 			= 1e-4
-	speakers_per_batch 			= 64
-	utterances_per_speaker 		= 10
+		# Training parameters
+		self.learning_rate_init 		= 1e-4
+		self.speakers_per_batch 		= 64
+		self.utterances_per_speaker 	= 10
 
 if __name__ == "__main__":
 	# p = WaveRNNParams.synthesize

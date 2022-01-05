@@ -2,7 +2,7 @@
 
 import librosa
 import numpy as np
-from autovc.utils.hparams import hparams_autoVC as hp
+# from autovc.utils.hparams import hparams_autoVC as hp
 from autovc.utils.hparams import hparams_waveRNN as hp1
 
 def normalize(S):
