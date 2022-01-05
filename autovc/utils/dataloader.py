@@ -15,7 +15,7 @@ class TrainDataLoader(Dataset):
     If spectograms in batch are of unequal size the smaller are padded with zeros to match the size of the largest.
     '''
 
-    def __init__(self, data_dir_path, speaker_encoder, device = 'cpu'):
+    def __init__(self, data_dir_path, speaker_encoder):
         super(TrainDataLoader, self).__init__()
 
         # Load wav files. Create spectograms and embeddings
@@ -30,6 +30,7 @@ class TrainDataLoader(Dataset):
     def __getitem__(self, index):
         return self.mel_spectograms[index], self.embeddings[index]
 
+
     def collate_fn(self, batch):
         '''
         Pad with zeros if spectrograms are of unequal sizes.
@@ -40,7 +41,7 @@ class TrainDataLoader(Dataset):
 
         return torch.stack(padded_spectrograms), torch.stack(embeddings)
 
-    def data_loader(self, batch_size=1, shuffle=False,  num_workers=0, pin_memory=False, **kwargs):
+    def get_dataloader(self, batch_size=1, shuffle=False,  num_workers=0, pin_memory=False, **kwargs):
         return torch.utils.data.DataLoader(
             self,  
             batch_size=batch_size, 
@@ -50,4 +51,22 @@ class TrainDataLoader(Dataset):
         )
 
 
+class SpeakerEncoderDataLoader(Dataset):
+    def __init__(self, data_dir_path):
+        super().__init__()
+
+        # Load wav files. List of lists: Each inner list are filepath to files in one directory in data_dir_path
+        self.wav_files = [[os.path.join(dirpath, filename) for filename in directory] for dirpath, a, directory in os.walk(data_dir_path) if directory ]
+
+
+
+
+    def get_dataloader(self, batch_size=1, shuffle=False,  num_workers=0, pin_memory=False, **kwargs):
+        return torch.utils.data.DataLoader(
+            self,  
+            batch_size=batch_size, 
+            num_workers= num_workers, 
+            shuffle=shuffle,
+            collate_fn = self.collate_fn
+        )
     
