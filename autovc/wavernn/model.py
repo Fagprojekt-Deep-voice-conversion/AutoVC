@@ -64,15 +64,15 @@ class Stretch2d(nn.Module):
 
 
 class UpsampleNetwork(nn.Module):
-    def __init__(self, feat_dims, upsample_scales, compute_dims,
+    def __init__(self, feat_dims, upsample_factors, compute_dims,
                  res_blocks, res_out_dims, pad):
         super().__init__()
-        total_scale = np.cumproduct(upsample_scales)[-1]
+        total_scale = np.cumproduct(upsample_factors)[-1]
         self.indent = pad * total_scale
         self.resnet = MelResNet(res_blocks, feat_dims, compute_dims, res_out_dims, pad)
         self.resnet_stretch = Stretch2d(total_scale, 1)
         self.up_layers = nn.ModuleList()
-        for scale in upsample_scales:
+        for scale in upsample_factors:
             k_size = (1, scale * 2 + 1)
             padding = (0, scale)
             stretch = Stretch2d(scale, 1)
@@ -92,38 +92,46 @@ class UpsampleNetwork(nn.Module):
 
 
 class WaveRNN(nn.Module):
-    def __init__(self, rnn_dims, fc_dims, bits, pad, upsample_factors,
-                 feat_dims, compute_dims, res_out_dims, res_blocks,
-                 hop_length, sample_rate, mode='RAW'):
+    """
+    Class for the WaveRNN vocoder
+
+    Params
+    -------
+    rnn_dims, fc_dims, bits, pad, upsample_factors, feat_dims, \n
+    compute_dims, res_out_dims, res_blocks, hop_length, sample_rate, mode \n
+    are examples of parameters to be passed, a full list can be seen in `autovc/utils/hparams.py`
+    """
+    def __init__(self, **params):
         super().__init__()
-        self.params = 
-        self.mode = mode
-        self.pad = pad
-        if self.mode == 'RAW':
-            self.n_classes = 2 ** bits
-        elif self.mode == 'MOL':
-            self.n_classes = 30
+        self.params = hparams().update(params)
+        self.params.update({"aux_dims" : self.params.res_out_dims // 4})
+        # self.mode = mode
+        # self.pad = pad
+        if self.params.mode == 'RAW':
+            self.params.update({"n_classes" : 2 ** self.params.bits})
+        elif self.params.mode == 'MOL':
+            self.params.update({"n_classes" : 30})
         else:
-            RuntimeError("Unknown model mode value - ", self.mode)
+            RuntimeError("Unknown model mode value - ", self.params.mode)
 
         # List of rnns to call `flatten_parameters()` on
         self._to_flatten = []
 
-        self.rnn_dims = rnn_dims
-        self.aux_dims = res_out_dims // 4
-        self.hop_length = hop_length
-        self.sample_rate = sample_rate
+        # self.rnn_dims = self.params.rnn_dims
+        # self.aux_dims = self.params.res_out_dims // 4
+        # self.hop_length = hop_length
+        # self.sample_rate = sample_rate
 
-        self.upsample = UpsampleNetwork(feat_dims, upsample_factors, compute_dims, res_blocks, res_out_dims, pad)
-        self.I = nn.Linear(feat_dims + self.aux_dims + 1, rnn_dims)
-
-        self.rnn1 = nn.GRU(rnn_dims, rnn_dims, batch_first=True)
-        self.rnn2 = nn.GRU(rnn_dims + self.aux_dims, rnn_dims, batch_first=True)
+        self.upsample = UpsampleNetwork(**self.params.get_collection("UpsampleNetwork"))
+        self.I = nn.Linear(self.params.feat_dims +self.params.aux_dims + 1, self.params.rnn_dims)
+ 
+        self.rnn1 = nn.GRU(self.params.rnn_dims, self.params.rnn_dims, batch_first=True)
+        self.rnn2 = nn.GRU(self.params.rnn_dims + self.params.aux_dims, self.params.rnn_dims, batch_first=True)
         self._to_flatten += [self.rnn1, self.rnn2]
 
-        self.fc1 = nn.Linear(rnn_dims + self.aux_dims, fc_dims)
-        self.fc2 = nn.Linear(fc_dims + self.aux_dims, fc_dims)
-        self.fc3 = nn.Linear(fc_dims, self.n_classes)
+        self.fc1 = nn.Linear(self.params.rnn_dims + self.params.aux_dims, self.params.fc_dims)
+        self.fc2 = nn.Linear(self.params.fc_dims + self.params.aux_dims, self.params.fc_dims)
+        self.fc3 = nn.Linear(self.params.fc_dims, self.params.n_classes)
 
         self.register_buffer('step', torch.zeros(1, dtype=torch.long))
         self.num_params()
@@ -145,7 +153,7 @@ class WaveRNN(nn.Module):
         h2 = torch.zeros(1, bsize, self.rnn_dims, device=device)
         mels, aux = self.upsample(mels)
 
-        aux_idx = [self.aux_dims * i for i in range(5)]
+        aux_idx = [self.params.aux_dims * i for i in range(5)]
         a1 = aux[:, :, aux_idx[0]:aux_idx[1]]
         a2 = aux[:, :, aux_idx[1]:aux_idx[2]]
         a3 = aux[:, :, aux_idx[2]:aux_idx[3]]
@@ -169,15 +177,27 @@ class WaveRNN(nn.Module):
         x = F.relu(self.fc2(x))
         return self.fc3(x)
 
-    # def generate(self, mels, batched, target, overlap, **kwargs):
+
     def generate(self, mels, **kwargs):
+        """
+        Generate waveform from melspectrogram
+
+        Params
+        ------
+        mels:
+            melspectrogram
+        batched:
+            whether to batch data
+        target:
+            target number of samples to be generated in each batch entry
+        overlap:
+            number of samples for crossfading between batches
+        mu_law:
+            whether to use mu_law
+        """
         # setup
         self.eval()
-        params = hparams.synthesize
-        params.update(kwargs)
-        mu_law = params.mu_law if self.mode == 'RAW' else False
-
-
+        self.params.update({**kwargs, "mu_law" : self.params.mu_law if self.params.mode == 'RAW' else False})
         device = next(self.parameters()).device  # use same device as parameters
 
         output = []
@@ -188,21 +208,21 @@ class WaveRNN(nn.Module):
         with torch.no_grad():
 
             mels = torch.as_tensor(mels, device=device)
-            wave_len = (mels.size(-1) - 1) * self.hop_length
-            mels = self.pad_tensor(mels.transpose(1, 2), pad=self.pad, side='both')
+            wave_len = (mels.size(-1) - 1) * self.params.hop_length
+            mels = self.pad_tensor(mels.transpose(1, 2), pad=self.params.pad, side='both')
             mels, aux = self.upsample(mels.transpose(1, 2))
 
-            if params.batched:
-                mels = self.fold_with_overlap(mels, params.target, params.overlap)
-                aux = self.fold_with_overlap(aux, params.target, params.overlap)
+            if self.params.batched:
+                mels = self.fold_with_overlap(mels, self.params.target, self.params.overlap)
+                aux = self.fold_with_overlap(aux, self.params.target, self.params.overlap)
 
             b_size, seq_len, _ = mels.size()
 
-            h1 = torch.zeros(b_size, self.rnn_dims, device=device)
-            h2 = torch.zeros(b_size, self.rnn_dims, device=device)
+            h1 = torch.zeros(b_size, self.params.rnn_dims, device=device)
+            h2 = torch.zeros(b_size, self.params.rnn_dims, device=device)
             x = torch.zeros(b_size, 1, device=device)
 
-            d = self.aux_dims
+            d = self.params.aux_dims
             aux_split = [aux[:, :, d * i:d * (i + 1)] for i in range(4)]
 
             for i in range(seq_len):
@@ -229,7 +249,7 @@ class WaveRNN(nn.Module):
 
                 logits = self.fc3(x)
 
-                if self.mode == 'MOL':
+                if self.params.mode == 'MOL':
                     sample = sample_from_discretized_mix_logistic(logits.unsqueeze(0).transpose(1, 2))
                     output.append(sample.view(-1))
                     # x = torch.FloatTensor([[sample]]).cuda()
@@ -239,11 +259,11 @@ class WaveRNN(nn.Module):
                     posterior = F.softmax(logits, dim=1)
                     distrib = torch.distributions.Categorical(posterior)
 
-                    sample = 2 * distrib.sample().float() / (self.n_classes - 1.) - 1.
+                    sample = 2 * distrib.sample().float() / (self.params.n_classes - 1.) - 1.
                     output.append(sample)
                     x = sample.unsqueeze(-1)
                 else:
-                    raise RuntimeError("Unknown model mode value - ", self.mode)
+                    raise RuntimeError("Unknown model mode value - ", self.params.mode)
 
                 if i % 100 == 0: self.gen_display(i, seq_len, b_size, start)
 
@@ -251,19 +271,19 @@ class WaveRNN(nn.Module):
         output = output.cpu().numpy()
         output = output.astype(np.float64)
 
-        if mu_law:
+        if self.params.mu_law:
             raise NotImplementedError
             # output = decode_mu_law(output, self.n_classes, False)
 
-        if params.batched:
-            output = self.xfade_and_unfold(output, params.target, params.overlap)
+        if self.params.batched:
+            output = self.xfade_and_unfold(output, self.params.target, self.params.overlap)
         else:
             output = output[0]
 
         # Fade-out at the end to avoid signal cutting out suddenly
-        fade_out = np.linspace(1, 0, 20 * self.hop_length)
+        fade_out = np.linspace(1, 0, 20 * self.params.hop_length)
         output = output[:wave_len]
-        output[-20 * self.hop_length:] *= fade_out
+        output[-20 * self.params.hop_length:] *= fade_out
 
         return output.astype(np.float32)
 

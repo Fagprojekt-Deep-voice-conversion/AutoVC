@@ -41,7 +41,7 @@ if __name__ == "__main__":
     S.load_model(speaker_encoder_model)
     
     # Source and target
-    source, target = "data/samples/chooped7.wav", "data/samples/mette_183.wav"
+    target, source = "data/samples/chooped7.wav", "data/samples/mette_183.wav"
 
     # Generate speaker embeddings
     c_source, c_target = S.embed_utterance(source).unsqueeze(0), S.embed_utterance(target).unsqueeze(0)
@@ -59,7 +59,7 @@ if __name__ == "__main__":
     waveform = voc_model.generate(post_out)
 
     # Generate .wav file frowm waveform
-    sf.write('conversion11.wav', np.asarray(waveform), samplerate = hp.sample_rate)
+    sf.write('conversion1.wav', np.asarray(waveform), samplerate = hp.sample_rate)
 
 
 

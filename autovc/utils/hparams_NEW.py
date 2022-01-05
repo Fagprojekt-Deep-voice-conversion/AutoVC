@@ -19,7 +19,8 @@ class ClassProperty(object):
 
 class ParamCollection:
 	def __init__(self) -> None:
-		raise NotImplementedError
+		# raise NotImplementedError
+		self.collections = {"all": None}
 
 	def update(self, params: dict):		
 		self.__dict__.update(params)
@@ -29,8 +30,17 @@ class ParamCollection:
 		"""
 		Returns a collection of parameters as a dictionary
 		"""
-		if collection == "all":
+		# if collection == "all":
+		# 	return self.__dict__
+		keys = self.collections.get(collection, ValueError("Collection does not exist"))
+
+		if keys == None:
 			return self.__dict__
+		else:
+			return {key : val for key, val in self.__dict__.items() if key in keys}
+
+	def add_collection(self, name, params):
+		self.collections[name] = params
 
 class AutoEncoder(ParamCollection):
 	# Vocoder
@@ -109,6 +119,7 @@ class AutoEncoder(ParamCollection):
 
 class WaveRNNParams(ParamCollection):
 	def __init__(self):
+		super().__init__()
 		self.sample_rate		= 22050
 		self.n_fft 				= 2048
 		self.fft_bins 			= self.fft_bins_prop 
@@ -123,7 +134,7 @@ class WaveRNNParams(ParamCollection):
 		self.fc_dims 			= 512
 		self.bits 				= 9
 		self.pad 				= 2  # this will pad the input so that the resnet can 'see' wider than input length
-		self.upsample_factors 	= (5, 5, 11)  # NB - this needs to correctly factorise hop_length
+		self.upsample_factors 	= (5, 5, 11)  # NB - this needs to correctly factorise hop_length. OBS previously called upsample scale in net code
 		self.feat_dims 			= 80 # num_mels
 		self.compute_dims 		= 128
 		self.res_out_dims 		= 128
@@ -147,6 +158,10 @@ class WaveRNNParams(ParamCollection):
 		self.overlap 			= 550  # number of samples for crossfading between batches
 		self.mu_law 			= False # whether to use mu_law
 
+		# add collections
+		self.add_collection("synthesize", ["batched", "target", "overlap", "mu_law"])
+		self.add_collection("UpsampleNetwork", ["feat_dims", "upsample_factors", "compute_dims", "res_blocks", "res_out_dims", "pad"])
+
 	@property
 	def fft_bins_prop(self):
 		return self.n_fft // 2 + 1
@@ -164,37 +179,41 @@ class WaveRNNParams(ParamCollection):
 		if "hop_length" in params and "seq_len" not in params:
 			self.__dict__["seq_len"] = self.seq_len_prop
 
+		return self
+
 
 ############### SPEAKER ENCODER ###############
 
 class SpeakerEncoderParams(ParamCollection):
-	# Mel-filterbank
-	mel_window_length 			= 25  # In milliseconds
-	mel_window_step 			= 10  # In milliseconds
-	mel_n_channels 				= 40
+	def __init__(self) -> None:
+		super().__init__()
+		# Mel-filterbank
+		self.mel_window_length 			= 25  # In milliseconds
+		self.mel_window_step 			= 10  # In milliseconds
+		self.mel_n_channels 			= 40
 
-	# Audio
-	sampling_rate 				= 16000
-	partials_n_frames 			= 160  # x*10 ms.  Number of spectrogram frames in a partial utterance
-	inference_n_frames 			= 80  # x*10 ms. Number of spectrogram frames at inference
+		# Audio
+		self.sampling_rate 				= 16000
+		self.partials_n_frames 			= 160  # x*10 ms.  Number of spectrogram frames in a partial utterance
+		self.inference_n_frames 		= 80  # x*10 ms. Number of spectrogram frames at inference
 
-	# Voice Activation Detection
-	vad_window_length 			= 20  # In milliseconds. Window size of the VAD. Must be either 10, 20 or 30 milliseconds. This sets the granularity of the VAD. Should not need to be changed.
-	vad_moving_average_width 	= 8# Number of frames to average together when performing the moving average smoothing. The larger this value, the larger the VAD variations must be to not get smoothed out.
-	vad_max_silence_length 		= 2 # Maximum number of consecutive silent frames a segment can have.
+		# Voice Activation Detection
+		self.vad_window_length 			= 20  # In milliseconds. Window size of the VAD. Must be either 10, 20 or 30 milliseconds. This sets the granularity of the VAD. Should not need to be changed.
+		self.vad_moving_average_width 	= 8# Number of frames to average together when performing the moving average smoothing. The larger this value, the larger the VAD variations must be to not get smoothed out.
+		self.vad_max_silence_length 	= 2 # Maximum number of consecutive silent frames a segment can have.
 
-	# Audio volume normalization
-	audio_norm_target_dBFS 		= -30
+		# Audio volume normalization
+		self.audio_norm_target_dBFS 	= -30
 
-	# Model parameters
-	model_hidden_size 			= 256
-	model_embedding_size		= 256
-	model_num_layers 			= 3
+		# Model parameters
+		self.model_hidden_size 			= 256
+		self.model_embedding_size		= 256
+		self.model_num_layers 			= 3
 
-	# Training parameters
-	learning_rate_init 			= 1e-4
-	speakers_per_batch 			= 64
-	utterances_per_speaker 		= 10
+		# Training parameters
+		self.learning_rate_init 		= 1e-4
+		self.speakers_per_batch 		= 64
+		self.utterances_per_speaker 	= 10
 
 if __name__ == "__main__":
 	# p = WaveRNNParams.synthesize
@@ -211,9 +230,9 @@ if __name__ == "__main__":
 	# p.sample_rate = 2
 	# p.__setattr__("sample_rate", 2)
 
-	p.update({"sample_rate" : 2, "n_fft" : 30})
+	p.update({"sample_rate" : 2, "n_fft" : 30, "batched" : False})
 	# print(p.__dict__)
-	print(p.get_collection())
+	print(p.get_collection("synthesize"))
 	print(p.sample_rate)
 	# print(p.model)
 	# print(p.test)
