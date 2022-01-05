@@ -12,19 +12,22 @@ from autovc.utils.net_layers import *
 from autovc.auto_encoder.encoder import Encoder
 from autovc.auto_encoder.decoder import Decoder
 from autovc.auto_encoder.postnet import Postnet
-import numpy as np
-   
+from autovc.utils.lr_scheduler import NoamLrScheduler as Noam 
+# from autovc.utils.hparams_NEW import 
+
+
 
 class Generator(nn.Module):
     """
     Generator network. The entire thing pieced together (figure 3a and 3c)
     """
-    def __init__(self, dim_neck = 32, dim_emb = 256, dim_pre = 512, freq = 32, **kwargs):
+    def __init__(self, **params):
         """
         params:
         dim_neck: dimension of bottleneck (set to 32 in the paper)
         dim_emb: dimension of speaker embedding (set to 256 in the paper)
         dim_pre: dimension of the input to the decoder (output of first LSTM layer) (set to 512 in the paper)
+        full list of params can be found in `autovc/utils/hparams.py`
         """
         super(Generator, self).__init__()
         self.freq = freq
