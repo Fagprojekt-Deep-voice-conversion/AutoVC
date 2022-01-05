@@ -96,7 +96,7 @@ class WaveRNN(nn.Module):
                  feat_dims, compute_dims, res_out_dims, res_blocks,
                  hop_length, sample_rate, mode='RAW'):
         super().__init__()
-        self.params = 
+        # self.params = 
         self.mode = mode
         self.pad = pad
         if self.mode == 'RAW':
@@ -173,7 +173,7 @@ class WaveRNN(nn.Module):
     def generate(self, mels, **kwargs):
         # setup
         self.eval()
-        params = hparams.synthesize
+        params = hparams()#.synthesize
         params.update(kwargs)
         mu_law = params.mu_law if self.mode == 'RAW' else False
 
