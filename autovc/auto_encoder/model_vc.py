@@ -12,6 +12,7 @@ from autovc.utils.net_layers import *
 from autovc.auto_encoder.encoder import Encoder
 from autovc.auto_encoder.decoder import Decoder
 from autovc.auto_encoder.postnet import Postnet
+import numpy as np
    
 
 class Generator(nn.Module):

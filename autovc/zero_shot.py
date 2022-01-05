@@ -1,9 +1,9 @@
 from conversion import *
 import torch
-from autovc.preprocessing.preprocess_wav import WaveRNN_Mel
+from autovc.utils.preprocess_wav import audio_to_melspectrogram
 import matplotlib.pyplot as plt
 import numpy as np
-from autovc.wavernn.synthesize import synthesize
+from autovc.wavernn.synthesizer import synthesize
 
 def zero_shot(source, target, model, voc_model, save_path, name_path = None, only_conversion = True):
     """
@@ -19,8 +19,8 @@ def zero_shot(source, target, model, voc_model, save_path, name_path = None, onl
     use_cuda = torch.cuda.is_available()
     device = torch.device("cuda" if use_cuda else "cpu")
 
-    s = WaveRNN_Mel(source)
-    t = WaveRNN_Mel(target)
+    s = audio_to_melspectrogram(source)
+    t = audio_to_melspectrogram(target)
    
     S, T = torch.from_numpy(s.T).unsqueeze(0).to(device), torch.from_numpy(t.T).unsqueeze(0).to(device)
     

@@ -34,12 +34,13 @@ def synthesize(melspec, fpath = "results/synthesized.wav", model = None, **gener
     # m = torch.tensor(melspec).squeeze(0)#.unsqueeze(0)
     m = melspec
     m = m.squeeze(0).squeeze(0).T.unsqueeze(0)
-    # print(m.size())
+    
+    device = generate_args.pop("device", "cuda" if torch.cuda.is_available() else "cpu")
 
     if model is None:
-        model = load_model('../models/WaveRNN/WaveRNN_Pretrained.pyt')
+        model = load_model('../models/WaveRNN/WaveRNN_Pretrained.pyt', device = device)
     elif isinstance(model, str):
-        model = load_model(model)
+        model = load_model(model, device = device)
         
     waveform = model.generate(m, **generate_args)
     

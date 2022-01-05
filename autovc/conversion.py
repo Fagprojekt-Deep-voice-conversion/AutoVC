@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import librosa, time, torch
 from autovc.utils.dataloaders import DataLoad2
-from autovc.preprocessing.preprocess_wav import WaveRNN_Mel
+from autovc.utils.preprocess_wav import audio_to_melspectrogram
 from autovc.auto_encoder.model_vc import Generator
 # from autovc.wavernn.WaveNet import build_model
 # from autovc.wavernn.WaveNet import wavegen
@@ -15,7 +15,7 @@ import pickle
 import os 
 import pandas as pd
 import soundfile as sf
-from autovc.wavernn.synthesize import synthesize
+from autovc.wavernn.synthesizer import synthesize
 
 
 def Instantiate_Models(model_path,  vocoder = "wavernn"):
@@ -87,7 +87,7 @@ def Conversion(source, target, model, voc_model, T_emb = None, voc_type = "waver
     use_cuda = torch.cuda.is_available()
     device = torch.device("cuda" if use_cuda else "cpu")
     # if voc_type == "wavernn":
-    s = WaveRNN_Mel(source)
+    s = audio_to_melspectrogram(source)
     # else:
     #     s = AutoVC_Mel(source)
 
