@@ -8,6 +8,7 @@ import librosa
 import struct
 
 int16_max = (2 ** 15) - 1
+hparams = hparams()
 
 
 def preprocess_wav(fpath_or_wav: Union[str, Path, np.ndarray],

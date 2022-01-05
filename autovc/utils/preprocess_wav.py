@@ -4,6 +4,7 @@ import librosa
 import numpy as np
 # from autovc.utils.hparams import hparams_autoVC as hp
 from autovc.utils.hparams_NEW import WaveRNNParams as hparams
+hparams = hparams()
 
 
 def normalize(S):
@@ -44,7 +45,7 @@ def audio_to_melspectrogram(waveform):
     melspectrogram = librosa.feature.melspectrogram(S = np.abs(spectrogram),
                                                     sr = hparams.sample_rate,
                                                     n_fft=hparams.n_fft,
-                                                    n_mels=hparams.num_mels,    # The number of mels
+                                                    n_mels=hparams.feat_dims,    # The number of mels
                                                     fmin=hparams.fmin           # The minimum frequency
                                                     )
 

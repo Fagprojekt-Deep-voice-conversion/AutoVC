@@ -33,7 +33,7 @@ if __name__ == "__main__":
     #                         hop_length=hp.hop_length,
     #                         sample_rate=hp.sample_rate,
     #                         mode='MOL').to(device)
-    voc_model = WaveRNN()
+    voc_model = WaveRNN().to(device)
 
 
     # Load weights
@@ -60,7 +60,7 @@ if __name__ == "__main__":
     waveform = voc_model.generate(post_out)
 
     # Generate .wav file frowm waveform
-    sf.write('conversion1.wav', np.asarray(waveform), samplerate = hp.sample_rate)
+    sf.write('conversion1.wav', np.asarray(waveform), samplerate =voc_model.params.sample_rate)
 
 
 

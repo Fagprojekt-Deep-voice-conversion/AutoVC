@@ -50,7 +50,7 @@ class ParamCollection:
 # 	def __init__(self) -> None:
 # 		super().__init__()
 
-class AutoEncoder(ParamCollection):
+class AutoEncoderParams(ParamCollection):
 	# Vocoder
 	# name 							= "wavenet_vocoder"
 	# builder 						= "wavenet"

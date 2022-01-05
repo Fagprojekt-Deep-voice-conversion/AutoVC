@@ -12,7 +12,7 @@ from autovc.utils.net_layers import *
 from autovc.auto_encoder.encoder import Encoder
 from autovc.auto_encoder.decoder import Decoder
 from autovc.auto_encoder.postnet import Postnet
-from autovc.utils.hparams_NEW import AutoEncoder as hparams
+from autovc.utils.hparams_NEW import AutoEncoderParams as hparams
 
 
 

@@ -8,6 +8,7 @@ import torch
 
 _model = None # type: SpeakerEncoder
 _device = None # type: torch.device
+hparams = hparams()
 
 
 def load_model(weights_fpath: Path, device=None):
