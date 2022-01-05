@@ -2,18 +2,20 @@ import matplotlib.pyplot as plt
 import numpy as np
 import librosa, time, torch
 from autovc.utils.dataloaders import DataLoad2
-from autovc.preprocessing.preprocess_wav import WaveRNN_Mel
+from autovc.utils.preprocess_wav import audio_to_melspectrogram
 from autovc.auto_encoder.model_vc import Generator
-
-# from autovc.speaker_encoder.audio import preprocess_wav
-# from autovc.speaker_encoder.inference import load_model as load_encoder
-# from autovc.speaker_encoder.inference import embed_utterance
-from autovc.vocoder.WaveRNN_model import WaveRNN
+# from autovc.wavernn.WaveNet import build_model
+# from autovc.wavernn.WaveNet import wavegen
+from autovc.speaker_encoder.audio import preprocess_wav
+from autovc.speaker_encoder.inference import load_model as load_encoder
+from autovc.speaker_encoder.inference import embed_utterance
+from autovc.wavernn.model import WaveRNN
 from autovc.utils.hparams import hparams_waveRNN as hp
 import pickle
 import os 
 import pandas as pd
 import soundfile as sf
+from autovc.wavernn.synthesizer import synthesize
 
 
 def Instantiate_Models(model_path,  vocoder = "wavernn"):
@@ -21,62 +23,62 @@ def Instantiate_Models(model_path,  vocoder = "wavernn"):
     device = torch.device("cuda" if use_cuda else "cpu")
 
     # Prepare vocoder
-    if vocoder == "wavenet":
+    # if vocoder == "wavenet":
         
-        # Instantiate WaveNet Model
-        voc_model = build_model().to(device)
-        checkpoint = torch.load("../models/WaveNet/WaveNetVC_pretrained.pth", map_location=torch.device(device))
-        voc_model.load_state_dict(checkpoint["state_dict"])
+    #     # Instantiate WaveNet Model
+    #     voc_model = build_model().to(device)
+    #     checkpoint = torch.load("../models/WaveNet/WaveNetVC_pretrained.pth", map_location=torch.device(device))
+    #     voc_model.load_state_dict(checkpoint["state_dict"])
 
-    elif vocoder == "wavernn": 
+    # elif vocoder == "wavernn": 
         
-        # Instantiate WaveRNN Model
-        voc_model = WaveRNN(rnn_dims=hp.voc_rnn_dims,
-                            fc_dims=hp.voc_fc_dims,
-                            bits=hp.bits,
-                            pad=hp.voc_pad,
-                            upsample_factors=hp.voc_upsample_factors,
-                            feat_dims=hp.num_mels,
-                            compute_dims=hp.voc_compute_dims,
-                            res_out_dims=hp.voc_res_out_dims,
-                            res_blocks=hp.voc_res_blocks,
-                            hop_length=hp.hop_length,
-                            sample_rate=hp.sample_rate,
-                            mode='MOL').to(device)
+    #     # Instantiate WaveRNN Model
+    #     voc_model = WaveRNN(rnn_dims=hp.voc_rnn_dims,
+    #                         fc_dims=hp.voc_fc_dims,
+    #                         bits=hp.bits,
+    #                         pad=hp.voc_pad,
+    #                         upsample_factors=hp.voc_upsample_factors,
+    #                         feat_dims=hp.num_mels,
+    #                         compute_dims=hp.voc_compute_dims,
+    #                         res_out_dims=hp.voc_res_out_dims,
+    #                         res_blocks=hp.voc_res_blocks,
+    #                         hop_length=hp.hop_length,
+    #                         sample_rate=hp.sample_rate,
+    #                         mode='MOL').to(device)
 
-        voc_model.load('../models/WaveRNN/WaveRNN_Pretrained.pyt')
-    else:
-        raise RuntimeError("No vocoder chosen")
+    #     voc_model.load('Models/WaveRNN/WaveRNN_Pretrained.pyt')
+    # else:
+    #     raise RuntimeError("No vocoder chosen")
 
     # Prepare AutoVC model
     model = Generator(32, 256, 512, 32).eval().to(device)
     g_checkpoint = torch.load(model_path, map_location=torch.device(device))
-    if vocoder == "wavenet":
-        model.load_state_dict(g_checkpoint['model'])
-    else:
-        model.load_state_dict(g_checkpoint['model_state'])
+    # if vocoder == "wavenet":
+    #     model.load_state_dict(g_checkpoint['model'])
+    # else:
+    model.load_state_dict(g_checkpoint['model_state'])
 
     # Prepare Speaker Encoder Module
     load_encoder("../models/SpeakerEncoder/SpeakerEncoder.pt").float()
         
-    return model, voc_model
+    return model, None#voc_model
 
 def embed(path):
     y, _ = librosa.load(path, sr = 16000)
     y    = preprocess_wav(y)
     return torch.tensor(embed_utterance(y)).unsqueeze(0)
 
-def Generate(m, fpath, model, modeltype = "wavernn"):
+# def Generate(m, fpath, model, modeltype = "wavernn"):
     
-    if modeltype == "wavernn":
-        m = m.squeeze(0).squeeze(0).T.unsqueeze(0)
-        waveform = model.generate(m, batched = True, target = 11_000, overlap = 550, mu_law= False)
+#     if modeltype == "wavernn":
+#         m = m.squeeze(0).squeeze(0).T.unsqueeze(0)
+#         waveform = model.generate(m, batched = True, target = 11_000, overlap = 550, mu_law= False)
 
-    elif modeltype == "wavenet":
-        m = m.squeeze(0).squeeze(0)
-        waveform = wavegen(model, m)
-    fpath = 'conversion'
-    sf.write(fpath + '.wav', np.asarray(waveform), samplerate = hp.sample_rate)
+#     elif modeltype == "wavenet":
+#         m = m.squeeze(0).squeeze(0)
+#         waveform = wavegen(model, m)
+#     fpath = 'conversion'
+#     sf.write(fpath + '.wav', np.asarray(waveform), samplerate = hp.sample_rate)
 
 
 
@@ -84,10 +86,10 @@ def Conversion(source, target, model, voc_model, T_emb = None, voc_type = "waver
 
     use_cuda = torch.cuda.is_available()
     device = torch.device("cuda" if use_cuda else "cpu")
-    if voc_type == "wavernn":
-        s = WaveRNN_Mel(source)
-    else:
-        s = AutoVC_Mel(source)
+    # if voc_type == "wavernn":
+    s = audio_to_melspectrogram(source)
+    # else:
+    #     s = AutoVC_Mel(source)
 
     S = torch.from_numpy(s.T).unsqueeze(0).to(device)
     
@@ -110,7 +112,9 @@ def Conversion(source, target, model, voc_model, T_emb = None, voc_type = "waver
         
         
         print(f"\n Generating {key} sound")
-        Generate(Out, path, voc_model, voc_type)
+        # Generate(Out, path, voc_model, voc_type)
+        synthesize(Out, path, voc_model)
+
 
 
 def Experiment(Model_path, train_length = None, test_data = None, name_list = None, test_size = 24, experiment = None):
@@ -180,9 +184,10 @@ if __name__ == "__main__":
     # (data, labels), (_, _) = DataLoad2("../data")
     model, voc_model = Instantiate_Models(model_path = '../models/AutoVC/autoVC_seed40_200k.pt', vocoder = "wavernn")
     # source, target = './data/english.wav', './data/danish.wav'
-    source, target = "../data/samples/mette_183.wav","../data/samples/chooped7.wav"
+    source, target = "../data/samples/mette_183.wav", "../data/samples/chooped7.wav"
 
-    Conversion(source, target, model, voc_model, voc_type = "wavernn", task = "English_English", subtask = "Male_Male")
+    # Conversion(source, target, model, voc_model, voc_type = "wavernn", task = "English_English", subtask = "Male_Male")
+    Conversion(source, target, model, voc_model, exp_folder = "results")
 
 
 

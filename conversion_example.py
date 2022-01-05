@@ -1,8 +1,8 @@
 
-from autovc.preprocessing.preprocess_wav import WaveRNN_Mel
+from autovc.utils.preprocess_wav import audio_to_melspectrogram
 from autovc.speaker_encoder.model import SpeakerEncoder
 from autovc.auto_encoder.model_vc import Generator
-from autovc.vocoder.WaveRNN_model import WaveRNN
+from autovc.wavernn.model import WaveRNN
 from autovc.utils.hparams import hparams_waveRNN as hp
 import soundfile as sf
 import torch
@@ -47,7 +47,7 @@ if __name__ == "__main__":
     c_source, c_target = S.embed_utterance(source).unsqueeze(0), S.embed_utterance(target).unsqueeze(0)
 
     # Create mel spectrogram
-    X = WaveRNN_Mel(target)
+    X = audio_to_melspectrogram(target)
 
     # Convert:
     #   out is the converted output

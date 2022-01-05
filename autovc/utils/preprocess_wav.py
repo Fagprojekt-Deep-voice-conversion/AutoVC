@@ -18,7 +18,7 @@ def db_to_amp(x):
     return np.power(10.0, x * 0.05)
 
 
-def WaveRNN_Mel(waveform):
+def audio_to_melspectrogram(waveform):
     '''
     Loads a .wav file and converts audio to mel spectrogram
     params:

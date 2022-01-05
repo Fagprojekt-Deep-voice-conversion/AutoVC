@@ -5,7 +5,6 @@ These default params shpould not be changed unless a better combination has been
 """
 
 from argparse import Namespace
-from typing import NamedTuple
 
 class ClassProperty(object):
     def __init__(self, func):
@@ -13,26 +12,17 @@ class ClassProperty(object):
     def __get__(self, inst, cls):
         return self.func(cls)
 
-# class ParamCollection(Namespace):
-# 	def update(self, d: dict):
-# 		self.__dict__.update(d)
+class ParamCollection(Namespace):
+	def update(self, d: dict):
+		self.__dict__.update(d)
 
-class ParamCollection:
-	def __init__(self) -> None:
-		raise NotImplementedError
 
-	def update(self, params: dict):		
-		self.__dict__.update(params)
-		return self
+# class ParamCollection(ClassProperty):
+# 	def __init__(self, func):
+# 		super().__init__(func)
+# 		self.func = 
 
-	def get_collection(self, collection = "all"):
-		"""
-		Returns a collection of parameters as a dictionary
-		"""
-		if collection == "all":
-			return self.__dict__
-
-class AutoVCParams(ParamCollection):
+class AutoVCParams:
 	# Vocoder
 	name 							= "wavenet_vocoder"
 	builder 						= "wavenet"
@@ -57,7 +47,7 @@ class AutoVCParams(ParamCollection):
 	allow_clipping_in_normalization = True # mel-spectrogram is normalized to [0, 1] for each utterance and clipping may happen depends on min_level_db and ref_level_db, causing clipping noise. If False, assertion is added to ensure no clipping happens.o0
 
 	# Model
-	log_scale_min 					= float(-32.23619130191664)
+	log_scale_min 					=  float(-32.23619130191664)
 	out_channels 					= 10 * 3
 	layers 							= 24
 	stacks 							= 4
@@ -98,67 +88,63 @@ class AutoVCParams(ParamCollection):
 
 ############### WAVE RNN ###############
 
-class WaveRNNParams(ParamCollection):
-	def __init__(self):
-		self.sample_rate		= 22050
-		self.n_fft 				= 2048
-		self.fft_bins 			= self.fft_bins_prop 
-		self.hop_length			= 275  # 12.5ms - in line with Tacotron 2 paper
-		self.win_length 		= 1100  # 50ms - same reason as above
-		self.fmin 				= 40
-		self.min_level_db 		= -100
-		self.ref_level_db 		= 20
+class WaveRNNParams:
+	sample_rate			= 22050
+	n_fft 				= 2048
+	fft_bins 			= n_fft // 2 + 1
+	hop_length			= 275  # 12.5ms - in line with Tacotron 2 paper
+	win_length 			= 1100  # 50ms - same reason as above
+	fmin 				= 40
+	min_level_db 		= -100
+	ref_level_db 		= 20
 
-		# Model
-		self.rnn_dims 			= 512
-		self.fc_dims 			= 512
-		self.bits 				= 9
-		self.pad 				= 2  # this will pad the input so that the resnet can 'see' wider than input length
-		self.upsample_factors 	= (5, 5, 11)  # NB - this needs to correctly factorise hop_length
-		self.feat_dims 			= 80 # num_mels
-		self.compute_dims 		= 128
-		self.res_out_dims 		= 128
-		self.res_blocks 		= 10
-		self.mode 				= 'MOL'  # either 'RAW' (softmax on raw bits) or 'MOL' (sample from mixture of logistics)
+	# Model
+	rnn_dims 			= 512
+	fc_dims 			= 512
+	bits 				= 9
+	pad 				= 2  # this will pad the input so that the resnet can 'see' wider than input length
+	upsample_factors 	= (5, 5, 11)  # NB - this needs to correctly factorise hop_length
+	feat_dims 			= 80 # num_mels
+	compute_dims 		= 128
+	res_out_dims 		= 128
+	res_blocks 			= 10
+	mode 				= 'MOL'  # either 'RAW' (softmax on raw bits) or 'MOL' (sample from mixture of logistics)
 
-		# Training
-		self.batch_size			= 32
-		self.lr					= 1e-4
-		self.checkpoint_every	= 25_000
-		self.gen_at_checkpoint	= 5  # number of samples to generate at each checkpoint
-		self.total_steps		= 1_000_000  # Total number of training steps
-		self.test_samples		= 50  # How many unseen samples to put aside for testing
-		
-		self.seq_len			= self.seq_len_prop  # must be a multiple of hop_length
-		self.clip_grad_norm 	= 4  # set to None if no gradient clipping needed
+	# Training
+	batch_size			= 32
+	lr					= 1e-4
+	checkpoint_every	= 25_000
+	gen_at_checkpoint	= 5  # number of samples to generate at each checkpoint
+	total_steps			= 1_000_000  # Total number of training steps
+	test_samples		= 50  # How many unseen samples to put aside for testing
+	
+	seq_len				= hop_length * 5  # must be a multiple of hop_length
+	clip_grad_norm 		= 4  # set to None if no gradient clipping needed
 
-		# Generating / Synthesizing
-		self.batched 			= True  # very fast (realtime+) single utterance batched generation
-		self.target 			= 11_000  # target number of samples to be generated in each batch entry
-		self.overlap 			= 550  # number of samples for crossfading between batches
-		self.mu_law 			= False # whether to use mu_law
+	# Generating / Synthesizing
+	batched 		= True  # very fast (realtime+) single utterance batched generation
+	target 				= 11_000  # target number of samples to be generated in each batch entry
+	overlap 			= 550  # number of samples for crossfading between batches
+	mu_law 				= False # whether to use mu_law
+	
+	@ClassProperty
+	def model(self):
+		"""Returns a dictionary with the default model params"""
 
-	@property
-	def fft_bins_prop(self):
-		return self.n_fft // 2 + 1
+		keys = ["rnn_dims", "fc_dims", "bits", "pad", "upsample_factors",
+                 "feat_dims", "compute_dims", "res_out_dims", "res_blocks",
+                 "hop_length", "sample_rate", "mode"
+		]
+		return ParamCollection(**{key : self.__getattribute__(self, key) for key in keys})
 
-	@property
-	def seq_len_prop(self):
-		return self.hop_length*5
-
-	def update(self, params: dict):
-		super().update(params)
-		
-		if "n_fft" in params and "fft_bins" not in params:
-			self.__dict__["fft_bins"] = self.fft_bins_prop
-		
-		if "hop_length" in params and "seq_len" not in params:
-			self.__dict__["seq_len"] = self.seq_len_prop
-
+	@ClassProperty
+	def synthesize(self):
+		keys = ["batched", "target", "overlap", "mu_law"]
+		return ParamCollection(**{key : self.__getattribute__(self, key) for key in keys})
 
 ############### SPEAKER ENCODER ###############
 
-class SpeakerEncoderParams(ParamCollection):
+class SpeakerEncoderParams:
 	# Mel-filterbank
 	mel_window_length 			= 25  # In milliseconds
 	mel_window_step 			= 10  # In milliseconds
@@ -188,23 +174,6 @@ class SpeakerEncoderParams(ParamCollection):
 	utterances_per_speaker 		= 10
 
 if __name__ == "__main__":
-	# p = WaveRNNParams.synthesize
-	# p.update({"sample_rate" : 2})
-	# print(p.__dict__)
-
-	# def update_params(params, new_params):
-	# 	for key, val in new_params:
-	# 		params().__set
-
-	p = WaveRNNParams()
-	# p.__setattr__("sample_rate", 2)
-	# p.update({"sample_rate" : 2})
-	# p.sample_rate = 2
-	# p.__setattr__("sample_rate", 2)
-
-	p.update({"sample_rate" : 2, "n_fft" : 30})
-	# print(p.__dict__)
-	print(p.get_collection())
-	print(p.sample_rate)
-	# print(p.model)
-	# print(p.test)
+	p = WaveRNNParams.model
+	p.update({"sample_rate" : 2})
+	print(p.__dict__)

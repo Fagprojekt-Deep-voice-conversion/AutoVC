@@ -2,7 +2,7 @@ import numpy as np
 import torch
 import os
 from torch.utils.data import DataLoader, Dataset
-from autovc.preprocessing.preprocess_wav import WaveRNN_Mel
+from autovc.utils.preprocess_wav import audio_to_melspectrogram
 from autovc.speaker_encoder.model import SpeakerEncoder
 from torch.nn.functional import pad
 
@@ -21,7 +21,7 @@ class TrainDataLoader(Dataset):
         # Load wav files. Create spectograms and embeddings
         self.wav_files = [os.path.join(dirpath, filename) for dirpath , _, directory in os.walk(data_dir_path) for filename in directory]
 
-        self.mel_spectograms = [torch.from_numpy(WaveRNN_Mel(wav)) for wav in self.wav_files]
+        self.mel_spectograms = [torch.from_numpy(audio_to_melspectrogram(wav)) for wav in self.wav_files]
         self.embeddings      = [speaker_encoder.embed_utterance(wav) for wav in self.wav_files]
 
     def __len__(self):

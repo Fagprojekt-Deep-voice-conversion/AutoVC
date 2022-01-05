@@ -67,9 +67,6 @@ class hparams_autoVC:
 	n_speakers = -1
 
 
-
-
-
 	# Training:
 	batch_size = 2,
 	adam_beta1 = 0.9,

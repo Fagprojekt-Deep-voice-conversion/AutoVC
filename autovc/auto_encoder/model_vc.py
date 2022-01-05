@@ -14,6 +14,8 @@ from autovc.auto_encoder.decoder import Decoder
 from autovc.auto_encoder.postnet import Postnet
 from autovc.utils.lr_scheduler import NoamLrScheduler as Noam 
 
+import numpy as np
+   
 
 class Generator(nn.Module):
     """
@@ -104,6 +106,8 @@ class Generator(nn.Module):
         mel_outputs_postnet = mel_outputs_postnet
         # content_codes = torch.cat([torch.cat(code, dim = -1) for code in codes], dim = -1)
         content_codes= torch.cat([torch.cat(codes_forward, dim = -1), torch.cat(codes_backward, dim = -1)], dim = -1)
+        
+        
         return mel_outputs, mel_outputs_postnet, content_codes
 
 
