@@ -19,7 +19,8 @@ class ClassProperty(object):
 
 class ParamCollection:
 	def __init__(self) -> None:
-		raise NotImplementedError
+		# raise NotImplementedError
+		self.collections = {"all": None}
 
 	def update(self, params: dict):		
 		self.__dict__.update(params)
@@ -29,8 +30,17 @@ class ParamCollection:
 		"""
 		Returns a collection of parameters as a dictionary
 		"""
-		if collection == "all":
+		# if collection == "all":
+		# 	return self.__dict__
+		keys = self.collections.get(collection, ValueError("Collection does not exist"))
+
+		if keys == None:
 			return self.__dict__
+		else:
+			return {key : val for key, val in self.__dict__.items() if key in keys}
+
+	def add_collection(self, name, params):
+		self.collections[name] = params
 
 class AutoVCParams(ParamCollection):
 	# Vocoder
@@ -100,6 +110,7 @@ class AutoVCParams(ParamCollection):
 
 class WaveRNNParams(ParamCollection):
 	def __init__(self):
+		super().__init__()
 		self.sample_rate		= 22050
 		self.n_fft 				= 2048
 		self.fft_bins 			= self.fft_bins_prop 
@@ -114,7 +125,7 @@ class WaveRNNParams(ParamCollection):
 		self.fc_dims 			= 512
 		self.bits 				= 9
 		self.pad 				= 2  # this will pad the input so that the resnet can 'see' wider than input length
-		self.upsample_factors 	= (5, 5, 11)  # NB - this needs to correctly factorise hop_length
+		self.upsample_factors 	= (5, 5, 11)  # NB - this needs to correctly factorise hop_length. OBS previously called upsample scale in net code
 		self.feat_dims 			= 80 # num_mels
 		self.compute_dims 		= 128
 		self.res_out_dims 		= 128
@@ -138,6 +149,10 @@ class WaveRNNParams(ParamCollection):
 		self.overlap 			= 550  # number of samples for crossfading between batches
 		self.mu_law 			= False # whether to use mu_law
 
+		# add collections
+		self.add_collection("synthesize", ["batched", "target", "overlap", "mu_law"])
+		self.add_collection("UpsampleNetwork", ["feat_dims", "upsample_factors", "compute_dims", "res_blocks", "res_out_dims", "pad"])
+
 	@property
 	def fft_bins_prop(self):
 		return self.n_fft // 2 + 1
@@ -154,6 +169,8 @@ class WaveRNNParams(ParamCollection):
 		
 		if "hop_length" in params and "seq_len" not in params:
 			self.__dict__["seq_len"] = self.seq_len_prop
+
+		return self
 
 
 ############### SPEAKER ENCODER ###############
@@ -202,9 +219,9 @@ if __name__ == "__main__":
 	# p.sample_rate = 2
 	# p.__setattr__("sample_rate", 2)
 
-	p.update({"sample_rate" : 2, "n_fft" : 30})
+	p.update({"sample_rate" : 2, "n_fft" : 30, "batched" : False})
 	# print(p.__dict__)
-	print(p.get_collection())
+	print(p.get_collection("synthesize"))
 	print(p.sample_rate)
 	# print(p.model)
 	# print(p.test)
