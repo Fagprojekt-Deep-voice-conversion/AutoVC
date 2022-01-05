@@ -15,12 +15,8 @@ class TrainDataLoader(Dataset):
     If spectograms in batch are of unequal size the smaller are padded with zeros to match the size of the largest.
     '''
 
-    def __init__(self, data_dir_path, speaker_encoder_path = 'Models/SpeakerEncoder/SpeakerEncoder.pt', device = 'cpu'):
+    def __init__(self, data_dir_path, speaker_encoder, device = 'cpu'):
         super(TrainDataLoader, self).__init__()
-
-        # Initialise the Speaker Identiy Encoder for embeddings.
-        speaker_encoder = SpeakerEncoder(device = device)
-        speaker_encoder.load_model(speaker_encoder_path)
 
         # Load wav files. Create spectograms and embeddings
         self.wav_files = [os.path.join(dirpath, filename) for dirpath , _, directory in os.walk(data_dir_path) for filename in directory]

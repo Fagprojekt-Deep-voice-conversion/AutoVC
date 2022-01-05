@@ -80,17 +80,17 @@ class SpeakerEncoder(nn.Module):
         
         return embeds
     
-    def load_model(self, weights_fpath):
+    def load_model(self, weights_fpath, device = None):
         """
         Loads the model in memory. If this function is not explicitely called, it will be run on the 
         first call to embed_frames() with the default weights file.
         
         :param weights_fpath: the path to saved model weights.
         """
-        checkpoint = torch.load(weights_fpath, map_location = self.device)
+        checkpoint = torch.load(weights_fpath, map_location = self.device if device is None else device )
         self.load_state_dict(checkpoint["model_state"])
         
-        print("Loaded encoder \"%s\" trained to step %d" % (weights_fpath, checkpoint["step"]))
+        # print("Loaded encoder \"%s\" trained to step %d" % (weights_fpath, checkpoint["step"]))
         
     def embed_frames_batch(self, frames_batch):
         """
