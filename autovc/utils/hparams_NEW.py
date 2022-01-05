@@ -41,6 +41,13 @@ class ParamCollection:
 	def add_collection(self, name, params):
 		self.collections[name] = params
 
+class AudioParams(ParamCollection):
+	"""
+	Class for audio params shared for all models
+	"""
+	def __init__(self) -> None:
+		super().__init__()
+
 class AutoEncoder(ParamCollection):
 	# Vocoder
 	# name 							= "wavenet_vocoder"
@@ -100,13 +107,13 @@ class AutoEncoder(ParamCollection):
 
 		# Optimizer
 		self.betas 							= (0.9, 0.999)
-		self.eps 							= 1e-8,
+		self.eps 							= 1e-8
 		self.amsgrad 						= False
 		self.lr 							= 1e-3 # learning rate
 		self.weight_decay 					= 0.0
 		
 		# Learning rate scheduler
-		self.lr_schedule 					= NoamScheduler # see lrschedule.py for available lr_schedule
+		self.lr_scheduler 					= NoamScheduler # see lrschedule.py for available lr_schedule
 		self.dim_model						= 80 # The output dimension of the model
 		self.n_warmup_steps					= 200
 
@@ -121,6 +128,7 @@ class AutoEncoder(ParamCollection):
 		self.add_collection("Decoder", ["dim_neck", "dim_emb", "dim_pre"])
 		self.add_collection("Adam", ["betas", "eps", "amsgrad", "lr", "weight_decay"])
 		self.add_collection("lr_scheduler", ["dim_model", "n_warmup_steps"])
+
 
 ############### WAVE RNN ###############
 
