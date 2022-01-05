@@ -4,8 +4,7 @@ Params are stored as a dictionary, so that they can easily be passed to the func
 These default params shpould not be changed unless a better combination has been found, thus testing of new params should be passed in the functions.
 """
 
-from argparse import Namespace
-from typing import NamedTuple
+from autovc.utils.lr_scheduler import NoamScheduler
 
 class ClassProperty(object):
     def __init__(self, func):
@@ -70,7 +69,7 @@ class AutoEncoder(ParamCollection):
 		# Model
 		self.dim_neck						= 32
 		self.dim_emb						= 256
-		self.dim_pre						= 256
+		self.dim_pre						= 512
 		self.freq 							= 32
 		self.log_scale_min 					= float(-32.23619130191664)
 		self.out_channels 					= 10 * 3
@@ -100,20 +99,28 @@ class AutoEncoder(ParamCollection):
 		self.clip_thresh 					= -1
 
 		# Optimizer
-		self.adam_beta1 					= 0.9,
-		self.adam_beta2 					= 0.999,
-		self.adam_eps 						= 1e-8,
+		self.betas 							= (0.9, 0.999)
+		self.eps 							= 1e-8,
 		self.amsgrad 						= False
-		self.initial_learning_rate 			= 1e-3
+		self.lr 							= 1e-3 # learning rate
 		self.weight_decay 					= 0.0
-		self.lr_schedule 					= "noam_learning_rate_decay" # see lrschedule.py for available lr_schedule
 		
-		
+		# Learning rate scheduler
+		self.lr_schedule 					= NoamScheduler # see lrschedule.py for available lr_schedule
+		self.dim_model						= 80 # The output dimension of the model
+		self.n_warmup_steps					= 200
+
 		# max time steps can either be specified as sec or steps if both are None, then full audio samples are used in a batch
 		self.max_time_sec 					=  None
 		self.max_time_steps 				= 8000
 		self.exponential_moving_average 	= True # Hold moving averaged parameters and use them for evaluation
 		self.ema_decay 						= 0.9999 # averaged = decay * averaged + (1 - decay) * x
+
+		# add collections
+		self.add_collection("Encoder", ["dim_neck", "dim_emb", "freq"])
+		self.add_collection("Decoder", ["dim_neck", "dim_emb", "dim_pre"])
+		self.add_collection("Adam", ["betas", "eps", "amsgrad", "lr", "weight_decay"])
+		self.add_collection("lr_scheduler", ["dim_model", "n_warmup_steps"])
 
 ############### WAVE RNN ###############
 

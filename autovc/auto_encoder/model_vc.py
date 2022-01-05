@@ -12,8 +12,11 @@ from autovc.utils.net_layers import *
 from autovc.auto_encoder.encoder import Encoder
 from autovc.auto_encoder.decoder import Decoder
 from autovc.auto_encoder.postnet import Postnet
-from autovc.utils.lr_scheduler import NoamLrScheduler as Noam 
+# from autovc.utils.lr_scheduler import NoamLrScheduler as Noam 
 # from autovc.utils.hparams_NEW import 
+# from autovc.utils.lr_scheduler import NoamLrScheduler as Noam
+# from autovc.utils import lr_scheduler
+from autovc.utils.hparams_NEW import AutoEncoder as hparams
 
 
 
@@ -30,20 +33,18 @@ class Generator(nn.Module):
         full list of params can be found in `autovc/utils/hparams.py`
         """
         super(Generator, self).__init__()
-        self.freq = freq
-        self.encoder = Encoder(dim_neck, dim_emb, freq)
-        self.decoder = Decoder(dim_neck, dim_emb, dim_pre)
+        # self.freq = freq
+        self.params = hparams().update(params)
+        self.encoder = Encoder(self.params.get_collection("Encoder"))
+        self.decoder = Decoder(self.params.get_collection("Decoder"))
         self.postnet = Postnet()
 
         self.criterion1 = nn.MSELoss()
         self.criterion2 = nn.L1Loss()
-        self.optimiser = torch.optim.Adam(self.parameters(),
-                                          lr= kwargs.get('init_lr', 1e-3),
-                                          betas = (0.9, 0.999),
-                                          eps = 1e-8,
-                                          weight_decay=0.0,
-                                          amsgrad = False)
-        self.lr_scheduler = Noam(self.optimiser, d_model = 80, n_warmup_steps = 200)
+        self.optimiser = torch.optim.Adam(self.parameters(), **self.params.get_collection("Adam"))
+        # self.lr_scheduler = Noam(self.optimiser, d_model = 80, n_warmup_steps = 200)
+        self.lr_scheduler = self.params.lr_scheduler(self.optimiser, self.params.get_collection("lr_scheduler"))
+
         
 
     def forward(self, x, c_org, c_trg):
@@ -78,7 +79,7 @@ class Generator(nn.Module):
             - Forward: (0-31 = 31, 32-63 = 63, 64-100 = 95)
             - Backward: (0-31 = 0, 32-63 = 32, 64-95 = 64, 96-100 = 96)
         """
-        codes_forward_upsampled = torch.cat([c.unsqueeze(-1).expand(-1,-1, self.freq) for c in codes_forward], dim = -1)
+        codes_forward_upsampled = torch.cat([c.unsqueeze(-1).expand(-1,-1, self.params.freq) for c in codes_forward], dim = -1)
         last_part = codes_forward[-1].unsqueeze(-1).expand(-1,-1, x.size(-1) - codes_forward_upsampled.size(-1))
         codes_forward_upsampled = torch.cat([codes_forward_upsampled, last_part], dim = -1)
 
