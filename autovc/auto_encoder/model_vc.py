@@ -12,7 +12,8 @@ from autovc.utils.net_layers import *
 from autovc.auto_encoder.encoder import Encoder
 from autovc.auto_encoder.decoder import Decoder
 from autovc.auto_encoder.postnet import Postnet
-   
+from autovc.utils.lr_scheduler import NoamLrScheduler as Noam 
+
 
 class Generator(nn.Module):
     """
@@ -39,6 +40,7 @@ class Generator(nn.Module):
                                           eps = 1e-8,
                                           weight_decay=0.0,
                                           amsgrad = False)
+        self.lr_scheduler = Noam(self.optimiser, d_model = 80, n_warmup_steps = 200)
         
 
     def forward(self, x, c_org, c_trg):
@@ -144,7 +146,7 @@ class Generator(nn.Module):
         return reconstruction_loss1 + mu * reconstruction_loss2 + lambd * content_loss
 
 
-    def learn(self, trainloader, n_epochs, save_every = 1000, models_dir = None , model_path_name = None):
+    def learn(self, trainloader, n_epochs, lr_scheduler = None, save_every = 1000, models_dir = None , model_path_name = None):
         if torch.cuda.is_available():
             print(f"Training beginning on {torch.cuda.get_device_name(0)}")
         else:
@@ -167,6 +169,8 @@ class Generator(nn.Module):
                 self.optimiser.zero_grad()
                 loss.backward()
                 torch.nn.utils.clip_grad_norm_(self.parameters(), max_norm = 1) # Clip gradients (avoid exploiding gradients)
+
+                if self.lr_scheduler is not None: self.lr_scheduler._update_learning_rate()
                 self.optimiser.step()
 
                 # Save exponentially smoothed parameters - can be used to avoid too large changes of parameters
@@ -240,10 +244,3 @@ class Generator(nn.Module):
             offset += param.nelement()
 
 
-def noam_learning_rate_decay(init_lr, global_step, warmup_steps=4000):
-    # Noam scheme from tensor2tensor:
-    warmup_steps = float(warmup_steps)
-    step = global_step + 1.
-    lr = init_lr * warmup_steps ** 0.5 * np.minimum(
-        step * warmup_steps ** -1.5, step ** -0.5)
-    return lr
