@@ -1,5 +1,5 @@
 from scipy.ndimage.morphology import binary_dilation
-from autovc.utils.hparams import hparams_SpeakerEncoder as hp
+from autovc.utils.hparams_NEW import SpeakerEncoderParams as hparams
 from pathlib import Path
 from typing import Optional, Union
 import numpy as np
@@ -30,8 +30,8 @@ def preprocess_wav(fpath_or_wav: Union[str, Path, np.ndarray],
         wav = fpath_or_wav
     
     # Resample the wav if needed
-    if source_sr is not None and source_sr != hp.sampling_rate:
-        wav = librosa.resample(wav, source_sr, hp.sampling_rate)
+    if source_sr is not None and source_sr != hparams.sampling_rate:
+        wav = librosa.resample(wav, source_sr, hparams.sampling_rate)
         
     # Apply the preprocessing: normalize volume and shorten long silences 
     #wav = normalize_volume(wav, audio_norm_target_dBFS, increase_only=True)
@@ -47,10 +47,10 @@ def wav_to_mel_spectrogram(wav):
     """
     frames = librosa.feature.melspectrogram(
         wav,
-        hp.sampling_rate,
-        n_fft=int(hp.sampling_rate * hp.mel_window_length / 1000),
-        hop_length=int(hp.sampling_rate * hp.mel_window_step / 1000),
-        n_mels=hp.mel_n_channels
+        hparams.sampling_rate,
+        n_fft=int(hparams.sampling_rate * hparams.mel_window_length / 1000),
+        hop_length=int(hparams.sampling_rate * hparams.mel_window_step / 1000),
+        n_mels=hparams.mel_n_channels
     )
 
     return frames.astype(np.float32).T
@@ -65,7 +65,7 @@ def trim_long_silences(wav):
     :return: the same waveform with silences trimmed away (length <= original wav length)
     """
     # Compute the voice detection window size
-    samples_per_window = (hp.vad_window_length * hp.sampling_rate) // 1000
+    samples_per_window = (hparams.vad_window_length * hparams.sampling_rate) // 1000
     
     # Trim the end of the audio to have a multiple of the window size
     wav = wav[:len(wav) - (len(wav) % samples_per_window)]
@@ -79,7 +79,7 @@ def trim_long_silences(wav):
     for window_start in range(0, len(wav), samples_per_window):
         window_end = window_start + samples_per_window
         voice_flags.append(vad.is_speech(pcm_wave[window_start * 2:window_end * 2],
-                                         sample_rate=hp.sampling_rate))
+                                         sample_rate=hparams.sampling_rate))
     voice_flags = np.array(voice_flags)
     
     # Smooth the voice detection with a moving average
@@ -89,11 +89,11 @@ def trim_long_silences(wav):
         ret[width:] = ret[width:] - ret[:-width]
         return ret[width - 1:] / width
     
-    audio_mask = moving_average(voice_flags, hp.vad_moving_average_width)
+    audio_mask = moving_average(voice_flags, hparams.vad_moving_average_width)
     audio_mask = np.round(audio_mask).astype(np.bool)
     
     # Dilate the voiced regions
-    audio_mask = binary_dilation(audio_mask, np.ones(hp.vad_max_silence_length + 1))
+    audio_mask = binary_dilation(audio_mask, np.ones(hparams.vad_max_silence_length + 1))
     audio_mask = np.repeat(audio_mask, samples_per_window)
     
     return wav[audio_mask == True]
@@ -109,7 +109,7 @@ def normalize_volume(wav, target_dBFS, increase_only=False, decrease_only=False)
 
 
 
-def compute_partial_slices(n_samples, partial_utterance_n_frames=hp.partials_n_frames,
+def compute_partial_slices(n_samples, partial_utterance_n_frames=hparams.partials_n_frames,
                            min_pad_coverage=0.75, overlap=0.5):
     """
     Computes where to split an utterance waveform and its corresponding mel spectrogram to obtain 
@@ -138,7 +138,7 @@ def compute_partial_slices(n_samples, partial_utterance_n_frames=hp.partials_n_f
     assert 0 <= overlap < 1
     assert 0 < min_pad_coverage <= 1
     
-    samples_per_frame = int((hp.sampling_rate * hp.mel_window_step / 1000))
+    samples_per_frame = int((hparams.sampling_rate * hparams.mel_window_step / 1000))
     n_frames = int(np.ceil((n_samples + 1) / samples_per_frame))
     frame_step = max(int(np.round(partial_utterance_n_frames * (1 - overlap))), 1)
 

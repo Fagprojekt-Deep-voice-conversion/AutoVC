@@ -5,6 +5,7 @@ These default params shpould not be changed unless a better combination has been
 """
 
 from autovc.utils.lr_scheduler import NoamScheduler
+import torch
 
 class ClassProperty(object):
     def __init__(self, func):
@@ -20,6 +21,7 @@ class ParamCollection:
 	def __init__(self) -> None:
 		# raise NotImplementedError
 		self.collections = {"all": None}
+		self.device =  torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 	def update(self, params: dict):		
 		self.__dict__.update(params)
@@ -41,12 +43,12 @@ class ParamCollection:
 	def add_collection(self, name, params):
 		self.collections[name] = params
 
-class AudioParams(ParamCollection):
-	"""
-	Class for audio params shared for all models
-	"""
-	def __init__(self) -> None:
-		super().__init__()
+# class AudioParams(ParamCollection):
+# 	"""
+# 	Class for audio params shared for all models
+# 	"""
+# 	def __init__(self) -> None:
+# 		super().__init__()
 
 class AutoEncoder(ParamCollection):
 	# Vocoder
@@ -176,6 +178,7 @@ class WaveRNNParams(ParamCollection):
 		# add collections
 		self.add_collection("synthesize", ["batched", "target", "overlap", "mu_law"])
 		self.add_collection("UpsampleNetwork", ["feat_dims", "upsample_factors", "compute_dims", "res_blocks", "res_out_dims", "pad"])
+		# self.add_collection("model", [rnn_dims, fc_dims, bits, pad, upsample_factors, feat_dims, compute_dims, res_out_dims, res_blocks])
 
 	@property
 	def fft_bins_prop(self):
@@ -202,6 +205,7 @@ class WaveRNNParams(ParamCollection):
 class SpeakerEncoderParams(ParamCollection):
 	def __init__(self) -> None:
 		super().__init__()
+
 		# Mel-filterbank
 		self.mel_window_length 			= 25  # In milliseconds
 		self.mel_window_step 			= 10  # In milliseconds
@@ -224,11 +228,15 @@ class SpeakerEncoderParams(ParamCollection):
 		self.model_hidden_size 			= 256
 		self.model_embedding_size		= 256
 		self.model_num_layers 			= 3
+		self.batch_first				= True
 
 		# Training parameters
 		self.learning_rate_init 		= 1e-4
 		self.speakers_per_batch 		= 64
 		self.utterances_per_speaker 	= 10
+
+		# add collections
+		# self.add_collection("LSTM", [])
 
 if __name__ == "__main__":
 	# p = WaveRNNParams.synthesize

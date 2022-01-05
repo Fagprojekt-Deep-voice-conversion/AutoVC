@@ -1,4 +1,5 @@
-from autovc.utils.hparams import  hparams_SpeakerEncoder as hp
+# from autovc.utils.hparams import  hparams_SpeakerEncoder as hp
+from autovc.utils.hparams_NEW import SpeakerEncoderParams as hparams
 from autovc.speaker_encoder.model import SpeakerEncoder
 from autovc.speaker_encoder import audio
 from pathlib import Path
@@ -54,7 +55,7 @@ def embed_frames_batch(frames_batch):
     return embed
 
 
-def compute_partial_slices(n_samples, partial_utterance_n_frames=hp.partials_n_frames,
+def compute_partial_slices(n_samples, partial_utterance_n_frames=hparams.partials_n_frames,
                            min_pad_coverage=0.75, overlap=0.5):
     """
     Computes where to split an utterance waveform and its corresponding mel spectrogram to obtain 
@@ -83,7 +84,7 @@ def compute_partial_slices(n_samples, partial_utterance_n_frames=hp.partials_n_f
     assert 0 <= overlap < 1
     assert 0 < min_pad_coverage <= 1
     
-    samples_per_frame = int((hp.sampling_rate * hp.mel_window_step / 1000))
+    samples_per_frame = int((hparams.sampling_rate * hparams.mel_window_step / 1000))
     n_frames = int(np.ceil((n_samples + 1) / samples_per_frame))
     frame_step = max(int(np.round(partial_utterance_n_frames * (1 - overlap))), 1)
 

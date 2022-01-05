@@ -12,10 +12,6 @@ from autovc.utils.net_layers import *
 from autovc.auto_encoder.encoder import Encoder
 from autovc.auto_encoder.decoder import Decoder
 from autovc.auto_encoder.postnet import Postnet
-# from autovc.utils.lr_scheduler import NoamLrScheduler as Noam 
-# from autovc.utils.hparams_NEW import 
-# from autovc.utils.lr_scheduler import NoamLrScheduler as Noam
-# from autovc.utils import lr_scheduler
 from autovc.utils.hparams_NEW import AutoEncoder as hparams
 
 
@@ -42,7 +38,6 @@ class Generator(nn.Module):
         self.criterion1 = nn.MSELoss()
         self.criterion2 = nn.L1Loss()
         self.optimiser = torch.optim.Adam(self.parameters(), **self.params.get_collection("Adam"))
-        # self.lr_scheduler = Noam(self.optimiser, d_model = 80, n_warmup_steps = 200)
         self.lr_scheduler = self.params.lr_scheduler(self.optimiser, **self.params.get_collection("lr_scheduler"))
 
         

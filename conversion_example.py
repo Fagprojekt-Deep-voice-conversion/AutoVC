@@ -3,7 +3,6 @@ from autovc.utils.preprocess_wav import audio_to_melspectrogram
 from autovc.speaker_encoder.model import SpeakerEncoder
 from autovc.auto_encoder.model_vc import Generator
 from autovc.wavernn.model import WaveRNN
-from autovc.utils.hparams import hparams_waveRNN as hp
 import soundfile as sf
 import torch
 import numpy as np
@@ -22,18 +21,20 @@ if __name__ == "__main__":
     S = SpeakerEncoder(device = device)
 
     # Vocode - WaveRNN
-    voc_model = WaveRNN(rnn_dims=hp.voc_rnn_dims,
-                            fc_dims=hp.voc_fc_dims,
-                            bits=hp.bits,
-                            pad=hp.voc_pad,
-                            upsample_factors=hp.voc_upsample_factors,
-                            feat_dims=hp.num_mels,
-                            compute_dims=hp.voc_compute_dims,
-                            res_out_dims=hp.voc_res_out_dims,
-                            res_blocks=hp.voc_res_blocks,
-                            hop_length=hp.hop_length,
-                            sample_rate=hp.sample_rate,
-                            mode='MOL').to(device)
+    # voc_model = WaveRNN(rnn_dims=hp.voc_rnn_dims,
+    #                         fc_dims=hp.voc_fc_dims,
+    #                         bits=hp.bits,
+    #                         pad=hp.voc_pad,
+    #                         upsample_factors=hp.voc_upsample_factors,
+    #                         feat_dims=hp.num_mels,
+    #                         compute_dims=hp.voc_compute_dims,
+    #                         res_out_dims=hp.voc_res_out_dims,
+    #                         res_blocks=hp.voc_res_blocks,
+    #                         hop_length=hp.hop_length,
+    #                         sample_rate=hp.sample_rate,
+    #                         mode='MOL').to(device)
+    voc_model = WaveRNN()
+
 
     # Load weights
     voc_model.load(vocoder_model)
