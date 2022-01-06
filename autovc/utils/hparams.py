@@ -238,11 +238,20 @@ class SpeakerEncoderParams(ParamCollection):
 		# add collections
 		# self.add_collection("LSTM", [])
 
-############### VOICE CONVERTER ###############
-# class VoiceConverterParams(ParamCollection):
-# 	def __init__(self) -> None:
-# 		super().__init__()
-# 		self.AE = 
+############## VOICE CONVERTER ###############
+class VoiceConverterParams:#(ParamCollection):
+	def __init__(self) -> None:
+		super().__init__()
+		self.AE = AutoEncoderParams()
+		self.SE = SpeakerEncoderParams()
+		self.vocoder = WaveRNNParams()
+	
+	def update(self, AE_params = {}, SE_params = {}, vocoder_params = {}):
+		self.AE.update(AE_params)
+		self.SE.update(SE_params)
+		self.vocoder.update(vocoder_params)
+
+		return self
 
 
 

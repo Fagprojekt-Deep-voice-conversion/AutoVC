@@ -6,6 +6,7 @@ from autovc.wavernn.model import WaveRNN
 import soundfile as sf
 import torch
 import numpy as np
+from autovc.utils.hparams import VoiceConverterParams as hparams
 
 
 class VoiceConverter:
@@ -15,7 +16,18 @@ class VoiceConverter:
     """
     
     def __init__(self, auto_encoder = None, speaker_encoder = None, vocoder = None, **kwargs):  
-        pass
+        
+        params = hparams().update(
+            AE_params = kwargs.get("auto_encoder_params", {}),
+            SE_params = kwargs.get("speaker_encoder_params", {}),
+            vocoder_params = kwargs.get("vocoder_params", {})
+        )
+
+        self.config = {
+            "auto_encoder" : params.AE,
+            "speaker_encoder" : params.SE,
+            "vocoder" : params.vocoder,
+        }
 
     def convert(self, source, target, outname = "conversion.wav", method = "zero_shot"):
         """
@@ -54,3 +66,8 @@ class VoiceConverter:
         Uses the convert function on multiple files
         """
         pass
+
+
+if __name__ == "__main__":
+    vc = VoiceConverter()
+    print(vc.config)
