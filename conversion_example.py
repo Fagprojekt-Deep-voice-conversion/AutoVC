@@ -48,7 +48,7 @@ if __name__ == "__main__":
     c_source, c_target = S.embed_utterance(source).unsqueeze(0), S.embed_utterance(target).unsqueeze(0)
 
     # Create mel spectrogram
-    X = audio_to_melspectrogram(target)
+    X = audio_to_melspectrogram(source)
 
     # Convert:
     #   out is the converted output
