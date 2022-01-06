@@ -209,14 +209,15 @@ def create_audio_mask(wav):
 
     return wav, audio_mask
 
-def split_audio(wav_path, save_folder = None, allowed_pause = .5):
+def split_audio(wav_path, save_folder = None, allowed_pause = 2, remove_silence = False):
     """
     Chops the content of the wav file into multiple files, based on when there is
     a longer period if silence. Files will be saved with a number indicating the order the content appeared in.
 
     :param wav: path to wav file
     :param save_folder: folder to save files in
-    :allowed_pause: number seconds of silence to allow in a sound file
+    :param allowed_pause: number seconds of silence to allow in a sound file
+    :param remove_silence: whether to remove intermediate silence in each of the new wav files
     :return: content of the wav file seperated in multiple files 
     """
     # load wav
@@ -236,7 +237,11 @@ def split_audio(wav_path, save_folder = None, allowed_pause = .5):
         else:
             # join last subset with new split if difference is less than allowed pause
             if split[-1] - joined_splits[-1][-1] <= allowed_pause:
-                joined_splits.append(np.concatenate([joined_splits.pop(), split]))
+                prev = joined_splits.pop()
+                if remove_silence:
+                    joined_splits.append(np.concatenate([prev, split]))
+                else:
+                    joined_splits.append(np.concatenate([prev,np.arange(prev[-1]+1, split[0]), split]))
             else:
                 joined_splits.append(split)
     
@@ -256,5 +261,5 @@ def split_audio(wav_path, save_folder = None, allowed_pause = .5):
 
 
 
-
-# split_audio("data/samples/mette_183.wav", "results")
+if __name__ == "__main__":
+    split_audio("data/samples/hilde_677.wav", "results")
