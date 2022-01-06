@@ -10,6 +10,24 @@
 # print(l)
 
 import os
-data_dir_path = 'data\\samples'
+from autovc.speaker_encoder.utils import *
+import soundfile as sf
+from autovc.utils.hparams import SpeakerEncoderParams as hparams
+from autovc.utils.preprocess_wav import audio_to_melspectrogram
+# data_dir_path = 'data\\samples'
 
-[os.path.join(dirpath, filename) for dirpath , _, directory in os.walk(data_dir_path) for filename in directory]
+# [os.path.join(dirpath, filename) for dirpath , _, directory in os.walk(data_dir_path) for filename in directory]
+
+# walk = [w for w in os.walk("data/yang_test")][0]
+# root, dirs, files = [w for w in walk]
+
+# for file in files:
+#     waveform = preprocess_wav(os.path.join(root, file))
+#     sf.write(f"test_yang_silence/{file}", np.asarray(waveform), samplerate = 16000)
+
+walk = [w for w in os.walk("test_yang_silence")][0]
+root, dirs, files = [w for w in walk]
+
+for file in files:
+    waveform = preprocess_wav(os.path.join(root, file))
+    # sf.write(f"test_yang_silence/{file}", np.asarray(waveform), samplerate = 16000)
