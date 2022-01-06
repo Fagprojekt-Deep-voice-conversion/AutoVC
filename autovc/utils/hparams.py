@@ -238,6 +238,14 @@ class SpeakerEncoderParams(ParamCollection):
 		# add collections
 		# self.add_collection("LSTM", [])
 
+############### VOICE CONVERTER ###############
+# class VoiceConverterParams(ParamCollection):
+# 	def __init__(self) -> None:
+# 		super().__init__()
+# 		self.AE = 
+
+
+
 if __name__ == "__main__":
 	# p = WaveRNNParams.synthesize
 	# p.update({"sample_rate" : 2})
