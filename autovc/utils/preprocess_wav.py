@@ -3,13 +3,15 @@
 import librosa
 import numpy as np
 # from autovc.utils.hparams import hparams_autoVC as hp
-from autovc.utils.hparams import hparams_waveRNN as hp1
+from autovc.utils.hparams_NEW import WaveRNNParams as hparams
+hparams = hparams()
+
 
 def normalize(S):
-    return np.clip((S - hp1.min_level_db) / -hp1.min_level_db, 0, 1)
+    return np.clip((S - hparams.min_level_db) / -hparams.min_level_db, 0, 1)
 
 def denormalize(S):
-    return (np.clip(S, 0, 1) * -hp1.min_level_db) + hp1.min_level_db
+    return (np.clip(S, 0, 1) * -hparams.min_level_db) + hparams.min_level_db
 
 def amp_to_db(x):
     return 20 * np.log10(np.maximum(1e-5, x))
@@ -30,21 +32,21 @@ def audio_to_melspectrogram(waveform):
 
     # Load .wav to audio waveform
     if isinstance(waveform, str):
-        waveform, _ = librosa.load(waveform, sr=hp1.sample_rate)
+        waveform, _ = librosa.load(waveform, sr=hparams.sample_rate)
 
     # Short-Time Fourier Transform
     spectrogram = librosa.stft( waveform,                   # Audio Time Series as input
-                                n_fft=hp1.n_fft,            # The lenght of the window - how many samples to include in Fourier Transformation
-                                hop_length=hp1.hop_length,  # The number of samples between adjacent STFT columns - how far the window moves for each FT
-                                win_length=hp1.win_length,  # The lenght of the window - pad with zeros to match n_fft
+                                n_fft=hparams.n_fft,            # The lenght of the window - how many samples to include in Fourier Transformation
+                                hop_length=hparams.hop_length,  # The number of samples between adjacent STFT columns - how far the window moves for each FT
+                                win_length=hparams.win_length,  # The lenght of the window - pad with zeros to match n_fft
                                 )
 
     # Convert to mel spectrum
     melspectrogram = librosa.feature.melspectrogram(S = np.abs(spectrogram),
-                                                    sr = hp1.sample_rate,
-                                                    n_fft=hp1.n_fft,
-                                                    n_mels=hp1.num_mels,    # The number of mels
-                                                    fmin=hp1.fmin           # The minimum frequency
+                                                    sr = hparams.sample_rate,
+                                                    n_fft=hparams.n_fft,
+                                                    n_mels=hparams.feat_dims,    # The number of mels
+                                                    fmin=hparams.fmin           # The minimum frequency
                                                     )
 
     # Convert amplitude to dB

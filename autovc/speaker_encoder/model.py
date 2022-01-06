@@ -1,7 +1,8 @@
 """
 Speaker Identity encoder from https://github.com/CorentinJ/Real-Time-Voice-Cloning/tree/master/encoder. See LICENSE.txt
 """
-from autovc.utils.hparams import hparams_SpeakerEncoder as hp
+
+
 from scipy.interpolate import interp1d
 from sklearn.metrics import roc_curve
 from torch.nn.utils import clip_grad_norm_
@@ -10,6 +11,7 @@ from torch import nn
 import numpy as np
 import torch
 from autovc.speaker_encoder.utils import *
+from autovc.utils.hparams_NEW import SpeakerEncoderParams as hparams
 
 class SpeakerEncoder(nn.Module):
     """
@@ -21,34 +23,35 @@ class SpeakerEncoder(nn.Module):
     Not consistenet with AutoVC but the best i could find...
     Trained on GE2E loss for 1.5 M step
     """
-    def __init__(self, device = None, **kwargs):
+    def __init__(self, **params):
         super().__init__()
-        if device is None:
-            self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        elif isinstance(device, str):
-            self.device = torch.device(device)
-        else:
-            self.device = device
+        # if device is None:
+        #     self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        # elif isinstance(device, str):
+        #     self.device = torch.device(device)
+        # else:
+        #     self.device = device
+        self.params = hparams().update(params)
         
         # Network defition
-        self.lstm = nn.LSTM(input_size  = kwargs.get('mel_n_channels', hp.mel_n_channels),
-                            hidden_size = kwargs.get('model_hidden_size', hp.model_hidden_size),
-                            num_layers  = kwargs.get('model_num_layers', hp.model_num_layers),
-                            batch_first = True
-                            ).to(self.device)
+        self.lstm = nn.LSTM(input_size  = self.params.mel_n_channels, #kwargs.get('mel_n_channels', hp.mel_n_channels),
+                            hidden_size = self.params.model_hidden_size,#kwargs.get('model_hidden_size', hp.model_hidden_size),
+                            num_layers  = self.params.model_num_layers,#kwargs.get('model_num_layers', hp.model_num_layers),
+                            batch_first = self.params.batch_first#True
+                            ).to(self.params.device)
 
-        self.linear = nn.Linear(in_features  = kwargs.get('model_hidden_size', hp.model_hidden_size),
-                                out_features = kwargs.get('model_embedding_size', hp.model_embedding_size),
-                                ).to(self.device)
+        self.linear = nn.Linear(in_features  = self.params.model_hidden_size,#kwargs.get('model_hidden_size', hp.model_hidden_size),
+                                out_features = self.params.model_embedding_size#kwargs.get('model_embedding_size', hp.model_embedding_size),
+                                ).to(self.params.device)
 
-        self.relu = torch.nn.ReLU().to(self.device)
+        self.relu = torch.nn.ReLU().to(self.params.device)
         
         # Cosine similarity scaling (with fixed initial parameter values)
-        self.similarity_weight = nn.Parameter(torch.tensor([10.])).to(self.device)
-        self.similarity_bias = nn.Parameter(torch.tensor([-5.])).to(self.device)
+        self.similarity_weight = nn.Parameter(torch.tensor([10.])).to(self.params.device)
+        self.similarity_bias = nn.Parameter(torch.tensor([-5.])).to(self.params.device)
 
         # Loss
-        self.loss_fn = nn.CrossEntropyLoss().to(self.device)
+        self.loss_fn = nn.CrossEntropyLoss().to(self.params.device)
         
     def do_gradient_ops(self):
         # Gradient scale
@@ -87,7 +90,7 @@ class SpeakerEncoder(nn.Module):
         
         :param weights_fpath: the path to saved model weights.
         """
-        checkpoint = torch.load(weights_fpath, map_location = self.device if device is None else device )
+        checkpoint = torch.load(weights_fpath, map_location = self.params.device if device is None else device )
         self.load_state_dict(checkpoint["model_state"])
         
         # print("Loaded encoder \"%s\" trained to step %d" % (weights_fpath, checkpoint["step"]))
@@ -101,7 +104,7 @@ class SpeakerEncoder(nn.Module):
         :return: the embeddings as a numpy array of float32 of shape (batch_size, model_embedding_size)
         """
 
-        frames = torch.from_numpy(frames_batch).to(self.device)
+        frames = torch.from_numpy(frames_batch).to(self.params.device)
         embed = self.forward(frames).detach().cpu()
         return embed
 
@@ -183,7 +186,7 @@ class SpeakerEncoder(nn.Module):
         # product of these vectors (which is just an element-wise multiplication reduced by a sum).
         # We vectorize the computation for efficiency.
         sim_matrix = torch.zeros(speakers_per_batch, utterances_per_speaker,
-                                 speakers_per_batch).to(self.device)
+                                 speakers_per_batch).to(self.params.device)
         mask_matrix = 1 - np.eye(speakers_per_batch, dtype=np.int)
         for j in range(speakers_per_batch):
             mask = np.where(mask_matrix[j])[0]
@@ -218,7 +221,7 @@ class SpeakerEncoder(nn.Module):
         sim_matrix = sim_matrix.reshape((speakers_per_batch * utterances_per_speaker, 
                                          speakers_per_batch))
         ground_truth = np.repeat(np.arange(speakers_per_batch), utterances_per_speaker)
-        target = torch.from_numpy(ground_truth).long().to(self.device)
+        target = torch.from_numpy(ground_truth).long().to(self.params.device)
         loss = self.loss_fn(sim_matrix, target)
         
         # EER (not backpropagated)

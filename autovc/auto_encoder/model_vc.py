@@ -12,8 +12,9 @@ from autovc.utils.net_layers import *
 from autovc.auto_encoder.encoder import Encoder
 from autovc.auto_encoder.decoder import Decoder
 from autovc.auto_encoder.postnet import Postnet
-from autovc.utils.lr_scheduler import NoamLrScheduler as Noam 
+# from autovc.utils.lr_scheduler import NoamLrScheduler as Noam 
 # from autovc.utils.hparams_NEW import 
+from autovc.utils.hparams_NEW import AutoEncoderParams as hparams
 
 
 
@@ -21,28 +22,26 @@ class Generator(nn.Module):
     """
     Generator network. The entire thing pieced together (figure 3a and 3c)
     """
-    def __init__(self, dim_neck = 32, dim_emb = 256, dim_pre = 512, freq = 32, **kwargs):
+    def __init__(self, **params):
         """
         params:
         dim_neck: dimension of bottleneck (set to 32 in the paper)
         dim_emb: dimension of speaker embedding (set to 256 in the paper)
         dim_pre: dimension of the input to the decoder (output of first LSTM layer) (set to 512 in the paper)
+        full list of params can be found in `autovc/utils/hparams.py`
         """
         super(Generator, self).__init__()
-        self.freq = freq
-        self.encoder = Encoder(dim_neck, dim_emb, freq)
-        self.decoder = Decoder(dim_neck, dim_emb, dim_pre)
+        # self.freq = freq
+        self.params = hparams().update(params)
+        self.encoder = Encoder(**self.params.get_collection("Encoder"))
+        self.decoder = Decoder(**self.params.get_collection("Decoder"))
         self.postnet = Postnet()
 
         self.criterion1 = nn.MSELoss()
         self.criterion2 = nn.L1Loss()
-        self.optimiser = torch.optim.Adam(self.parameters(),
-                                          lr= kwargs.get('init_lr', 1e-3),
-                                          betas = (0.9, 0.999),
-                                          eps = 1e-8,
-                                          weight_decay=0.0,
-                                          amsgrad = False)
-        self.lr_scheduler = Noam(self.optimiser, d_model = 80, n_warmup_steps = 200)
+        self.optimiser = torch.optim.Adam(self.parameters(), **self.params.get_collection("Adam"))
+        self.lr_scheduler = self.params.lr_scheduler(self.optimiser, **self.params.get_collection("lr_scheduler"))
+
         
 
     def forward(self, x, c_org, c_trg):
@@ -77,11 +76,11 @@ class Generator(nn.Module):
             - Forward: (0-31 = 31, 32-63 = 63, 64-100 = 95)
             - Backward: (0-31 = 0, 32-63 = 32, 64-95 = 64, 96-100 = 96)
         """
-        codes_forward_upsampled = torch.cat([c.unsqueeze(-1).expand(-1,-1, self.freq) for c in codes_forward], dim = -1)
+        codes_forward_upsampled = torch.cat([c.unsqueeze(-1).expand(-1,-1, self.params.freq) for c in codes_forward], dim = -1)
         last_part = codes_forward[-1].unsqueeze(-1).expand(-1,-1, x.size(-1) - codes_forward_upsampled.size(-1))
         codes_forward_upsampled = torch.cat([codes_forward_upsampled, last_part], dim = -1)
 
-        codes_backward_upsampled = torch.cat([c.unsqueeze(-1).expand(-1,-1, self.freq) for c in codes_backward], dim = -1)[:,:,:x.size(-1)]
+        codes_backward_upsampled = torch.cat([c.unsqueeze(-1).expand(-1,-1, self.params.freq) for c in codes_backward], dim = -1)[:,:,:x.size(-1)]
 
 
         """ Concatenates upsampled content codes with target embedding. Dim = (batch_size, 320, input time frames) """
@@ -150,13 +149,14 @@ class Generator(nn.Module):
         return reconstruction_loss1 + mu * reconstruction_loss2 + lambd * content_loss
 
 
-    def learn(self, trainloader, n_epochs, lr_scheduler = None, save_every = 1000, models_dir = None , model_path_name = None):
+    def learn(self, trainloader, n_epochs, lr_scheduler = None, save_every = 1000, models_dir = None , model_path_name = None, **params):
         if torch.cuda.is_available():
             print(f"Training beginning on {torch.cuda.get_device_name(0)}")
         else:
             print(f"Training beginning on cpu")
         step = 0
-        ema = 0.9999
+        self.params = hparams().update(params)
+        # ema = 0.9999
 
         self.train()
         avg_params = self.flatten_params()
@@ -178,7 +178,7 @@ class Generator(nn.Module):
                 self.optimiser.step()
 
                 # Save exponentially smoothed parameters - can be used to avoid too large changes of parameters
-                avg_params = ema * avg_params + (1-ema) * self.flatten_params()
+                avg_params = self.params.ema_decay * avg_params + (1-self.params.ema_decay) * self.flatten_params()
                 step += 1
                 print("Step:", step)
 

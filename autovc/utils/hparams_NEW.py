@@ -4,8 +4,8 @@ Params are stored as a dictionary, so that they can easily be passed to the func
 These default params shpould not be changed unless a better combination has been found, thus testing of new params should be passed in the functions.
 """
 
-from argparse import Namespace
-from typing import NamedTuple
+from autovc.utils.lr_scheduler import NoamScheduler
+import torch
 
 class ClassProperty(object):
     def __init__(self, func):
@@ -21,6 +21,7 @@ class ParamCollection:
 	def __init__(self) -> None:
 		# raise NotImplementedError
 		self.collections = {"all": None}
+		self.device =  torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 	def update(self, params: dict):		
 		self.__dict__.update(params)
@@ -42,7 +43,14 @@ class ParamCollection:
 	def add_collection(self, name, params):
 		self.collections[name] = params
 
-class AutoVCParams(ParamCollection):
+# class AudioParams(ParamCollection):
+# 	"""
+# 	Class for audio params shared for all models
+# 	"""
+# 	def __init__(self) -> None:
+# 		super().__init__()
+
+class AutoEncoderParams(ParamCollection):
 	# Vocoder
 	# name 							= "wavenet_vocoder"
 	# builder 						= "wavenet"
@@ -68,6 +76,10 @@ class AutoVCParams(ParamCollection):
 		self.allow_clipping_in_normalization = True # mel-spectrogram is normalized to [0, 1] for each utterance and clipping may happen depends on min_level_db and ref_level_db, causing clipping noise. If False, assertion is added to ensure no clipping happens.o0
 
 		# Model
+		self.dim_neck						= 32
+		self.dim_emb						= 256
+		self.dim_pre						= 512
+		self.freq 							= 32
 		self.log_scale_min 					= float(-32.23619130191664)
 		self.out_channels 					= 10 * 3
 		self.layers 						= 24
@@ -96,20 +108,29 @@ class AutoVCParams(ParamCollection):
 		self.clip_thresh 					= -1
 
 		# Optimizer
-		self.adam_beta1 					= 0.9,
-		self.adam_beta2 					= 0.999,
-		self.adam_eps 						= 1e-8,
+		self.betas 							= (0.9, 0.999)
+		self.eps 							= 1e-8
 		self.amsgrad 						= False
-		self.initial_learning_rate 			= 1e-3
+		self.lr 							= 1e-3 # learning rate
 		self.weight_decay 					= 0.0
-		self.lr_schedule 					= "noam_learning_rate_decay" # see lrschedule.py for available lr_schedule
 		
-		
+		# Learning rate scheduler
+		self.lr_scheduler 					= NoamScheduler # see lrschedule.py for available lr_schedule
+		self.dim_model						= 80 # The output dimension of the model
+		self.n_warmup_steps					= 200
+
 		# max time steps can either be specified as sec or steps if both are None, then full audio samples are used in a batch
 		self.max_time_sec 					=  None
 		self.max_time_steps 				= 8000
 		self.exponential_moving_average 	= True # Hold moving averaged parameters and use them for evaluation
 		self.ema_decay 						= 0.9999 # averaged = decay * averaged + (1 - decay) * x
+
+		# add collections
+		self.add_collection("Encoder", ["dim_neck", "dim_emb", "freq"])
+		self.add_collection("Decoder", ["dim_neck", "dim_emb", "dim_pre"])
+		self.add_collection("Adam", ["betas", "eps", "amsgrad", "lr", "weight_decay"])
+		self.add_collection("lr_scheduler", ["dim_model", "n_warmup_steps"])
+
 
 ############### WAVE RNN ###############
 
@@ -157,6 +178,7 @@ class WaveRNNParams(ParamCollection):
 		# add collections
 		self.add_collection("synthesize", ["batched", "target", "overlap", "mu_law"])
 		self.add_collection("UpsampleNetwork", ["feat_dims", "upsample_factors", "compute_dims", "res_blocks", "res_out_dims", "pad"])
+		# self.add_collection("model", [rnn_dims, fc_dims, bits, pad, upsample_factors, feat_dims, compute_dims, res_out_dims, res_blocks])
 
 	@property
 	def fft_bins_prop(self):
@@ -183,6 +205,7 @@ class WaveRNNParams(ParamCollection):
 class SpeakerEncoderParams(ParamCollection):
 	def __init__(self) -> None:
 		super().__init__()
+
 		# Mel-filterbank
 		self.mel_window_length 			= 25  # In milliseconds
 		self.mel_window_step 			= 10  # In milliseconds
@@ -205,11 +228,15 @@ class SpeakerEncoderParams(ParamCollection):
 		self.model_hidden_size 			= 256
 		self.model_embedding_size		= 256
 		self.model_num_layers 			= 3
+		self.batch_first				= True
 
 		# Training parameters
 		self.learning_rate_init 		= 1e-4
 		self.speakers_per_batch 		= 64
 		self.utterances_per_speaker 	= 10
+
+		# add collections
+		# self.add_collection("LSTM", [])
 
 if __name__ == "__main__":
 	# p = WaveRNNParams.synthesize
