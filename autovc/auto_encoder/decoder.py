@@ -1,6 +1,6 @@
 import torch.nn as nn
 import torch.nn.functional as F
-from autovc.utils.net_layers import ConvNorm, LinearNorm
+from autovc.auto_encoder.net_layers import ConvNorm, LinearNorm
         
 class Decoder(nn.Module):
     """

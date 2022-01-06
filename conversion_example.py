@@ -1,33 +1,40 @@
 
-from autovc.utils.preprocess_wav import audio_to_melspectrogram
-from autovc.speaker_encoder.model import SpeakerEncoder
-from autovc.auto_encoder.model_vc import Generator
-from autovc.wavernn.model import WaveRNN
+from autovc.utils.audio import audio_to_melspectrogram
+# from autovc.speaker_encoder.model import SpeakerEncoder
+# from autovc.auto_encoder.model_vc import Generator
+# from autovc.wavernn.model import WaveRNN
 import soundfile as sf
 import torch
 import numpy as np
+from autovc.utils.model_loader import load_models
 
 if __name__ == "__main__":
     # Models
-    autovc_model = 'Models/AutoVC/autovc_SMK.pt'
-    speaker_encoder_model = "Models/SpeakerEncoder/SpeakerEncoder.pt"
-    vocoder_model = "Models/WaveRNN/WaveRNN_Pretrained.pyt"
+    autovc_model = 'models/AutoVC/autovc_SMK.pt'
+    speaker_encoder_model = "models/SpeakerEncoder/SpeakerEncoder.pt"
+    vocoder_model = "models/WaveRNN/WaveRNN_Pretrained.pyt"
     device = 'cpu'
 
-    # AutoVC
-    model = Generator()
+    # # AutoVC
+    # model = Generator()
 
-    # SpeakerEncoder
-    S = SpeakerEncoder(device = device)
+    # # SpeakerEncoder
+    # S = SpeakerEncoder(device = device)
 
-    # vocoder
-    voc_model = WaveRNN().to(device)
+    # # vocoder
+    # voc_model = WaveRNN().to(device)
 
 
-    # Load weights
-    voc_model.load(vocoder_model)
-    model.load_model(autovc_model, device)
-    S.load_model(speaker_encoder_model)
+    # # Load weights
+    # voc_model.load(vocoder_model)
+    # model.load_model(autovc_model, device)
+    # S.load_model(speaker_encoder_model)
+
+    model, S, voc_model = load_models(
+        model_types= ["auto_encoder", "speaker_encoder", "vocoder"],
+        model_paths= [autovc_model, speaker_encoder_model, vocoder_model],
+        device = device
+    )
     
     # Source and target
     target, source = "data/samples/chooped7.wav", "data/samples/mette_183.wav"

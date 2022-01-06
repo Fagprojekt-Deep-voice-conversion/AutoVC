@@ -13,7 +13,7 @@ import os
 from autovc.speaker_encoder.utils import *
 import soundfile as sf
 from autovc.utils.hparams import SpeakerEncoderParams as hparams
-from autovc.utils.preprocess_wav import audio_to_melspectrogram
+from autovc.utils.audio import audio_to_melspectrogram
 # data_dir_path = 'data\\samples'
 
 # [os.path.join(dirpath, filename) for dirpath , _, directory in os.walk(data_dir_path) for filename in directory]

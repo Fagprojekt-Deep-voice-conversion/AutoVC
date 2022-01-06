@@ -4,6 +4,7 @@
 # sys.path.insert(0, parent_dir) 
 import torch
 # print(sys.path[0])
+from autovc.utils.model_loader import load_vocoder
 
 
 from autovc.utils.hparams import WaveRNNParams as hparams
@@ -12,11 +13,11 @@ import numpy as np
 from autovc.wavernn.model import WaveRNN
 import os
 
-def load_model(model_path, **kwargs):
-    device = torch.device(kwargs.get("device", "cuda" if torch.cuda.is_available() else "cpu"))
-    model = WaveRNN(**hparams.model.__dict__).to(device=device)
-    model.load(model_path)
-    return model
+# def load_model(model_path, **kwargs):
+#     device = torch.device(kwargs.get("device", "cuda" if torch.cuda.is_available() else "cpu"))
+#     model = WaveRNN(**hparams.model.__dict__).to(device=device)
+#     model.load(model_path)
+#     return model
 
 def synthesize(melspec, fpath = "results/synthesized.wav", model = None, **generate_args):
     """
@@ -38,9 +39,9 @@ def synthesize(melspec, fpath = "results/synthesized.wav", model = None, **gener
     device = generate_args.pop("device", "cuda" if torch.cuda.is_available() else "cpu")
 
     if model is None:
-        model = load_model('../models/WaveRNN/WaveRNN_Pretrained.pyt', device = device)
+        model = load_vocoder('../models/WaveRNN/WaveRNN_Pretrained.pyt', device = device)
     elif isinstance(model, str):
-        model = load_model(model, device = device)
+        model = load_vocoder(model, device = device)
         
     waveform = model.generate(m, **generate_args)
     

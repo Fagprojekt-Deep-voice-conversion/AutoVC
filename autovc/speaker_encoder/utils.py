@@ -1,46 +1,46 @@
-from scipy.ndimage.morphology import binary_dilation
 from autovc.utils.hparams import SpeakerEncoderParams as hparams
-from pathlib import Path
-from typing import Optional, Union
+# from pathlib import __path__
 import numpy as np
-import webrtcvad
 import librosa
-import struct
-import soundfile as sf
-import os
+# from autovc.speaker_encoder.model import SpeakerEncoder
+# from autovc.speaker_encoder import audio
+# from pathlib import Path
+import numpy as np
+import torch
 
-int16_max = (2 ** 15) - 1
+# int16_max = (2 ** 15) - 1
+# _model = None # type: SpeakerEncoder
+# _device = None # type: torch.device
 hparams = hparams()
 
 
-def preprocess_wav(fpath_or_wav: Union[str, Path, np.ndarray],
-                   source_sr: Optional[int] = None):
-    """
-    Applies the preprocessing operations used in training the Speaker Encoder to a waveform 
-    either on disk or in memory. The waveform will be resampled to match the data hyperparameters.
+# def load_model(weights_fpath: Path, device=None):
+#     """
+#     Loads the model in memory. If this function is not explicitely called, it will be run on the 
+#     first call to embed_frames() with the default weights file.
+    
+#     :param weights_fpath: the path to saved model weights.
+#     :param device: either a torch device or the name of a torch device (e.g. "cpu", "cuda"). The 
+#     model will be loaded and will run on this device. Outputs will however always be on the cpu. 
+#     If None, will default to your GPU if it"s available, otherwise your CPU.
+#     """
 
-    :param fpath_or_wav: either a filepath to an audio file (many extensions are supported, not 
-    just .wav), either the waveform as a numpy array of floats.
-    :param source_sr: if passing an audio waveform, the sampling rate of the waveform before 
-    preprocessing. After preprocessing, the waveform's sampling rate will match the data 
-    hyperparameters. If passing a filepath, the sampling rate will be automatically detected and 
-    this argument will be ignored.
-    """
-    # Load the wav from disk if needed
-    if isinstance(fpath_or_wav, str) or isinstance(fpath_or_wav, Path):
-        wav, source_sr = librosa.load(fpath_or_wav, sr=None)
-    else:
-        wav = fpath_or_wav
+#     global _model, _device
+#     if device is None:
+#         _device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+#     elif isinstance(device, str):
+#         _device = torch.device(device)
+#     # _model = SpeakerEncoder(_device, torch.device("cpu"))
+#     _model = SpeakerEncoder(_device)
+#     checkpoint = torch.load(weights_fpath,map_location=torch.device('cpu'))
+#     _model.load_state_dict(checkpoint["model_state"])
+#     _model.eval()
+#     print("Loaded encoder \"%s\" trained to step %d" % (weights_fpath, checkpoint["step"]))
     
-    # Resample the wav if needed
-    if source_sr is not None and source_sr != hparams.sampling_rate:
-        wav = librosa.resample(wav, source_sr, hparams.sampling_rate)
-        
-    # Apply the preprocessing: normalize volume and shorten long silences 
-    #wav = normalize_volume(wav, audio_norm_target_dBFS, increase_only=True)
-    wav = trim_long_silences(wav)
-    
-    return wav
+#     return _model
+
+# def is_loaded():
+#     return _model is not None
 
 
 def wav_to_mel_spectrogram(wav):
@@ -58,49 +58,6 @@ def wav_to_mel_spectrogram(wav):
 
     return frames.astype(np.float32).T
 
-
-def trim_long_silences(wav):
-    """
-    Ensures that segments without voice in the waveform remain no longer than a 
-    threshold determined by the VAD parameters in params.py.
-
-    :param wav: the raw waveform as a numpy array of floats 
-    :return: the same waveform with silences trimmed away (length <= original wav length)
-    """
-    # # Compute the voice detection window size
-    # samples_per_window = (hparams.vad_window_length * hparams.sampling_rate) // 1000
-    
-    # # Trim the end of the audio to have a multiple of the window size
-    # wav = wav[:len(wav) - (len(wav) % samples_per_window)]
-    
-    # # Convert the float waveform to 16-bit mono PCM
-    # pcm_wave = struct.pack("%dh" % len(wav), *(np.round(wav * int16_max)).astype(np.int16))
-    
-    # # Perform voice activation detection
-    # voice_flags = []
-    # vad = webrtcvad.Vad(mode=3)
-    # for window_start in range(0, len(wav), samples_per_window):
-    #     window_end = window_start + samples_per_window
-    #     voice_flags.append(vad.is_speech(pcm_wave[window_start * 2:window_end * 2],
-    #                                      sample_rate=hparams.sampling_rate))
-    # voice_flags = np.array(voice_flags)
-    
-    # # Smooth the voice detection with a moving average
-    # def moving_average(array, width):
-    #     array_padded = np.concatenate((np.zeros((width - 1) // 2), array, np.zeros(width // 2)))
-    #     ret = np.cumsum(array_padded, dtype=float)
-    #     ret[width:] = ret[width:] - ret[:-width]
-    #     return ret[width - 1:] / width
-    
-    # audio_mask = moving_average(voice_flags, hparams.vad_moving_average_width)
-    # audio_mask = np.round(audio_mask).astype(np.bool)
-    
-    # # Dilate the voiced regions
-    # audio_mask = binary_dilation(audio_mask, np.ones(hparams.vad_max_silence_length + 1))
-    # audio_mask = np.repeat(audio_mask, samples_per_window)
-    wav, audio_mask = create_audio_mask(wav)
-    
-    return wav[audio_mask == True]
 
 
 def normalize_volume(wav, target_dBFS, increase_only=False, decrease_only=False):
@@ -165,101 +122,19 @@ def compute_partial_slices(n_samples, partial_utterance_n_frames=hparams.partial
     return wav_slices, mel_slices
 
 
-
-
-
-def create_audio_mask(wav):
-    """"
-    Creates an audio mask, where False indicates silence.
-
-    :param wav: a numpy array with the content of a wav file
-    :return audio_mask: the calculated audio mask
-    """
-    # Compute the voice detection window size
-    samples_per_window = (hparams.vad_window_length * hparams.sampling_rate) // 1000
+# def embed_frames_batch(frames_batch):
+#     """
+#     Computes embeddings for a batch of mel spectrogram.
     
-    # Trim the end of the audio to have a multiple of the window size
-    wav = wav[:len(wav) - (len(wav) % samples_per_window)]
+#     :param frames_batch: a batch mel of spectrogram as a numpy array of float32 of shape 
+#     (batch_size, n_frames, n_channels)
+#     :return: the embeddings as a numpy array of float32 of shape (batch_size, model_embedding_size)
+#     """
+#     if _model is None:
+#         raise Exception("Model was not loaded. Call load_model() before inference.")
     
-    # Convert the float waveform to 16-bit mono PCM
-    pcm_wave = struct.pack("%dh" % len(wav), *(np.round(wav * int16_max)).astype(np.int16))
-    
-    # Perform voice activation detection
-    voice_flags = []
-    vad = webrtcvad.Vad(mode=3)
-    for window_start in range(0, len(wav), samples_per_window):
-        window_end = window_start + samples_per_window
-        voice_flags.append(vad.is_speech(pcm_wave[window_start * 2:window_end * 2],
-                                         sample_rate=hparams.sampling_rate))
-    voice_flags = np.array(voice_flags)
-    
-    # Smooth the voice detection with a moving average
-    def moving_average(array, width):
-        array_padded = np.concatenate((np.zeros((width - 1) // 2), array, np.zeros(width // 2)))
-        ret = np.cumsum(array_padded, dtype=float)
-        ret[width:] = ret[width:] - ret[:-width]
-        return ret[width - 1:] / width
-    
-    audio_mask = moving_average(voice_flags, hparams.vad_moving_average_width)
-    audio_mask = np.round(audio_mask).astype(bool)
-    
-    # Dilate the voiced regions
-    audio_mask = binary_dilation(audio_mask, np.ones(hparams.vad_max_silence_length + 1))
-    audio_mask = np.repeat(audio_mask, samples_per_window)
-
-    return wav, audio_mask
-
-def split_audio(wav_path, save_folder = None, allowed_pause = 2, remove_silence = False):
-    """
-    Chops the content of the wav file into multiple files, based on when there is
-    a longer period if silence. Files will be saved with a number indicating the order the content appeared in.
-
-    :param wav: path to wav file
-    :param save_folder: folder to save files in
-    :param allowed_pause: number seconds of silence to allow in a sound file
-    :param remove_silence: whether to remove intermediate silence in each of the new wav files
-    :return: content of the wav file seperated in multiple files 
-    """
-    # load wav
-    wav, source_sr = librosa.load(wav_path, sr=None)
-
-    wav, audio_mask = create_audio_mask(wav)
-
-    # function for finding consecutive values without silence
-    def consecutive(data, stepsize=1):
-        return np.split(data, np.where(np.diff(data) != stepsize)[0]+1)
+#     frames = torch.from_numpy(frames_batch).to(_device)
+#     embed = _model.forward(frames).detach().cpu().numpy()
+#     return embed
 
 
-    allowed_pause = allowed_pause*source_sr
-    for i, split in enumerate(consecutive(np.where(audio_mask)[0])):
-        if i == 0:
-            joined_splits = [split]
-        else:
-            # join last subset with new split if difference is less than allowed pause
-            if split[-1] - joined_splits[-1][-1] <= allowed_pause:
-                prev = joined_splits.pop()
-                if remove_silence:
-                    joined_splits.append(np.concatenate([prev, split]))
-                else:
-                    joined_splits.append(np.concatenate([prev,np.arange(prev[-1]+1, split[0]), split]))
-            else:
-                joined_splits.append(split)
-    
-    # save chopped files
-    filename = os.path.split(wav_path)[-1]
-    wav_splitted = []
-    if save_folder is not None:
-        os.makedirs(save_folder, exist_ok=True)
-        
-        for i, split in enumerate(joined_splits):
-            fname = filename.replace(".wav", f"_{str(i+1).zfill(3)}.wav")
-            wav_splitted.append(wav[split])
-            sf.write(f"{save_folder}/{fname}", wav_splitted[-1], samplerate = source_sr)
-
-
-    return wav_splitted
-
-
-
-if __name__ == "__main__":
-    split_audio("data/samples/hilde_677.wav", "results")

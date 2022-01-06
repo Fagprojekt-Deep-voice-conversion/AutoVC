@@ -8,7 +8,7 @@ Everything is shown in figure 3 in the Paper - please have this by hand when rea
 import torch
 import torch.nn as nn
 
-from autovc.utils.net_layers import *
+from autovc.auto_encoder.net_layers import *
 from autovc.auto_encoder.encoder import Encoder
 from autovc.auto_encoder.decoder import Decoder
 from autovc.auto_encoder.postnet import Postnet
@@ -108,7 +108,7 @@ class Generator(nn.Module):
         return mel_outputs, mel_outputs_postnet, content_codes
 
 
-    def load_model(self, weights_fpath, device):
+    def load(self, weights_fpath, device):
         checkpoint = torch.load(weights_fpath, map_location = device)
         self.load_state_dict(checkpoint["model_state"])
 

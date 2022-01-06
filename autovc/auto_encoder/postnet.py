@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from autovc.utils.net_layers import *
+from autovc.auto_encoder.net_layers import *
 
 
 class Postnet(nn.Module):

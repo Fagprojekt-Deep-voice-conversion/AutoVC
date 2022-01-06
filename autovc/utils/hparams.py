@@ -245,6 +245,12 @@ class VoiceConverterParams:#(ParamCollection):
 		self.AE = AutoEncoderParams()
 		self.SE = SpeakerEncoderParams()
 		self.vocoder = WaveRNNParams()
+
+		# self.default_models = {
+		# 	"auto_encoder": 'models/AutoVC/autovc_SMK.pt',
+		# 	"speaker_encoder": ,
+		# 	"vocoder":
+		# }
 	
 	def update(self, AE_params = {}, SE_params = {}, vocoder_params = {}):
 		self.AE.update(AE_params)

@@ -10,8 +10,10 @@ from scipy.optimize import brentq
 from torch import nn
 import numpy as np
 import torch
-from autovc.speaker_encoder.utils import *
+from autovc.speaker_encoder.utils import wav_to_mel_spectrogram, compute_partial_slices
 from autovc.utils.hparams import SpeakerEncoderParams as hparams
+import librosa
+from pathlib import Path
 
 class SpeakerEncoder(nn.Module):
     """
@@ -25,12 +27,6 @@ class SpeakerEncoder(nn.Module):
     """
     def __init__(self, **params):
         super().__init__()
-        # if device is None:
-        #     self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        # elif isinstance(device, str):
-        #     self.device = torch.device(device)
-        # else:
-        #     self.device = device
         self.params = hparams().update(params)
         
         # Network defition
@@ -83,7 +79,7 @@ class SpeakerEncoder(nn.Module):
         
         return embeds
     
-    def load_model(self, weights_fpath, device = None):
+    def load(self, weights_fpath, device = None):
         """
         Loads the model in memory. If this function is not explicitely called, it will be run on the 
         first call to embed_frames() with the default weights file.
@@ -93,7 +89,33 @@ class SpeakerEncoder(nn.Module):
         checkpoint = torch.load(weights_fpath, map_location = self.params.device if device is None else device )
         self.load_state_dict(checkpoint["model_state"])
         
-        # print("Loaded encoder \"%s\" trained to step %d" % (weights_fpath, checkpoint["step"]))
+        print("Loaded encoder \"%s\" trained to step %d" % (weights_fpath, checkpoint["step"]))
+
+    # @stat
+    # def load_model(weights_fpath: Path, device=None):
+    #     """
+    #     Loads the model in memory. If this function is not explicitely called, it will be run on the 
+    #     first call to embed_frames() with the default weights file.
+        
+    #     :param weights_fpath: the path to saved model weights.
+    #     :param device: either a torch device or the name of a torch device (e.g. "cpu", "cuda"). The 
+    #     model will be loaded and will run on this device. Outputs will however always be on the cpu. 
+    #     If None, will default to your GPU if it"s available, otherwise your CPU.
+    #     """
+
+    #     global _model, _device
+    #     if device is None:
+    #         _device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    #     elif isinstance(device, str):
+    #         _device = torch.device(device)
+    #     # _model = SpeakerEncoder(_device, torch.device("cpu"))
+    #     _model = SpeakerEncoder(_device)
+    #     checkpoint = torch.load(weights_fpath,map_location=torch.device('cpu'))
+    #     _model.load_state_dict(checkpoint["model_state"])
+    #     _model.eval()
+    #     print("Loaded encoder \"%s\" trained to step %d" % (weights_fpath, checkpoint["step"]))
+        
+    #     return _model
         
     def embed_frames_batch(self, frames_batch):
         """

@@ -421,10 +421,10 @@ class WaveRNN(nn.Module):
         with open(path, 'a') as f:
             print(msg, file=f)
 
-    def load(self, path: Union[str, Path]):
+    def load(self, weights_fpath: Union[str, Path], device = None):
         # Use device of model params as location for loaded state
-        device = next(self.parameters()).device
-        self.load_state_dict(torch.load(path, map_location=device), strict=False)
+        device = next(self.parameters()).device if device is None else device
+        self.load_state_dict(torch.load(weights_fpath, map_location=device), strict=False)
 
     def save(self, path: Union[str, Path]):
         # No optimizer argument because saving a model should not include data

@@ -2,7 +2,7 @@ import numpy as np
 import torch
 import os
 from torch.utils.data import DataLoader, Dataset
-from autovc.utils.preprocess_wav import audio_to_melspectrogram
+from autovc.utils.audio import audio_to_melspectrogram
 from autovc.speaker_encoder.model import SpeakerEncoder
 from torch.nn.functional import pad
 

@@ -1,5 +1,5 @@
 import wandb
-from autovc.utils.preprocess_wav import audio_to_melspectrogram
+from autovc.utils.audio import audio_to_melspectrogram
 from autovc.speaker_encoder.model import SpeakerEncoder
 from autovc.auto_encoder.model_vc import Generator
 from autovc.wavernn.model import WaveRNN
@@ -46,6 +46,7 @@ class VoiceConverter:
             how to convert the voice, can be one of ['zero_shot', 'one_to_one']
         """
         pass
+    # remember to call model.eval()
 
     def train(self, model_type = "auto_encoder"):
         """
@@ -57,6 +58,7 @@ class VoiceConverter:
             which model type to train, can be one of ['auto_encoder', 'speaker_encoder']
         """
         pass
+    #  remember to call model.train()
 
     def load(self, path):
         pass
