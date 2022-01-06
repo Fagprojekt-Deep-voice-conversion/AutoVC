@@ -3,7 +3,7 @@
 import librosa
 import numpy as np
 # from autovc.utils.hparams import hparams_autoVC as hp
-from autovc.utils.hparams_NEW import WaveRNNParams as hparams
+from autovc.utils.hparams import WaveRNNParams as hparams
 hparams = hparams()
 
 

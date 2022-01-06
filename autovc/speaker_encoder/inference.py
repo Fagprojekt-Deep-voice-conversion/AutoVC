@@ -1,5 +1,5 @@
 # from autovc.utils.hparams import  hparams_SpeakerEncoder as hp
-from autovc.utils.hparams_NEW import SpeakerEncoderParams as hparams
+from autovc.utils.hparams import SpeakerEncoderParams as hparams
 from autovc.speaker_encoder.model import SpeakerEncoder
 from autovc.speaker_encoder import audio
 from pathlib import Path

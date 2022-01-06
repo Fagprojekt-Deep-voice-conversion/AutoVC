@@ -10,7 +10,7 @@ from autovc.speaker_encoder.audio import preprocess_wav
 from autovc.speaker_encoder.inference import load_model as load_encoder
 from autovc.speaker_encoder.inference import embed_utterance
 from autovc.wavernn.model import WaveRNN
-from autovc.utils.hparams import hparams_waveRNN as hp
+from autovc.utils.hparams_OLD import hparams_waveRNN as hp
 import pickle
 import os 
 import pandas as pd

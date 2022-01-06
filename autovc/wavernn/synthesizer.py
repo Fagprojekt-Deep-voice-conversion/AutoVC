@@ -6,7 +6,7 @@ import torch
 # print(sys.path[0])
 
 
-from autovc.utils.hparams_NEW import WaveRNNParams as hparams
+from autovc.utils.hparams import WaveRNNParams as hparams
 import soundfile as sf
 import numpy as np
 from autovc.wavernn.model import WaveRNN

@@ -7,7 +7,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from autovc.wavernn.distribution import sample_from_discretized_mix_logistic
 from autovc.wavernn.display import *
-from autovc.utils.hparams_NEW import WaveRNNParams as hparams
+from autovc.utils.hparams import WaveRNNParams as hparams
 import numpy as np
 from pathlib import Path
 from typing import Union

@@ -4,4 +4,4 @@
 # artifact_dir = artifact.download()
 
 
-from autovc.utils.hparams_NEW import WaveRNNParams
+from autovc.utils.hparams import WaveRNNParams
