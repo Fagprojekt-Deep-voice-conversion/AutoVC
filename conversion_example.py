@@ -1,5 +1,5 @@
 
-from autovc.utils.audio import audio_to_melspectrogram
+from autovc.utils.audio import audio_to_melspectrogram, remove_noise
 # from autovc.speaker_encoder.model import SpeakerEncoder
 # from autovc.auto_encoder.model_vc import Generator
 # from autovc.wavernn.model import WaveRNN
@@ -53,6 +53,9 @@ if __name__ == "__main__":
     
     # Use the Vocoder to generate waveform (use post_out as input)
     waveform = voc_model.generate(post_out)
+
+    # reduce noise
+    waveform = remove_noise(waveform, voc_model.params.sample_rate)
 
     # Generate .wav file frowm waveform
     sf.write('conversion1.wav', np.asarray(waveform), samplerate =voc_model.params.sample_rate)
