@@ -6,6 +6,8 @@ import numpy as np
 import webrtcvad
 import librosa
 import struct
+import soundfile as sf
+import os
 
 int16_max = (2 ** 15) - 1
 hparams = hparams()
@@ -65,37 +67,38 @@ def trim_long_silences(wav):
     :param wav: the raw waveform as a numpy array of floats 
     :return: the same waveform with silences trimmed away (length <= original wav length)
     """
-    # Compute the voice detection window size
-    samples_per_window = (hparams.vad_window_length * hparams.sampling_rate) // 1000
+    # # Compute the voice detection window size
+    # samples_per_window = (hparams.vad_window_length * hparams.sampling_rate) // 1000
     
-    # Trim the end of the audio to have a multiple of the window size
-    wav = wav[:len(wav) - (len(wav) % samples_per_window)]
+    # # Trim the end of the audio to have a multiple of the window size
+    # wav = wav[:len(wav) - (len(wav) % samples_per_window)]
     
-    # Convert the float waveform to 16-bit mono PCM
-    pcm_wave = struct.pack("%dh" % len(wav), *(np.round(wav * int16_max)).astype(np.int16))
+    # # Convert the float waveform to 16-bit mono PCM
+    # pcm_wave = struct.pack("%dh" % len(wav), *(np.round(wav * int16_max)).astype(np.int16))
     
-    # Perform voice activation detection
-    voice_flags = []
-    vad = webrtcvad.Vad(mode=3)
-    for window_start in range(0, len(wav), samples_per_window):
-        window_end = window_start + samples_per_window
-        voice_flags.append(vad.is_speech(pcm_wave[window_start * 2:window_end * 2],
-                                         sample_rate=hparams.sampling_rate))
-    voice_flags = np.array(voice_flags)
+    # # Perform voice activation detection
+    # voice_flags = []
+    # vad = webrtcvad.Vad(mode=3)
+    # for window_start in range(0, len(wav), samples_per_window):
+    #     window_end = window_start + samples_per_window
+    #     voice_flags.append(vad.is_speech(pcm_wave[window_start * 2:window_end * 2],
+    #                                      sample_rate=hparams.sampling_rate))
+    # voice_flags = np.array(voice_flags)
     
-    # Smooth the voice detection with a moving average
-    def moving_average(array, width):
-        array_padded = np.concatenate((np.zeros((width - 1) // 2), array, np.zeros(width // 2)))
-        ret = np.cumsum(array_padded, dtype=float)
-        ret[width:] = ret[width:] - ret[:-width]
-        return ret[width - 1:] / width
+    # # Smooth the voice detection with a moving average
+    # def moving_average(array, width):
+    #     array_padded = np.concatenate((np.zeros((width - 1) // 2), array, np.zeros(width // 2)))
+    #     ret = np.cumsum(array_padded, dtype=float)
+    #     ret[width:] = ret[width:] - ret[:-width]
+    #     return ret[width - 1:] / width
     
-    audio_mask = moving_average(voice_flags, hparams.vad_moving_average_width)
-    audio_mask = np.round(audio_mask).astype(np.bool)
+    # audio_mask = moving_average(voice_flags, hparams.vad_moving_average_width)
+    # audio_mask = np.round(audio_mask).astype(np.bool)
     
-    # Dilate the voiced regions
-    audio_mask = binary_dilation(audio_mask, np.ones(hparams.vad_max_silence_length + 1))
-    audio_mask = np.repeat(audio_mask, samples_per_window)
+    # # Dilate the voiced regions
+    # audio_mask = binary_dilation(audio_mask, np.ones(hparams.vad_max_silence_length + 1))
+    # audio_mask = np.repeat(audio_mask, samples_per_window)
+    wav, audio_mask = create_audio_mask(wav)
     
     return wav[audio_mask == True]
 
@@ -160,3 +163,98 @@ def compute_partial_slices(n_samples, partial_utterance_n_frames=hparams.partial
         wav_slices = wav_slices[:-1]
     
     return wav_slices, mel_slices
+
+
+
+
+
+def create_audio_mask(wav):
+    """"
+    Creates an audio mask, where False indicates silence.
+
+    :param wav: a numpy array with the content of a wav file
+    :return audio_mask: the calculated audio mask
+    """
+    # Compute the voice detection window size
+    samples_per_window = (hparams.vad_window_length * hparams.sampling_rate) // 1000
+    
+    # Trim the end of the audio to have a multiple of the window size
+    wav = wav[:len(wav) - (len(wav) % samples_per_window)]
+    
+    # Convert the float waveform to 16-bit mono PCM
+    pcm_wave = struct.pack("%dh" % len(wav), *(np.round(wav * int16_max)).astype(np.int16))
+    
+    # Perform voice activation detection
+    voice_flags = []
+    vad = webrtcvad.Vad(mode=3)
+    for window_start in range(0, len(wav), samples_per_window):
+        window_end = window_start + samples_per_window
+        voice_flags.append(vad.is_speech(pcm_wave[window_start * 2:window_end * 2],
+                                         sample_rate=hparams.sampling_rate))
+    voice_flags = np.array(voice_flags)
+    
+    # Smooth the voice detection with a moving average
+    def moving_average(array, width):
+        array_padded = np.concatenate((np.zeros((width - 1) // 2), array, np.zeros(width // 2)))
+        ret = np.cumsum(array_padded, dtype=float)
+        ret[width:] = ret[width:] - ret[:-width]
+        return ret[width - 1:] / width
+    
+    audio_mask = moving_average(voice_flags, hparams.vad_moving_average_width)
+    audio_mask = np.round(audio_mask).astype(bool)
+    
+    # Dilate the voiced regions
+    audio_mask = binary_dilation(audio_mask, np.ones(hparams.vad_max_silence_length + 1))
+    audio_mask = np.repeat(audio_mask, samples_per_window)
+
+    return wav, audio_mask
+
+def split_audio(wav_path, save_folder = None, allowed_pause = .5):
+    """
+    Chops the content of the wav file into multiple files, based on when there is
+    a longer period if silence. Files will be saved with a number indicating the order the content appeared in.
+
+    :param wav: path to wav file
+    :param save_folder: folder to save files in
+    :allowed_pause: number seconds of silence to allow in a sound file
+    :return: content of the wav file seperated in multiple files 
+    """
+    # load wav
+    wav, source_sr = librosa.load(wav_path, sr=None)
+
+    wav, audio_mask = create_audio_mask(wav)
+
+    # function for finding consecutive values without silence
+    def consecutive(data, stepsize=1):
+        return np.split(data, np.where(np.diff(data) != stepsize)[0]+1)
+
+
+    allowed_pause = allowed_pause*source_sr
+    for i, split in enumerate(consecutive(np.where(audio_mask)[0])):
+        if i == 0:
+            joined_splits = [split]
+        else:
+            # join last subset with new split if difference is less than allowed pause
+            if split[-1] - joined_splits[-1][-1] <= allowed_pause:
+                joined_splits.append(np.concatenate([joined_splits.pop(), split]))
+            else:
+                joined_splits.append(split)
+    
+    # save chopped files
+    filename = os.path.split(wav_path)[-1]
+    wav_splitted = []
+    if save_folder is not None:
+        os.makedirs(save_folder, exist_ok=True)
+        
+        for i, split in enumerate(joined_splits):
+            fname = filename.replace(".wav", f"_{str(i+1).zfill(3)}.wav")
+            wav_splitted.append(wav[split])
+            sf.write(f"{save_folder}/{fname}", wav_splitted[-1], samplerate = source_sr)
+
+
+    return wav_splitted
+
+
+
+
+# split_audio("data/samples/mette_183.wav", "results")

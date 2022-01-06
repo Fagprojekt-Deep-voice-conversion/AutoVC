@@ -4,6 +4,7 @@ import librosa
 import numpy as np
 # from autovc.utils.hparams import hparams_autoVC as hp
 from autovc.utils.hparams import WaveRNNParams as hparams
+
 hparams = hparams()
 
 
@@ -55,13 +56,5 @@ def audio_to_melspectrogram(waveform):
 
     # Return normalised spectrogram    
     return normalize(melspectrogram)
-
-
-
-    
-
-       
-
-
 
 

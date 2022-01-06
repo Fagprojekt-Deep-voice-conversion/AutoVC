@@ -3,7 +3,7 @@ torchvision==0.5.0 # for CUDA, see below
 sklearn 
 tqdm 
 librosa 
-webrtcvad 
+webrtcvad-wheels
 scipy 
 matplotlib 
 pandas 
