@@ -3,3 +3,6 @@
 *.ckpt
 *.pth
 *.pyc
+AutoVC-env/*
+wandb-env/*
+*.wav
