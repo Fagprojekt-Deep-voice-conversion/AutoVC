@@ -188,7 +188,7 @@ def trim_long_silences(wav):
 
 # own tools
 
-def split_audio(wav_path, save_folder = None, allowed_pause = 2, remove_silence = False):
+def split_audio(wav_path, save_folder = None, allowed_pause = 2, remove_silence = False, max_len = 10):
     """
     Chops the content of the wav file into multiple files, based on when there is
     a longer period if silence. Files will be saved with a number indicating the order the content appeared in.
@@ -197,6 +197,7 @@ def split_audio(wav_path, save_folder = None, allowed_pause = 2, remove_silence 
     :param save_folder: folder to save files in
     :param allowed_pause: number seconds of silence to allow in a sound file
     :param remove_silence: whether to remove intermediate silence in each of the new wav files
+    :param max_len: the maximum length (in seconds) of a new sound file. The sound file can however exceed 10 seconds if no pauses were found
     :return: content of the wav file seperated in multiple files 
     """
     # load wav
@@ -215,7 +216,8 @@ def split_audio(wav_path, save_folder = None, allowed_pause = 2, remove_silence 
             joined_splits = [split]
         else:
             # join last subset with new split if difference is less than allowed pause
-            if split[-1] - joined_splits[-1][-1] <= allowed_pause:
+            new_len = (len(split) + len(joined_splits[-1]))/source_sr
+            if (split[-1] - joined_splits[-1][-1] <= allowed_pause) and new_len <= max_len:
                 prev = joined_splits.pop()
                 if remove_silence:
                     joined_splits.append(np.concatenate([prev, split]))
@@ -247,6 +249,46 @@ def remove_noise(wav, sample_rate = None):
     
     return nr.reduce_noise(y=wav, sr=sample_rate)
 
+def combine_audio(audio_clip_paths, save_name = "combined.wav"):
+    """
+    Combines multiple audio files into one. Sample rates must be equal or near equal to avoid alien sounding voices
+    """
+    if os.path.isdir(audio_clip_paths):
+        walk = [w for w in os.walk(audio_clip_paths)][0]
+        root, _, data = [w for w in walk]
+        audio_clip_paths = [root + "/" + d for d in data]
+    
+    wav_combined = []
+    sr = []   
+    for file in audio_clip_paths:
+        wav, source_sr = librosa.load(file, sr=None)
+        wav_combined.extend(wav)
+        sr.append(source_sr)
+
+    sf.write(save_name, np.array(wav_combined), samplerate = int(np.mean(sr)))
+    return wav_combined
+
+# def change_audio_format(audio_path, new_format = "wav", save_folder = None):
+#     """
+#     Changes the audio format. 
+#     OBS: requires ffmpeg
+#     """
+
+#     # get file info
+#     root, file = os.path.split(audio_path)
+#     filename, fileext = os.path.splitext(file)
+
+#     # import required modules
+#     import subprocess
+    
+#     # convert mp3 to wav file
+#     subprocess.call(['ffmpeg', '-i', f'{audio_path}',
+#                     f'{root if save_folder is None else save_folder}/{filename}.{new_format}'])
+
+
 
 if __name__ == "__main__":
-    split_audio("data/samples/hilde_677.wav", "results")
+    split_audio("data/long_hilde/Hilde.mp3", "data/long_hilde/chopped")
+    # combine_audio("data/samples")
+
+    # change_audio_format("data/samples/chooped7.wav", new_format="mp3")
