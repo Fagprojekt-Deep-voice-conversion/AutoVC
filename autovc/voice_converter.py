@@ -1,5 +1,6 @@
+from librosa.filters import mel
 import wandb
-from autovc.utils.audio import audio_to_melspectrogram
+from autovc.utils.audio import audio_to_melspectrogram, remove_noise
 from autovc.speaker_encoder.model import SpeakerEncoder
 from autovc.auto_encoder.model_vc import Generator
 from autovc.wavernn.model import WaveRNN
@@ -72,7 +73,33 @@ class VoiceConverter:
         method:
             how to convert the voice, can be one of ['zero_shot', 'one_to_one']
         """
-        pass
+
+        print("Beginning conversion...")
+
+        # Generate speaker embeddings
+        c_source = self.SE.embed_utterance(source).unsqueeze(0)
+        c_target = self.SE.embed_utterance(target).unsqueeze(0)
+
+        # Create mel spectrogram
+        mel_spec = torch.from_numpy(audio_to_melspectrogram(source)).unsqueeze(0)
+        # mel_spec = mel_spec
+        # Convert:
+        #   out is the converted output
+        #   post_out is the refined (by postnet) out put
+        #   content_codes is the content vector - the content encoder output
+        out, post_out, content_codes = self.AE(mel_spec, c_source, c_target)
+
+        # Use the Vocoder to generate waveform (use post_out as input)
+        waveform = self.vococder.generate(post_out)
+
+        # reduce noise
+        waveform = remove_noise(waveform, self.vococder.params.sample_rate)
+
+        # Generate .wav file frowm waveform
+        sf.write(outname, np.asarray(waveform), samplerate =self.vococder.params.sample_rate)
+
+
+    
     # remember to call model.eval()
 
     def train(self, model_type = "auto_encoder"):
@@ -112,4 +139,5 @@ class VoiceConverter:
 if __name__ == "__main__":
     vc = VoiceConverter()
     # print(vc.config)
-    vc.train("auto_encoder")
+    # vc.train("auto_encoder")
+    vc.convert("data/samples/mette_183.wav", "data/samples/chooped7.wav")
