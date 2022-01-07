@@ -1,9 +1,5 @@
-from librosa.filters import mel
 import wandb
 from autovc.utils.audio import audio_to_melspectrogram, remove_noise
-from autovc.speaker_encoder.model import SpeakerEncoder
-from autovc.auto_encoder.model_vc import Generator
-from autovc.wavernn.model import WaveRNN
 import soundfile as sf
 import torch
 import numpy as np
@@ -11,6 +7,7 @@ import numpy as np
 from autovc.utils.dataloader import TrainDataLoader
 from autovc.utils.model_loader import load_models
 import time
+import os
 
 
 class VoiceConverter:
@@ -43,7 +40,8 @@ class VoiceConverter:
             "AE_params" : kwargs.pop("auto_encoder_params", {}),
             "SE_params" : kwargs.pop("speaker_encoder_params", {}),
             "vocoder_params" : kwargs.pop("vocoder_params", {}),
-            **kwargs
+            "wandb_params" : kwargs.pop("wandb_params", {}),
+            **kwargs,
         }
 
         # initialise models
@@ -56,6 +54,7 @@ class VoiceConverter:
                 ],
             device = self.config.get("device", None)
         )
+        self.setup_wandb_run(self.config["wandb_params"])
 
     def convert(self, source, target, outname = "conversion.wav", method = "zero_shot"):
         """
@@ -82,11 +81,8 @@ class VoiceConverter:
 
         # Create mel spectrogram
         mel_spec = torch.from_numpy(audio_to_melspectrogram(source)).unsqueeze(0)
-        # mel_spec = mel_spec
-        # Convert:
-        #   out is the converted output
-        #   post_out is the refined (by postnet) out put
-        #   content_codes is the content vector - the content encoder output
+        
+        # Convert
         out, post_out, content_codes = self.AE(mel_spec, c_source, c_target)
 
         # Use the Vocoder to generate waveform (use post_out as input)
@@ -118,11 +114,11 @@ class VoiceConverter:
         if model_type == "auto_encoder":
             dataset = TrainDataLoader(data_dir_path = 'data/samples', speaker_encoder = self.SE)
             dataloader = dataset.get_dataloader(batch_size = 2, shuffle = True)
-            self.AE.learn(dataloader, n_epochs = 2)
+            self.AE.learn(dataloader, n_epochs = 2, wandb_run = self.wandb_run)
         elif model_type == "speaker_encoder":
             raise NotImplementedError()
         else:
-            raise ValueError(f"'{model_type}' is not a valid model_type")
+            raise ValueError(f"'{model_type}' is not a supported model_type")
         
         print(f"Training finished in {time.time() - start_time}")
 
@@ -135,9 +131,40 @@ class VoiceConverter:
         """
         pass
 
+    
+    def setup_wandb_run(self, params):
+        wand_defaults = {
+            # "sync_tensorboard":True, 
+            "reinit":True,
+            "entity" : "deep_voice_inc",
+            # "name" : self.run_name,
+            "project" : "GetStarted", # wandb project name, each project correpsonds to an experiment
+            "dir" : "logs/" + "GetStarted", # dir to store the run in
+            # "group" : self.agent_name, # uses the name of the agent class
+            "save_code":True,
+            "mode" : "online",
+            "config" : self.config,
+        }
+
+        # self.wandb_run = wandb.init(entity="deep_voice_inc", project= "GetStarted", config = self.config)
+
+         # overwrite defaults with parsed arguments
+        wand_args = {**wand_defaults, **params}
+
+        # create directory for logs if first run in project
+        if not os.path.exists(wand_args["dir"]+"/wandb"): 
+            os.makedirs(wand_args["dir"]+"/wandb") 
+
+        # init wandb
+        self.wandb_run = wandb.init(**wand_args)
+
+        # watch models
+        self.wandb_run.watch(self.AE, log_freq = self.AE.params.log_freq)
+        self.wandb_run.watch(self.SE, log_freq = self.SE.params.log_freq)
+
 
 if __name__ == "__main__":
     vc = VoiceConverter()
     # print(vc.config)
-    # vc.train("auto_encoder")
-    vc.convert("data/samples/mette_183.wav", "data/samples/chooped7.wav")
+    vc.train("auto_encoder")
+    # vc.convert("data/samples/mette_183.wav", "data/samples/chooped7.wav")

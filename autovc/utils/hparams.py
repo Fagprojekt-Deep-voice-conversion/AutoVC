@@ -6,6 +6,8 @@ These default params shpould not be changed unless a better combination has been
 
 from autovc.utils.lr_scheduler import NoamScheduler
 import torch
+from datetime import date
+
 
 class ClassProperty(object):
     def __init__(self, func):
@@ -106,6 +108,10 @@ class AutoEncoderParams(ParamCollection):
 		# Training:
 		self.batch_size 					= 2,
 		self.clip_thresh 					= -1
+		self.save_freq						= 1024
+		self.log_freq						= 1
+		self.model_dir						= "models/AutoVC"
+		self.model_name						= "model_" + date.today().strftime("%Y%m%d") + ".pt"
 
 		# Optimizer
 		self.betas 							= (0.9, 0.999)
@@ -234,6 +240,7 @@ class SpeakerEncoderParams(ParamCollection):
 		self.learning_rate_init 		= 1e-4
 		self.speakers_per_batch 		= 64
 		self.utterances_per_speaker 	= 10
+		self.log_freq 					= 1
 
 		# add collections
 		# self.add_collection("LSTM", [])

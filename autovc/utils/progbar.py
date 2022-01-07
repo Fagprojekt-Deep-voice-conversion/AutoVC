@@ -2,7 +2,7 @@ import time
 import sys
 
 
-def progbar(i, N, info):
+def progbar(i, N, info = {}):
     # gen_rate = (i + 1) / (time.time() - start) * b_size / 1000
     pbar = _progbar(i, N)
     msg = f'| {pbar} {i}/{N} | '

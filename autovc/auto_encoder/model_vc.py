@@ -17,7 +17,6 @@ from autovc.utils.progbar import progbar
 import time
 import numpy as np
 
-
 class Generator(nn.Module):
     """
     Generator network. The entire thing pieced together (figure 3a and 3c)
@@ -51,6 +50,11 @@ class Generator(nn.Module):
         x: spectrogram batch dim: (batch_size, time_frames, n_mels (80) )
         c_org: Speaker embedding of source dim (batch size, 256)
         c_trg: Speaker embedding of target (batch size, 256)
+
+        return:
+        mel_outputs: the converted output
+        mel_outputs_postnet: the refined (by postnet) out put
+        content_codes: the content vector - the content encoder output
         """
 
         """ Pass x and c_org through encoder and obtain downsampled C1 -> and C1 <- as in figure 3"""
@@ -152,28 +156,39 @@ class Generator(nn.Module):
         return reconstruction_loss1 + mu * reconstruction_loss2 + lambd * content_loss
 
 
-    def learn(self, trainloader, n_epochs, lr_scheduler = None, save_every = 1000, models_dir = None , model_path_name = None, **params):
-        # if torch.cuda.is_available():
-        #     print(f"Training beginning on {torch.cuda.get_device_name(0)}")
-        # else:
-        #     print(f"Training beginning on cpu")
+    def learn(self, trainloader, n_epochs, wandb_run,  **params):
+        """
+        Method for training the auto encoder
+
+        Params
+        ------
+        The most important parameters to know are the following and a full list can be found in `autovc/utils/hparams.py`
+
+        trainloader:
+            a data loader containing the training data
+        n_epochs:
+            how many epochs to train the model for
+        
+        
+        """
+
+
+        # initialisation
         step = 0
         N_iterations = n_epochs*len(trainloader)
         progbar_interval = params.pop("progbar", 1)
         self.params = hparams().update(params)
-        # ema = 0.9999
-
         self.train()
         avg_params = self.flatten_params()
 
+        # begin training
         if self.verbose:
             progbar(step, N_iterations)
-
-        times = []
+        total_time = 0
         for epoch in range(n_epochs):
             step_start_time = time.time()
             for X, c_org in trainloader:
-                # Comutet output using the speaker embedding only of the source
+                # Compute output using the speaker embedding only of the source
                 out_decoder, out_postnet, content_codes = self(X, c_org, c_org)
 
                 # Computes the AutoVC reconstruction loss
@@ -194,14 +209,19 @@ class Generator(nn.Module):
                 #     print("Step:", step)
 
                 if (self.verbose) and ((step+1) % progbar_interval == 0):
-                    times.append(time.time()-step_start_time)
-                    progbar(step, N_iterations, {"sec/step": np.mean(times).round()})
+                    total_time += (time.time()-step_start_time)
+                    progbar(step, N_iterations, {"sec/step": np.round(total_time/step)})
 
                 '''
                 Add save model stuff and log loss with W&B below.
                 To save the exponentially smothed params use self.load_flattenend_params first.
                 
                 '''
+
+                if step % self.params.log_freq == 0:
+                    wandb_run.log({
+                        "loss" : loss
+                    }, step = step)
 
     
         #         if step % 10 == 0:
