@@ -5,6 +5,7 @@ from torch.utils.data import DataLoader, Dataset
 from autovc.utils.audio import audio_to_melspectrogram
 from autovc.speaker_encoder.model import SpeakerEncoder
 from torch.nn.functional import pad
+from autovc.utils.audio import remove_noise
 
 class TrainDataLoader(Dataset):
     '''

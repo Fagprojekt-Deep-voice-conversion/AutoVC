@@ -112,6 +112,7 @@ class AutoEncoderParams(ParamCollection):
 		self.log_freq						= 1
 		self.model_dir						= "models/AutoVC"
 		self.model_name						= "model_" + date.today().strftime("%Y%m%d") + ".pt"
+		self.example_freq					= None
 
 		# Optimizer
 		self.betas 							= (0.9, 0.999)

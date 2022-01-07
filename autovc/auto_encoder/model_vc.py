@@ -7,6 +7,7 @@ Everything is shown in figure 3 in the Paper - please have this by hand when rea
 
 import torch
 import torch.nn as nn
+import wandb
 
 from autovc.auto_encoder.net_layers import *
 from autovc.auto_encoder.encoder import Encoder
@@ -156,7 +157,7 @@ class Generator(nn.Module):
         return reconstruction_loss1 + mu * reconstruction_loss2 + lambd * content_loss
 
 
-    def learn(self, trainloader, n_epochs, wandb_run,  **params):
+    def learn(self, trainloader, n_epochs, wandb_run = None,  **params):
         """
         Method for training the auto encoder
 
@@ -171,7 +172,6 @@ class Generator(nn.Module):
         
         
         """
-
 
         # initialisation
         step = 0
@@ -218,10 +218,25 @@ class Generator(nn.Module):
                 
                 '''
 
-                if step % self.params.log_freq == 0:
+                if (step % self.params.log_freq == 0 or step == N_iterations) and wandb_run is not None:
                     wandb_run.log({
                         "loss" : loss
                     }, step = step)
+                if step % self.params.save_freq == 0:
+                    save_name = self.params.model_dir.strip("/") + self.params.model_name
+                    torch.save({
+                        "step": step + 1,
+                        "model_state": self.state_dict(),
+                        "optimizer_state": self.optimiser.state_dict(),
+                    }, save_name)
+
+                    if wandb_run is not None:
+                        artifact = wandb.Artifact(self.params.model_name, "AutoEncoder")
+                        artifact.add_file(save_name)
+                        wandb_run.log_artifact(artifact)
+                        
+
+
         close_progbar()
 
     
