@@ -1,0 +1,301 @@
+"""
+AutoVC model from https://github.com/auspicious3000/autovc. See LICENSE.txt
+
+The model has the same architecture as proposed in "AutoVC: Zero-Shot Voice Style Transfer with Only Autoencoder Loss" - referred to as 'the Paper'
+Everything is shown in figure 3 in the Paper - please have this by hand when reading through
+"""
+
+import torch
+import torch.nn as nn
+import wandb
+
+from autovc.auto_encoder.net_layers import *
+from autovc.auto_encoder.encoder import Encoder
+from autovc.auto_encoder.decoder import Decoder
+from autovc.auto_encoder.postnet import Postnet
+from autovc.utils.hparams import AutoEncoderParams as hparams
+from autovc.utils.progbar import progbar, close_progbar
+import time
+import numpy as np
+
+class Generator(nn.Module):
+    """
+    Generator network. The entire thing pieced together (figure 3a and 3c)
+    """
+    def __init__(self, verbose = True, **params):
+        """
+        params:
+        verbose: whether to print information in terminal
+        dim_neck: dimension of bottleneck (set to 32 in the paper)
+        dim_emb: dimension of speaker embedding (set to 256 in the paper)
+        dim_pre: dimension of the input to the decoder (output of first LSTM layer) (set to 512 in the paper)
+        full list of params can be found in `autovc/utils/hparams.py`
+        """
+        super(Generator, self).__init__()
+    
+        self.verbose = verbose
+        self.params = hparams().update(params)
+        self.encoder = Encoder(**self.params.get_collection("Encoder"))
+        self.decoder = Decoder(**self.params.get_collection("Decoder"))
+        self.postnet = Postnet()
+
+        self.criterion1 = nn.MSELoss()
+        self.criterion2 = nn.L1Loss()
+        self.optimiser = torch.optim.Adam(self.parameters(), **self.params.get_collection("Adam"))
+        self.lr_scheduler = self.params.lr_scheduler(self.optimiser, **self.params.get_collection("lr_scheduler"))
+        
+
+    def forward(self, x, c_org, c_trg):
+        """
+        params:
+        x: spectrogram batch dim: (batch_size, time_frames, n_mels (80) )
+        c_org: Speaker embedding of source dim (batch size, 256)
+        c_trg: Speaker embedding of target (batch size, 256)
+
+        return:
+        mel_outputs: the converted output
+        mel_outputs_postnet: the refined (by postnet) out put
+        content_codes: the content vector - the content encoder output
+        """
+
+        """ Pass x and c_org through encoder and obtain downsampled C1 -> and C1 <- as in figure 3"""
+        codes_forward, codes_backward= self.encoder(x, c_org)
+
+        """ 
+        If no target provide output the content codes from the content encoder 
+        This is for the loss function to easily produce content codes from the final output of AutoVC
+        """
+        if c_trg is None:
+            content_codes= torch.cat([torch.cat(codes_forward, dim = -1), torch.cat(codes_backward, dim = -1)], dim = -1)
+            # content_codes = torch.cat([torch.cat(code, dim=-1) for code in codes], dim=-1)
+            return content_codes
+
+        """ 
+        Upsampling as in figure 3e-f.
+        Recall the forward output of the decoder is downsampled at time (31, 63, 95, ...) and the backward output at (0, 32, 64, ...)
+        The upsampling copies the downsampled to match the original input.
+        E.g input of dim 100:
+            Downsampling
+            - Forward: (31, 63, 95)
+            - Backward: (0, 32, 64, 96)
+            Upsampling:
+            - Forward: (0-31 = 31, 32-63 = 63, 64-100 = 95)
+            - Backward: (0-31 = 0, 32-63 = 32, 64-95 = 64, 96-100 = 96)
+        """
+        codes_forward_upsampled = torch.cat([c.unsqueeze(-1).expand(-1,-1, self.params.freq) for c in codes_forward], dim = -1)
+        last_part = codes_forward[-1].unsqueeze(-1).expand(-1,-1, x.size(-1) - codes_forward_upsampled.size(-1))
+        codes_forward_upsampled = torch.cat([codes_forward_upsampled, last_part], dim = -1)
+
+        codes_backward_upsampled = torch.cat([c.unsqueeze(-1).expand(-1,-1, self.params.freq) for c in codes_backward], dim = -1)[:,:,:x.size(-1)]
+
+
+        """ Concatenates upsampled content codes with target embedding. Dim = (batch_size, 320, input time frames) """
+        code_exp = torch.cat([codes_forward_upsampled, codes_backward_upsampled], dim=1)
+        encoder_outputs = torch.cat((code_exp,c_trg.unsqueeze(-1).expand(-1,-1,x.size(-1))), dim=1)
+
+        """ Sends concatenate encoder outputs through the decoder """
+        mel_outputs = self.decoder(encoder_outputs.transpose(1,2)).transpose(2,1)
+
+
+        """ Sends the decoder outputs through the 5 layer postnet and adds this output with decoder output for stabilisation (section 4.3)"""
+        mel_outputs_postnet = self.postnet(mel_outputs)
+        mel_outputs_postnet = mel_outputs + mel_outputs_postnet
+
+        """ 
+        Prepares final output
+        mel_outputs: decoder outputs
+        mel_outputs_postnet: decoder outputs + postnet outputs
+        contetn_codes: the codes from the content encoder
+        """
+        mel_outputs = mel_outputs
+        mel_outputs_postnet = mel_outputs_postnet
+        # content_codes = torch.cat([torch.cat(code, dim = -1) for code in codes], dim = -1)
+        content_codes= torch.cat([torch.cat(codes_forward, dim = -1), torch.cat(codes_backward, dim = -1)], dim = -1)
+        
+        
+        return mel_outputs, mel_outputs_postnet, content_codes
+
+
+    def load(self, weights_fpath, device):
+        checkpoint = torch.load(weights_fpath, map_location = device)
+        self.load_state_dict(checkpoint["model_state"])
+        if self.verbose:
+            print("Loaded auto encoder \"%s\" trained to step %d" % (weights_fpath, checkpoint["step"]))
+
+        
+    def loss(self, X, c_org, out_decoder, out_postnet, content_codes,  mu = 1, lambd = 1):
+        """
+        Loss function as proposed in AutoVC
+        L = Reconstruction Error + mu * Prenet reconstruction Error + lambda * content Reconstruction error
+        mu and lambda are set to 1 in the paper.
+
+        params:
+            X:              A batch of mel spectograms to convert
+            c_org:          Speaker embedding batches of X
+            out_decoder:    The output of the decoder (Converted spectogram)
+            out_postnet:    The output of the postnet (Converted spectogram)
+            content_codes:  The output of the encoder (Content embedding)
+
+        returns the loss function as proposed in AutoVC
+        """
+
+        # Create content codes from reconstructed spectogram
+        reconstructed_content_codes = self(out_postnet, c_org, None)
+       
+        # Reconstruction error: 
+        #     The mean of the squared p2 norm of (Postnet outputs - Original Mel Spectrograms)
+        reconstruction_loss1  = self.criterion1(out_postnet, X)
+        
+        # Prenet Reconstruction error
+        #     The mean of the squared p2 norm of (Decoder outputs - Original Mel Spectrograms)
+        reconstruction_loss2 = self.criterion1(out_decoder, X)
+        
+        # Content reconstruction Error
+        #     The mean of the p1 norm of (Content codes of postnet output - Content codes)
+        content_loss = self.criterion2(reconstructed_content_codes, content_codes)
+
+        return reconstruction_loss1 + mu * reconstruction_loss2 + lambd * content_loss
+
+
+    def learn(self, trainloader, n_epochs, wandb_run = None,  **params):
+        """
+        Method for training the auto encoder
+
+        Params
+        ------
+        The most important parameters to know are the following and a full list can be found in `autovc/utils/hparams.py`
+
+        trainloader:
+            a data loader containing the training data
+        n_epochs:
+            how many epochs to train the model for
+        
+        
+        """
+
+        # initialisation
+        step = 0
+        N_iterations = n_epochs*len(trainloader)
+        progbar_interval = params.pop("progbar", 1)
+        self.params = hparams().update(params)
+        self.train()
+        avg_params = self.flatten_params()
+
+        # begin training
+        if self.verbose:
+            progbar(step, N_iterations)
+        total_time = 0
+        for epoch in range(n_epochs):
+            step_start_time = time.time()
+            for X, c_org in trainloader:
+                # Compute output using the speaker embedding only of the source
+                out_decoder, out_postnet, content_codes = self(X, c_org, c_org)
+
+                # Computes the AutoVC reconstruction loss
+                loss = self.loss(X = X, c_org = c_org, out_decoder = out_decoder, out_postnet = out_postnet, content_codes = content_codes)
+                
+                # Compute gradients, clip and take a step
+                self.optimiser.zero_grad()
+                loss.backward()
+                torch.nn.utils.clip_grad_norm_(self.parameters(), max_norm = 1) # Clip gradients (avoid exploiding gradients)
+
+                if self.lr_scheduler is not None: self.lr_scheduler._update_learning_rate()
+                self.optimiser.step()
+
+                # Save exponentially smoothed parameters - can be used to avoid too large changes of parameters
+                avg_params = self.params.ema_decay * avg_params + (1-self.params.ema_decay) * self.flatten_params()
+                step += 1
+                # if self.verbose:
+                #     print("Step:", step)
+
+                if (self.verbose) and ((step+1) % progbar_interval == 0):
+                    total_time += (time.time()-step_start_time)
+                    progbar(step, N_iterations, {"sec/step": np.round(total_time/step)})
+
+                '''
+                Add save model stuff and log loss with W&B below.
+                To save the exponentially smothed params use self.load_flattenend_params first.
+                
+                '''
+
+                if (step % self.params.log_freq == 0 or step == N_iterations) and wandb_run is not None:
+                    wandb_run.log({
+                        "loss" : loss
+                    }, step = step)
+                if step % self.params.save_freq == 0:
+                    save_name = self.params.model_dir.strip("/") + self.params.model_name
+                    torch.save({
+                        "step": step + 1,
+                        "model_state": self.state_dict(),
+                        "optimizer_state": self.optimiser.state_dict(),
+                    }, save_name)
+
+                    if wandb_run is not None:
+                        artifact = wandb.Artifact(self.params.model_name, "AutoEncoder")
+                        artifact.add_file(save_name)
+                        wandb_run.log_artifact(artifact)
+                        
+
+
+        close_progbar()
+
+    
+        #         if step % 10 == 0:
+        #             """ Append current error to L for plotting """
+        #             r = error.cpu().detach().numpy()
+        #             running_loss.append(r)
+        #             pickle.dump(running_loss, open(loss_fpath, "wb"))
+
+        #         if step % save_every == 0:
+        #             original_param = flatten_params(model)
+        #             load_params(model, avg_params)
+        #             print("Saving the model (step %d)" % step)
+        #             torch.save({
+        #                 "step": step + 1,
+        #                 "model_state": model.state_dict(),
+        #                 "optimizer_state": optimiser.state_dict(),
+        #             }, models_dir + "/" + model_path_name + "average_"+ f"_step{step / 1000}k" ".pt")
+        #             load_params(model, original_param)
+        #             torch.save({
+        #                 "step": step + 1,
+        #                 "model_state": model.state_dict(),
+        #                 "optimizer_state": optimiser.state_dict(),
+        #             }, models_dir + "/" + model_path_name + "_original" +f"_step{step / 1000}k" ".pt")
+
+        #         if step >= n_steps:
+        #             break
+
+
+
+        # pickle.dump(running_loss, open(loss_fpath, "wb"))
+        # print("Saving the model (step %d)" % step)
+        # torch.save({
+        #     "step": step + 1,
+        #     "model_state": model.state_dict(),
+        #     "optimizer_state": optimiser.state_dict(),
+        # }, models_dir + "/" + model_path_name + "_original" + f"_step{step / 1000}k" ".pt")
+        # load_params(model, avg_params)
+
+        # torch.save({
+        #     "step": step + 1,
+        #     "model_state": model.state_dict(),
+        #     "optimizer_state": optimiser.state_dict(),
+        # }, models_dir + "/" + model_path_name + "average_" + f"_step{step / 1000}k" ".pt")
+
+
+    def flatten_params(self):
+        '''
+        Flattens the parameter to a single vector
+        '''
+        return torch.cat([param.data.view(-1) for param in self.parameters()], 0)
+
+    def load_flattened_params(self, flattened_params):
+        '''
+        Loads parameters from flattened params
+        '''
+        offset = 0
+        for param in self.parameters():
+            param.data.copy_(flattened_params[offset:offset + param.nelement()].view(param.size()))
+            offset += param.nelement()
+
+
