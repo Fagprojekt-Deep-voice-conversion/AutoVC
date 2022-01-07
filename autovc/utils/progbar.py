@@ -10,6 +10,9 @@ def progbar(i, N, info = {}):
         msg += str(key) + ": " + str(val) + " | "
     stream(msg)
 
+def close_progbar():
+    print("\n")
+
 def _progbar(i, n, size=16):
     done = (i * size) // n
     bar = ''

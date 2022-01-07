@@ -5,6 +5,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from autovc.utils.progbar import close_progbar
 from autovc.wavernn.distribution import sample_from_discretized_mix_logistic
 from autovc.wavernn.display import *
 from autovc.utils.hparams import WaveRNNParams as hparams
@@ -266,7 +267,7 @@ class WaveRNN(nn.Module):
                     raise RuntimeError("Unknown model mode value - ", self.params.mode)
 
                 if i % 100 == 0: self.gen_display(i, seq_len, b_size, start)
-
+        close_progbar()
         output = torch.stack(output).transpose(0, 1)
         output = output.cpu().numpy()
         output = output.astype(np.float64)

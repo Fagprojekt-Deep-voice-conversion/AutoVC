@@ -13,7 +13,7 @@ from autovc.auto_encoder.encoder import Encoder
 from autovc.auto_encoder.decoder import Decoder
 from autovc.auto_encoder.postnet import Postnet
 from autovc.utils.hparams import AutoEncoderParams as hparams
-from autovc.utils.progbar import progbar
+from autovc.utils.progbar import progbar, close_progbar
 import time
 import numpy as np
 
@@ -222,6 +222,7 @@ class Generator(nn.Module):
                     wandb_run.log({
                         "loss" : loss
                     }, step = step)
+        close_progbar()
 
     
         #         if step % 10 == 0:
