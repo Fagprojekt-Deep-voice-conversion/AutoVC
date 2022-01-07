@@ -288,7 +288,7 @@ def combine_audio(audio_clip_paths, save_name = "combined.wav"):
 
 
 if __name__ == "__main__":
-    split_audio("data/long_hilde/Hilde.mp3", "data/long_hilde/chopped")
+    split_audio("data/long_hilde/Hilde.wav", "data/long_hilde/chopped")
     # combine_audio("data/samples")
 
     # change_audio_format("data/samples/chooped7.wav", new_format="mp3")

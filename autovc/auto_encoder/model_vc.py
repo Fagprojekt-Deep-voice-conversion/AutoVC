@@ -13,23 +13,27 @@ from autovc.auto_encoder.encoder import Encoder
 from autovc.auto_encoder.decoder import Decoder
 from autovc.auto_encoder.postnet import Postnet
 from autovc.utils.hparams import AutoEncoderParams as hparams
-
+from autovc.utils.progbar import progbar
+import time
+import numpy as np
 
 
 class Generator(nn.Module):
     """
     Generator network. The entire thing pieced together (figure 3a and 3c)
     """
-    def __init__(self, **params):
+    def __init__(self, verbose = True, **params):
         """
         params:
+        verbose: whether to print information in terminal
         dim_neck: dimension of bottleneck (set to 32 in the paper)
         dim_emb: dimension of speaker embedding (set to 256 in the paper)
         dim_pre: dimension of the input to the decoder (output of first LSTM layer) (set to 512 in the paper)
         full list of params can be found in `autovc/utils/hparams.py`
         """
         super(Generator, self).__init__()
-        # self.freq = freq
+    
+        self.verbose = verbose
         self.params = hparams().update(params)
         self.encoder = Encoder(**self.params.get_collection("Encoder"))
         self.decoder = Decoder(**self.params.get_collection("Decoder"))
@@ -39,7 +43,6 @@ class Generator(nn.Module):
         self.criterion2 = nn.L1Loss()
         self.optimiser = torch.optim.Adam(self.parameters(), **self.params.get_collection("Adam"))
         self.lr_scheduler = self.params.lr_scheduler(self.optimiser, **self.params.get_collection("lr_scheduler"))
-
         
 
     def forward(self, x, c_org, c_trg):
@@ -111,6 +114,8 @@ class Generator(nn.Module):
     def load(self, weights_fpath, device):
         checkpoint = torch.load(weights_fpath, map_location = device)
         self.load_state_dict(checkpoint["model_state"])
+        if self.verbose:
+            print("Loaded auto encoder \"%s\" trained to step %d" % (weights_fpath, checkpoint["step"]))
 
         
     def loss(self, X, c_org, out_decoder, out_postnet, content_codes,  mu = 1, lambd = 1):
@@ -148,18 +153,25 @@ class Generator(nn.Module):
 
 
     def learn(self, trainloader, n_epochs, lr_scheduler = None, save_every = 1000, models_dir = None , model_path_name = None, **params):
-        if torch.cuda.is_available():
-            print(f"Training beginning on {torch.cuda.get_device_name(0)}")
-        else:
-            print(f"Training beginning on cpu")
+        # if torch.cuda.is_available():
+        #     print(f"Training beginning on {torch.cuda.get_device_name(0)}")
+        # else:
+        #     print(f"Training beginning on cpu")
         step = 0
+        N_iterations = n_epochs*len(trainloader)
+        progbar_interval = params.pop("progbar", 1)
         self.params = hparams().update(params)
         # ema = 0.9999
 
         self.train()
         avg_params = self.flatten_params()
 
+        if self.verbose:
+            progbar(step, N_iterations)
+
+        times = []
         for epoch in range(n_epochs):
+            step_start_time = time.time()
             for X, c_org in trainloader:
                 # Comutet output using the speaker embedding only of the source
                 out_decoder, out_postnet, content_codes = self(X, c_org, c_org)
@@ -178,7 +190,12 @@ class Generator(nn.Module):
                 # Save exponentially smoothed parameters - can be used to avoid too large changes of parameters
                 avg_params = self.params.ema_decay * avg_params + (1-self.params.ema_decay) * self.flatten_params()
                 step += 1
-                print("Step:", step)
+                # if self.verbose:
+                #     print("Step:", step)
+
+                if (self.verbose) and ((step+1) % progbar_interval == 0):
+                    times.append(time.time()-step_start_time)
+                    progbar(step, N_iterations, {"sec/step": np.mean(times).round()})
 
                 '''
                 Add save model stuff and log loss with W&B below.

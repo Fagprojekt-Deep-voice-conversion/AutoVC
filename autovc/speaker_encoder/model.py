@@ -89,7 +89,7 @@ class SpeakerEncoder(nn.Module):
         checkpoint = torch.load(weights_fpath, map_location = self.params.device if device is None else device )
         self.load_state_dict(checkpoint["model_state"])
         
-        print("Loaded encoder \"%s\" trained to step %d" % (weights_fpath, checkpoint["step"]))
+        print("Loaded speaker encoder \"%s\" trained to step %d" % (weights_fpath, checkpoint["step"]))
 
     # @stat
     # def load_model(weights_fpath: Path, device=None):

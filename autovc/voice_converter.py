@@ -6,7 +6,10 @@ from autovc.wavernn.model import WaveRNN
 import soundfile as sf
 import torch
 import numpy as np
-from autovc.utils.hparams import VoiceConverterParams as hparams
+# from autovc.utils.hparams import VoiceConverterParams
+from autovc.utils.dataloader import TrainDataLoader
+from autovc.utils.model_loader import load_models
+import time
 
 
 class VoiceConverter:
@@ -15,19 +18,43 @@ class VoiceConverter:
     Can both be used for training a voice converter and using it for converting voices.
     """
     
-    def __init__(self, auto_encoder = None, speaker_encoder = None, vocoder = None, **kwargs):  
+    def __init__(self,
+        auto_encoder = None, 
+        speaker_encoder = None, 
+        vocoder = None, 
+        verbose = True,
+        **kwargs 
+    ):
+    
+    
+     
         
-        params = hparams().update(
-            AE_params = kwargs.get("auto_encoder_params", {}),
-            SE_params = kwargs.get("speaker_encoder_params", {}),
-            vocoder_params = kwargs.get("vocoder_params", {})
-        )
+        # params = VoiceConverterParams().update(
+        #     AE_params = kwargs.pop("auto_encoder_params", {}),
+        #     SE_params = kwargs.pop("speaker_encoder_params", {}),
+        #     vocoder_params = kwargs.pop("vocoder_params", {})
+        #     **kwargs
+        # )
 
+        # setup config with params
+        self.verbose = verbose
         self.config = {
-            "auto_encoder" : params.AE,
-            "speaker_encoder" : params.SE,
-            "vocoder" : params.vocoder,
+            "AE_params" : kwargs.pop("auto_encoder_params", {}),
+            "SE_params" : kwargs.pop("speaker_encoder_params", {}),
+            "vocoder_params" : kwargs.pop("vocoder_params", {}),
+            **kwargs
         }
+
+        # initialise models
+        self.AE, self.SE, self.vococder = load_models(
+            model_types= ["auto_encoder", "speaker_encoder", "vocoder"],
+            model_paths= [
+                'models/AutoVC/AutoVC_SMK.pt' if auto_encoder is None else auto_encoder, 
+                'models/SpeakerEncoder/SpeakerEncoder.pt' if speaker_encoder is None else speaker_encoder,
+                'models/WaveRNN/WaveRNN_Pretrained.pyt' if vocoder is None else vocoder
+                ],
+            device = self.config.get("device", None)
+        )
 
     def convert(self, source, target, outname = "conversion.wav", method = "zero_shot"):
         """
@@ -57,11 +84,23 @@ class VoiceConverter:
         model_type:
             which model type to train, can be one of ['auto_encoder', 'speaker_encoder']
         """
-        pass
     #  remember to call model.train()
 
-    def load(self, path):
-        pass
+        start_time = time.time()
+        print(f"Starting to train {model_type}...")
+        if model_type == "auto_encoder":
+            dataset = TrainDataLoader(data_dir_path = 'data/samples', speaker_encoder = self.SE)
+            dataloader = dataset.get_dataloader(batch_size = 2, shuffle = True)
+            self.AE.learn(dataloader, n_epochs = 2)
+        elif model_type == "speaker_encoder":
+            raise NotImplementedError()
+        else:
+            raise ValueError(f"'{model_type}' is not a valid model_type")
+        
+        print(f"Training finished in {time.time() - start_time}")
+
+    # def load_new_model(self, path):
+    #     pass
 
     def convert_multiple(self):
         """
@@ -72,4 +111,5 @@ class VoiceConverter:
 
 if __name__ == "__main__":
     vc = VoiceConverter()
-    print(vc.config)
+    # print(vc.config)
+    vc.train("auto_encoder")
