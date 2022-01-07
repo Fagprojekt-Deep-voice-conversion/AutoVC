@@ -1,5 +1,6 @@
 import wandb
 from autovc.utils.audio import audio_to_melspectrogram, remove_noise
+from autovc.utils.core import retrieve_file_paths
 import soundfile as sf
 import torch
 import numpy as np
@@ -8,6 +9,7 @@ from autovc.utils.dataloader import TrainDataLoader
 from autovc.utils.model_loader import load_models
 import time
 import os
+from itertools import product
 
 
 class VoiceConverter:
@@ -56,7 +58,7 @@ class VoiceConverter:
         )
         self.setup_wandb_run(self.config["wandb_params"])
 
-    def convert(self, source, target, outname = "conversion.wav", method = "zero_shot"):
+    def convert(self, source, target, out_name = None, out_folder = None, method = "zero_shot"):
         """
         Gives the features of the target to the content of the source
 
@@ -92,13 +94,16 @@ class VoiceConverter:
         waveform = remove_noise(waveform, self.vococder.params.sample_rate)
 
         # Generate .wav file frowm waveform
-        sf.write(outname, np.asarray(waveform), samplerate =self.vococder.params.sample_rate)
+        if out_name is None:
+            src_speaker = os.path.splitext(os.path.basename(source))[0]
+            trg_speaker = os.path.splitext(os.path.basename(target))[0]
+            out_name = f"{src_speaker}_to_{trg_speaker}.wav"
+        if out_folder is not None:
+            out_name = out_folder.strip("/") + "/" + out_name
+            os.makedirs(out_folder, exist_ok=True) # create folder
+        sf.write(out_name, np.asarray(waveform), samplerate =self.vococder.params.sample_rate)
 
-
-    
-    # remember to call model.eval()
-
-    def train(self, model_type = "auto_encoder"):
+    def train(self, model_type = "auto_encoder", conversion_examples = None):
         """
         Trains a model
 
@@ -106,6 +111,8 @@ class VoiceConverter:
         ---------
         model_type:
             which model type to train, can be one of ['auto_encoder', 'speaker_encoder']
+        conversion_examples:
+
         """
     #  remember to call model.train()
 
@@ -122,14 +129,43 @@ class VoiceConverter:
         
         print(f"Training finished in {time.time() - start_time}")
 
-    # def load_new_model(self, path):
-    #     pass
+        # conversion example
 
-    def convert_multiple(self):
+
+    def convert_multiple(self, sources, targets, save_folder = None, method = "all_combinations", bidirectional = False):
         """
         Uses the convert function on multiple files
+
+        Params
+        ------
+        sources:
+            path or list of paths to source files
+        targets:
+            path or list of paths to target files
+        save_folder:
+            folder to save converted files in
+        method:
+            tells how to match sources and targets
+            'all_combinations' will match each source with each target
+            'align' will match sources and targets with same index in the given list
         """
-        pass
+
+        sources = retrieve_file_paths(sources)
+        targets = retrieve_file_paths(targets)
+
+        if method == "align":
+            assert len(sources) == len(targets)
+            for source, target in [*zip(sources, targets)]:
+                self.convert(source, target, out_folder = save_folder)
+        
+        if method == "all_combinations":
+            for source, target in product(sources, targets):
+                self.convert(source, target, out_folder = save_folder)
+
+        if bidirectional:
+            self.convert_multiple(target, sources, save_folder, method)
+
+        
 
     
     def setup_wandb_run(self, params):
@@ -141,7 +177,7 @@ class VoiceConverter:
             "project" : "GetStarted", # wandb project name, each project correpsonds to an experiment
             "dir" : "logs/" + "GetStarted", # dir to store the run in
             # "group" : self.agent_name, # uses the name of the agent class
-            "save_code":True,
+            "save_code":False,
             "mode" : "online",
             "config" : self.config,
         }
@@ -164,7 +200,14 @@ class VoiceConverter:
 
 
 if __name__ == "__main__":
-    vc = VoiceConverter()
+    vc = VoiceConverter(wandb_params = {"mode" : "disabled"})
     # print(vc.config)
-    vc.train("auto_encoder")
+    # vc.train("auto_encoder")
     # vc.convert("data/samples/mette_183.wav", "data/samples/chooped7.wav")
+
+    vc.convert_multiple(
+        ["data/samples/hillary_116.wav", "data/samples/mette_183.wav"], 
+        ["data/samples/mette_183.wav", "data/samples/hillary_116.wav"],
+        method = "all_combinations",
+        save_folder = "test"    
+    )
