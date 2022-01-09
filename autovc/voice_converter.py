@@ -27,10 +27,7 @@ class VoiceConverter:
         verbose = True,
         **kwargs 
     ):
-    
-    
-     
-        
+       
         # params = VoiceConverterParams().update(
         #     AE_params = kwargs.pop("auto_encoder_params", {}),
         #     SE_params = kwargs.pop("speaker_encoder_params", {}),
@@ -45,7 +42,7 @@ class VoiceConverter:
             "SE_params" : kwargs.pop("speaker_encoder_params", {}),
             "vocoder_params" : kwargs.pop("vocoder_params", {}),
             "wandb_params" : kwargs.pop("wandb_params", {}),
-            **kwargs,
+            **kwargs
         }
 
         # initialise models
@@ -133,6 +130,7 @@ class VoiceConverter:
         start_time = time.time()
         print(f"Starting to train {model_type}...")
         if model_type == "auto_encoder":
+            print(self.AE.params.device)
             dataset = TrainDataLoader(data_dir_path = data, speaker_encoder = self.SE)
             dataloader = dataset.get_dataloader(batch_size = 2, shuffle = True)
             self.AE.learn(dataloader, n_epochs = n_epochs, wandb_run = self.wandb_run, **train_params)
@@ -146,8 +144,10 @@ class VoiceConverter:
         # conversion example
         if conversion_examples is None:
             self.convert(
-                "data/samples/mette_183.wav", 
-                "data/samples/chooped7.wav",
+                # "data/samples/mette_183.wav", 
+                # "data/samples/chooped7.wav",
+                "data/samples/hilde_301.wav", 
+                "data/samples/HaegueYang_5.wav",
                 out_folder = self.wandb_run,
                 # out_folder=os.path.join(self.wandb_run.dir, "conversions")
             )
@@ -244,4 +244,5 @@ if __name__ == "__main__":
     # )
 
 
-    vc.train(data = "data/SMK_train", n_epochs = 1)
+    vc.train(data = "data/SMK_train", n_epochs = 50)
+    # vc.train(data = "data/samples", n_epochs = 1)
