@@ -3,7 +3,7 @@
 echo "\e[33mINFO: create_env.sh will create a virtual environment to use on the DTUs HPC cluster"
 
 # set env name
-env_name="test-env"
+env_name="AutoVC3-env"
 
 if [ $( basename $PWD ) != "AutoVC" ]
 then 
@@ -12,16 +12,16 @@ fi
 
 
 ### Make python environment
-module load python3 # only use if on HPC
+module load python3/3.8.9 # only use if on HPC
 python3 -m venv $env_name
 
 # source AutoVC-env/bin/activate
 source $env_name/bin/activate
 
-# python -m pip install --upgrade pip
+python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 python -m pip install -e .
-# python -m pip install numpy
+
 
 if [ $( basename $PWD ) = "AutoVC" ]
 then 
