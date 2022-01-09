@@ -1,5 +1,7 @@
-torch==1.4.0 # for CUDA, see below
-torchvision==0.5.0 # for CUDA, see below
+# torch==1.4.0 # for CUDA, see below
+# torchvision==0.5.0 # for CUDA, see below
+torch
+torchvision
 sklearn 
 tqdm 
 librosa 
@@ -8,11 +10,13 @@ scipy
 matplotlib 
 pandas 
 seaborn 
-wavenet_vocoder 
+# wavenet_vocoder 
 numba==0.49.1 # for trouble, see below
 wandb
 noisereduce
-
+setuptools
+appdirs
+six
 
 # If having trouble, try these:
 
