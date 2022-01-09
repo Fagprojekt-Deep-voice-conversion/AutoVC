@@ -243,5 +243,5 @@ if __name__ == "__main__":
     #     save_folder = "test"    
     # )
 
-    vc.train(data = "data/SMK_train", n_epochs = 1)
+    vc.train(data = "data/SMK_train/newest_trial", n_epochs = 1)
     # vc.train(data = "data/samples", n_epochs = 1)
