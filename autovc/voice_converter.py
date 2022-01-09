@@ -46,6 +46,7 @@ class VoiceConverter:
         }
 
         # initialise models
+        self.wandb_run = None
         self.AE, self.SE, self.vococder = load_models(
             model_types= ["auto_encoder", "speaker_encoder", "vocoder"],
             model_paths= [
@@ -55,6 +56,7 @@ class VoiceConverter:
                 ],
             device = self.config.get("device", None)
         )
+        
         
 
     def convert(self, source, target, out_name = None, out_folder = None, method = "zero_shot", wandb_run = None):
@@ -101,7 +103,7 @@ class VoiceConverter:
             trg_speaker = os.path.splitext(os.path.basename(target))[0]
             out_name = f"{src_speaker}_to_{trg_speaker}.wav"
         
-        if out_folder == self.wandb_run:
+        if out_folder == self.wandb_run and self.wandb_run is not None:
             # TODO log as table
             out_folder.log({out_name.replace(".wav", "") : wandb.Audio(waveform, caption = out_name, sample_rate = self.vococder.params.sample_rate)})
         else:
@@ -230,7 +232,7 @@ class VoiceConverter:
 
 
 if __name__ == "__main__":
-    vc = VoiceConverter(wandb_params = {"mode" : "online"})
+    vc = VoiceConverter(wandb_params = {"mode" : "offline"})
     # print(vc.config)
     # vc.train("auto_encoder", conversion_examples=[["data/samples/mette_183.wav", 
                 # "data/samples/chooped7.wav"], "data/samples/chooped7.wav"])
@@ -244,4 +246,5 @@ if __name__ == "__main__":
     # )
 
     vc.train(data = "data/SMK_train/newest_trial", n_epochs = 1)
+    # vc.train(data = "data/SMK_train", n_epochs = 1)
     # vc.train(data = "data/samples", n_epochs = 1)
