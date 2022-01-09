@@ -12,7 +12,7 @@ class HPC:
 
         # Connect
         self.client = SSHClient()
-        # self.client.set_missing_host_key_policy(AutoAddPolicy())
+        self.client.set_missing_host_key_policy(AutoAddPolicy())
         self.client.load_system_host_keys()
         self.client.connect(hostname, username=self.__username, password=self.__pw, port = '22')#, disabled_algorithms=dict(pubkeys=["rsa-sha2-512"]))
     
@@ -84,10 +84,10 @@ class HPC:
 
 
 if __name__ == "__main__":
-    HPC().shell()
-    # hpc = HPC()
+    # HPC().shell()
+    hpc = HPC()
     # hpc.receive_data("Downloads/args.py", "playground/")
-    # hpc.send_data("playground/yang.wav", "Downloads")
+    hpc.send_data("data/long_hilde/Hilde.wav", "/work1/s183920/AutoVC/data/SMK_train/")
 
     # file = hpc.client.open_sftp()
     # file.get("s183920@transfer.gbar.dtu.dk:Downloads/args.py", "playground/")
