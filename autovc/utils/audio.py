@@ -16,6 +16,7 @@ import soundfile as sf
 import os
 import noisereduce as nr
 from autovc.utils.core import retrieve_file_paths
+import math
 
 
 ######### FROM VOCODER #########
@@ -158,7 +159,7 @@ def trim_long_silences(wav):
 
 # own tools
 
-def split_audio(wav_path, save_folder = None, allowed_pause = 2, remove_silence = False, max_len = 10):
+def split_audio(wav_path, save_folder, allowed_pause = 2, remove_silence = False, max_len = 10):
     """
     Chops the content of the wav file into multiple files, based on when there is
     a longer period if silence. Files will be saved with a number indicating the order the content appeared in.
@@ -199,13 +200,12 @@ def split_audio(wav_path, save_folder = None, allowed_pause = 2, remove_silence 
     # save chopped files
     filename = os.path.split(wav_path)[-1]
     wav_splitted = []
-    if save_folder is not None:
-        os.makedirs(save_folder, exist_ok=True)
-        
-        for i, split in enumerate(joined_splits):
-            fname = filename.replace(".wav", f"_{str(i+1).zfill(3)}.wav")
-            wav_splitted.append(wav[split])
-            sf.write(f"{save_folder}/{fname}", wav_splitted[-1], samplerate = source_sr)
+    os.makedirs(save_folder, exist_ok=True)
+    
+    for i, split in enumerate(joined_splits):
+        fname = filename.replace(".wav", f"_{str(i+1).zfill(1 + int(math.log10(len(joined_splits))))}.wav")
+        wav_splitted.append(wav[split])
+        sf.write(f"{save_folder}/{fname}", wav_splitted[-1], samplerate = source_sr)
 
 
     return wav_splitted
@@ -256,7 +256,7 @@ def combine_audio(audio_clip_paths, save_name = "combined.wav"):
 
 
 if __name__ == "__main__":
-    split_audio("data/long_hilde/Hilde.wav", "data/long_hilde/chopped")
+    split_audio("data/SMK_train/Hilde.wav", "data/SMK_train/newest_trial/hilde")
     # combine_audio("data/samples")
 
     # change_audio_format("data/samples/chooped7.wav", new_format="mp3")
