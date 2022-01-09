@@ -6,6 +6,7 @@ from autovc.utils.audio import audio_to_melspectrogram
 from autovc.speaker_encoder.model import SpeakerEncoder
 from torch.nn.functional import pad
 from autovc.utils.audio import remove_noise
+from autovc.utils.progbar import progbar
 
 class TrainDataLoader(Dataset):
     '''
@@ -22,8 +23,16 @@ class TrainDataLoader(Dataset):
         # Load wav files. Create spectograms and embeddings
         self.wav_files = [os.path.join(dirpath, filename) for dirpath , _, directory in os.walk(data_dir_path) for filename in directory]
 
-        self.mel_spectograms = [torch.from_numpy(audio_to_melspectrogram(wav)) for wav in self.wav_files]
-        self.embeddings      = [speaker_encoder.embed_utterance(wav) for wav in self.wav_files]
+        # self.mel_spectograms = [torch.from_numpy(audio_to_melspectrogram(wav)) for wav in self.wav_files]
+        # self.embeddings      = [speaker_encoder.embed_utterance(wav) for wav in self.wav_files]
+        self.mel_spectograms, self.embeddings, N = [], [], len(self.wav_files)
+
+        print("Creating mel spectrograms and embeddings...")
+        progbar(0, N)
+        for i, wav in enumerate(self.wav_files):
+            self.mel_spectograms.append(torch.from_numpy(audio_to_melspectrogram(wav)))
+            self.embeddings.append(speaker_encoder.embed_utterance(wav))
+            progbar(i+1, N)
 
     def __len__(self):
         return len(self.wav_files)
