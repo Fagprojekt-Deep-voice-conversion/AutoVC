@@ -244,5 +244,5 @@ if __name__ == "__main__":
     # )
 
 
-    vc.train(data = "data/SMK_train", n_epochs = 50)
+    vc.train(data = "data/SMK_train", n_epochs = 1)
     # vc.train(data = "data/samples", n_epochs = 1)
