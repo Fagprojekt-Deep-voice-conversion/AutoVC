@@ -51,7 +51,8 @@ class VoiceConverter:
         self.AE, self.SE, self.vococder = load_models(
             model_types= ["auto_encoder", "speaker_encoder", "vocoder"],
             model_paths= [
-                'models/AutoVC/AutoVC_SMK.pt' if auto_encoder is None else auto_encoder, 
+                # 'models/AutoVC/AutoVC_SMK.pt' if auto_encoder is None else auto_encoder, 
+                'models/AutoVC/AutoVC_seed40_200k.pt' if auto_encoder is None else auto_encoder, 
                 'models/SpeakerEncoder/SpeakerEncoder.pt' if speaker_encoder is None else speaker_encoder,
                 'models/WaveRNN/WaveRNN_Pretrained.pyt' if vocoder is None else vocoder
                 ],
@@ -128,7 +129,8 @@ class VoiceConverter:
 
         """
         # create a wandb run
-        self.setup_wandb_run(**self.config["wandb_params"])
+        if self.wandb_run is None:
+            self.setup_wandb_run(**self.config["wandb_params"])
 
         start_time = time.time()
         print(f"Starting to train {model_type}...")
@@ -233,7 +235,7 @@ class VoiceConverter:
 
 
 if __name__ == "__main__":
-    vc = VoiceConverter(wandb_params = {"mode" : "offline"})
+    vc = VoiceConverter(wandb_params = {"mode" : "online"}, auto_encoder="models/AutoVC/AutoVC_SMK_20211104_original_step42.05k.pt")
     # print(vc.config)
     # vc.train("auto_encoder", conversion_examples=[["data/samples/mette_183.wav", 
                 # "data/samples/chooped7.wav"], "data/samples/chooped7.wav"])
@@ -249,5 +251,7 @@ if __name__ == "__main__":
     # )
 
     # vc.train(data = "data/SMK_train/newest_trial", n_epochs = 1)
+    # vc.setup_wandb_run(name = "SMK")
+    # vc.train(data = "data/SMK_train/20211104", n_epochs = 1)
     # vc.train(data = "data/SMK_train", n_epochs = 1)
     # vc.train(data = "data/samples", n_epochs = 1)

@@ -33,6 +33,7 @@ class TrainDataLoader(Dataset):
         print("Creating mel spectrograms and embeddings...")
         progbar(0, N)
         for i, wav in enumerate(self.wav_files):
+            # make nice sounds
             self.mel_spectograms.append(torch.from_numpy(audio_to_melspectrogram(wav)))
             self.embeddings.append(speaker_encoder.embed_utterance(wav))
             progbar(i+1, N)
