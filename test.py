@@ -1,33 +1,23 @@
-# from autovc.speaker_encoder.model import SpeakerEncoder
-# from autovc.speaker_encoder.utils import wav_to_mel_spectrogram, preprocess_wav
-# import torch
-# speaker_encoder = SpeakerEncoder()
-# path = "data/samples/"
-# data = [path + "chooped7" + ".wav", path + "conversion2" + ".wav", path + "mette_183" + ".wav" , path + "conversion1" + ".wav"  ]
-# speaker_encoder.load_model('Models/SpeakerEncoder/SpeakerEncoder.pt')
-# mels = [speaker_encoder(torch.from_numpy(wav_to_mel_spectrogram(preprocess_wav(wav))).unsqueeze(0)) for wav in data]
-# l  = speaker_encoder.loss(torch.stack(mels))
-# print(l)
+from autovc.utils.model_loader import load_model
+from autovc.utils.dataloader import SpeakerEncoderDataLoader
+import torch
+datadir = {'hilde': ['data/conversions'], 'hague': ['data/conversions2'], 'peter':['data/new']}
+Data = SpeakerEncoderDataLoader(datadir)
 
-import os
-from autovc.speaker_encoder.utils import *
-import soundfile as sf
-from autovc.utils.hparams import SpeakerEncoderParams as hparams
-from autovc.utils.audio import audio_to_melspectrogram
-# data_dir_path = 'data\\samples'
+dataloader = Data.get_dataloader()
+SE = load_model('speaker_encoder', 'models/SpeakerEncoder/SpeakerEncoder.pt')
 
-# [os.path.join(dirpath, filename) for dirpath , _, directory in os.walk(data_dir_path) for filename in directory]
 
-# walk = [w for w in os.walk("data/yang_test")][0]
-# root, dirs, files = [w for w in walk]
+def batch_forward(batch):
+    embeddings = []
+    for b in batch:
+        embed_speaker = torch.stack([SE.forward(torch.from_numpy(speaker).unsqueeze(0).to('cpu')) for speaker in b])
+        embeddings.append(embed_speaker)
+    return torch.cat(embeddings, dim = 1)
 
-# for file in files:
-#     waveform = preprocess_wav(os.path.join(root, file))
-#     sf.write(f"test_yang_silence/{file}", np.asarray(waveform), samplerate = 16000)
 
-walk = [w for w in os.walk("test_yang_silence")][0]
-root, dirs, files = [w for w in walk]
-
-for file in files:
-    waveform = preprocess_wav(os.path.join(root, file))
-    # sf.write(f"test_yang_silence/{file}", np.asarray(waveform), samplerate = 16000)
+for i in range(5):
+    for batch in dataloader:
+        embeds = batch_forward(batch)
+        print(embeds.shape)
+        print(SE.similarity_matrix(embeds))

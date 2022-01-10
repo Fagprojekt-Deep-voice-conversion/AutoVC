@@ -4,6 +4,7 @@ import os
 from torch.utils.data import DataLoader, Dataset
 from autovc.utils.audio import audio_to_melspectrogram
 from autovc.speaker_encoder.model import SpeakerEncoder
+from autovc.speaker_encoder.utils import wav_to_mel_spectrogram
 from torch.nn.functional import pad
 from autovc.utils.audio import remove_noise
 from autovc.utils.progbar import progbar
@@ -66,21 +67,34 @@ class TrainDataLoader(Dataset):
 
 
 class SpeakerEncoderDataLoader(Dataset):
-    def __init__(self, data_dir_path):
+    def __init__(self, data_dict):
         super().__init__()
 
-        # Load wav files. List of lists: Each inner list are filepath to files in one directory in data_dir_path
-        self.wav_files = [[os.path.join(dirpath, filename) for filename in directory] for dirpath, a, directory in os.walk(data_dir_path) if directory ]
+        # Find wav files in dictionary of data        
+        wav_files = [retrieve_file_paths(data_dir_path) for speaker_data_dir in data_dict.values() for data_dir_path in speaker_data_dir]
 
+        # Compute mel spectograms
+        speakers = len(data_dict.keys())
+        self.datasets = [[wav_to_mel_spectrogram(wav) for wav in wav_files[i]] for i in range(speakers)]
+        
+        print(f"The datasets are of lengths: {[len(d) for d in self.datasets]}")
 
+    def __getitem__(self, i):
+        return tuple(d[i % len(d)] for d in self.datasets)
 
+    def __len__(self):
+        return max(len(d) for d in self.datasets)
 
-    def get_dataloader(self, batch_size=1, shuffle=False,  num_workers=0, pin_memory=False, **kwargs):
+    def collate_fn(self, batch):
+
+        return batch
+
+    def get_dataloader(self, batch_size=2, shuffle=False,  num_workers=0, pin_memory=False, **kwargs):
         return torch.utils.data.DataLoader(
             self,  
-            batch_size=batch_size, 
-            num_workers= num_workers, 
-            shuffle=shuffle,
-            collate_fn = self.collate_fn
+            batch_size      = batch_size, 
+            num_workers     = num_workers, 
+            shuffle         = shuffle,
+            collate_fn      = self.collate_fn
         )
-    
+

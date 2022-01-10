@@ -78,6 +78,9 @@ class SpeakerEncoder(nn.Module):
         embeds = embeds_raw / torch.norm(embeds_raw, dim=1, keepdim=True)
         
         return embeds
+
+    
+
     
     def load(self, weights_fpath, device = None):
         """
@@ -224,7 +227,7 @@ class SpeakerEncoder(nn.Module):
         # mask = np.where(eye)
         # sim_matrix2[mask] = (embeds * centroids_excl).sum(dim=2)
         # sim_matrix2 = sim_matrix2.transpose(1, 2)
-        
+        print(sim_matrix)
         sim_matrix = sim_matrix * self.similarity_weight + self.similarity_bias
         return sim_matrix
     

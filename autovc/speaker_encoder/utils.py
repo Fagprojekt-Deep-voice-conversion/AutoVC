@@ -7,7 +7,7 @@ import librosa
 # from pathlib import Path
 import numpy as np
 import torch
-
+from pathlib import Path
 # int16_max = (2 ** 15) - 1
 # _model = None # type: SpeakerEncoder
 # _device = None # type: torch.device
@@ -48,6 +48,9 @@ def wav_to_mel_spectrogram(wav):
     Derives a mel spectrogram ready to be used by the encoder from a preprocessed audio waveform.
     Note: this not a log-mel spectrogram.
     """
+    if isinstance(wav, str) or isinstance(wav, Path):
+        wav, source_sr = librosa.load(wav, sr=None)
+
     frames = librosa.feature.melspectrogram(
         wav,
         hparams.sampling_rate,
