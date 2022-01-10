@@ -227,7 +227,6 @@ class SpeakerEncoder(nn.Module):
         # mask = np.where(eye)
         # sim_matrix2[mask] = (embeds * centroids_excl).sum(dim=2)
         # sim_matrix2 = sim_matrix2.transpose(1, 2)
-        print(sim_matrix)
         sim_matrix = sim_matrix * self.similarity_weight + self.similarity_bias
         return sim_matrix
     
@@ -260,4 +259,26 @@ class SpeakerEncoder(nn.Module):
         #     eer = brentq(lambda x: 1. - x - interp1d(fpr, tpr)(x), 0., 1.)
             
         return loss#, eer
+
+
+    def batch_forward(self, batch):
+
+        return torch.stack([self(b) for b in batch])
+
+    def learn(self, dataloader, n_epochs = 10):
+        self.train()
+
+        for epoch in range(n_epochs):
+            for batch in dataloader:
+                embeddings = self.batch_forward(batch)
+
+                loss = self.loss(embeddings)
+
+                # Compute gradients, clip and take a step
+                self.optimiser.zero_grad()
+                loss.backward()
+                # torch.nn.utils.clip_grad_norm_(self.parameters(), max_norm = 1) # Clip gradients (avoid exploiding gradients)
+
+                if self.lr_scheduler is not None: self.lr_scheduler._update_learning_rate()
+                self.optimiser.step()
 

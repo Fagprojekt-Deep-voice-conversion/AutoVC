@@ -4,7 +4,7 @@ import os
 from torch.utils.data import DataLoader, Dataset
 from autovc.utils.audio import audio_to_melspectrogram
 from autovc.speaker_encoder.model import SpeakerEncoder
-from autovc.speaker_encoder.utils import wav_to_mel_spectrogram
+from autovc.speaker_encoder.utils import *
 from torch.nn.functional import pad
 from autovc.utils.audio import remove_noise
 from autovc.utils.progbar import progbar
@@ -71,11 +71,23 @@ class SpeakerEncoderDataLoader(Dataset):
         super().__init__()
 
         # Find wav files in dictionary of data        
-        wav_files = [retrieve_file_paths(data_dir_path) for speaker_data_dir in data_dict.values() for data_dir_path in speaker_data_dir]
+        wav_files = [sum([retrieve_file_paths(data_dir_path)[:200] for data_dir_path in speaker_data_dir], []) for speaker_data_dir in data_dict.values()]
 
         # Compute mel spectograms
         speakers = len(data_dict.keys())
-        self.datasets = [[wav_to_mel_spectrogram(wav) for wav in wav_files[i]] for i in range(speakers)]
+        N = sum([len(d) for d in wav_files])
+        self.datasets = [[] for _ in wav_files]
+        t = 0
+        print("Creating mel spectograms ...")
+        progbar(t, N)
+        for i in range(speakers):
+            for wav in wav_files[i]:
+                # Compute where to split the utterance into partials and pad if necessary
+                frames_batch = get_mel_frames(wav, wav_to_mel_spectrogram )
+                
+                self.datasets[i].extend(frames_batch)
+                t += 1
+                progbar(t, N)
         
         print(f"The datasets are of lengths: {[len(d) for d in self.datasets]}")
 
@@ -87,7 +99,7 @@ class SpeakerEncoderDataLoader(Dataset):
 
     def collate_fn(self, batch):
 
-        return batch
+        return torch.stack(tuple(torch.stack(b) for b in list(zip(*batch)) ))
 
     def get_dataloader(self, batch_size=2, shuffle=False,  num_workers=0, pin_memory=False, **kwargs):
         return torch.utils.data.DataLoader(
@@ -98,3 +110,12 @@ class SpeakerEncoderDataLoader(Dataset):
             collate_fn      = self.collate_fn
         )
 
+def get_mel_frames(wav, audio_to_mel, min_pad_coverage=0.75, overlap=0.5):
+    wav, _ = librosa.load(wav)
+    wave_slices, mel_slices = compute_partial_slices(len(wav), min_pad_coverage=min_pad_coverage, overlap=overlap)
+    max_wave_length = wave_slices[-1].stop
+    if max_wave_length >= len(wav):
+        wav = np.pad(wav, (0, max_wave_length - len(wav)), "constant")
+    frames = torch.from_numpy(audio_to_mel(wav))
+    frames_batch = [frames[s] for s in mel_slices]
+    return frames_batch
