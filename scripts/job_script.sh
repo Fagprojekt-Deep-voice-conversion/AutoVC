@@ -31,7 +31,7 @@
 
 
 ### Load modules
-module load python3
+# module load python3
 module load cuda
 
 ### Run setup
