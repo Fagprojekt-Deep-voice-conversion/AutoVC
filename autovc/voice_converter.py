@@ -12,6 +12,7 @@ from autovc.utils.model_loader import load_models
 import time
 import os
 from itertools import product
+from autovc.utils.hparams import AutoEncoderParams
 
 
 class VoiceConverter:
@@ -38,7 +39,7 @@ class VoiceConverter:
         # setup config with params
         self.verbose = verbose
         self.config = {
-            "AE_params" : kwargs.pop("auto_encoder_params", {}),
+            "AE_params" : AutoEncoderParams().update(kwargs.pop("auto_encoder_params", {})),
             "SE_params" : kwargs.pop("speaker_encoder_params", {}),
             "vocoder_params" : kwargs.pop("vocoder_params", {}),
             "wandb_params" : kwargs.pop("wandb_params", {}),
@@ -127,7 +128,7 @@ class VoiceConverter:
 
         """
         # create a wandb run
-        self.setup_wandb_run(self.config["wandb_params"])
+        self.setup_wandb_run(**self.config["wandb_params"])
 
         start_time = time.time()
         print(f"Starting to train {model_type}...")
@@ -200,7 +201,7 @@ class VoiceConverter:
         return wavs, sample_rates
 
     
-    def setup_wandb_run(self, params):
+    def setup_wandb_run(self, **params):
         wand_defaults = {
             # "sync_tensorboard":True, 
             "reinit":True,
@@ -236,7 +237,9 @@ if __name__ == "__main__":
     # print(vc.config)
     # vc.train("auto_encoder", conversion_examples=[["data/samples/mette_183.wav", 
                 # "data/samples/chooped7.wav"], "data/samples/chooped7.wav"])
-    # vc.convert("data/samples/mette_183.wav", "data/samples/chooped7.wav")
+
+    vc.setup_wandb_run()
+    vc.convert("data/samples/mette_183.wav", "data/samples/chooped7.wav")
 
     # vc.convert_multiple(
     #     ["data/samples/hillary_116.wav", "data/samples/mette_183.wav"], 
@@ -245,6 +248,6 @@ if __name__ == "__main__":
     #     save_folder = "test"    
     # )
 
-    vc.train(data = "data/SMK_train/newest_trial", n_epochs = 1)
+    # vc.train(data = "data/SMK_train/newest_trial", n_epochs = 1)
     # vc.train(data = "data/SMK_train", n_epochs = 1)
     # vc.train(data = "data/samples", n_epochs = 1)
