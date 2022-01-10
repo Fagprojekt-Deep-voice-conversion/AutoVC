@@ -3,7 +3,7 @@
 *.ckpt
 *.pth
 *.pyc
-
+autovc.egg-info/*
 
 # data
 data/*
@@ -11,7 +11,16 @@ data/*
 
 # envs
 AutoVC-env/*
+AutoVC2-env/*
+AutoVC3-env/*
 run_scripts/AutoVC-env/*
 wandb-env/*
 
+# logs
+logs/*
+wandb/*
+*.err
+*.out
+
 # other
+
