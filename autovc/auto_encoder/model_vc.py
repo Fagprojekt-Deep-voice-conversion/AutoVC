@@ -176,13 +176,14 @@ class Generator(nn.Module):
         # initialisation
         step = 0
         N_iterations = n_epochs*len(trainloader)
-        progbar_interval = params.pop("progbar", 1)
+        # progbar_interval = params.pop("progbar", 1)
         self.params = hparams().update(params)
         self.train()
         avg_params = self.flatten_params()
 
         # begin training
         if self.verbose:
+            print(f"Training Auto Encoder on {torch.cuda.get_device_name()} ({self.params.device})...")
             progbar(step, N_iterations)
         total_time = 0
         for epoch in range(n_epochs):
@@ -205,10 +206,9 @@ class Generator(nn.Module):
                 # Save exponentially smoothed parameters - can be used to avoid too large changes of parameters
                 avg_params = self.params.ema_decay * avg_params + (1-self.params.ema_decay) * self.flatten_params()
                 step += 1
-                # if self.verbose:
-                #     print("Step:", step)
 
-                if (self.verbose) and ((step+1) % progbar_interval == 0):
+                # if (self.verbose) and ((step+1) % progbar_interval == 0):
+                if self.verbose:
                     total_time += (time.time()-step_start_time)
                     progbar(step, N_iterations, {"sec/step": np.round(total_time/step)})
 

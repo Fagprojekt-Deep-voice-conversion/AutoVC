@@ -7,7 +7,7 @@ from autovc.speaker_encoder.model import SpeakerEncoder
 from autovc.speaker_encoder.utils import *
 from torch.nn.functional import pad
 from autovc.utils.audio import remove_noise
-from autovc.utils.progbar import progbar
+from autovc.utils.progbar import close_progbar, progbar
 from autovc.utils.core import retrieve_file_paths
 from autovc.utils.hparams import WaveRNNParams 
 
@@ -21,11 +21,11 @@ class TrainDataLoader(Dataset):
     If spectograms in batch are of unequal size the smaller are padded with zeros to match the size of the largest.
     '''
 
-    def __init__(self, data_dir_path, speaker_encoder, chop = False):
+    def __init__(self, data_path, speaker_encoder, chop = False):
         super(TrainDataLoader, self).__init__()
 
         # Load wav files. Create spectograms and embeddings
-        self.wav_files = retrieve_file_paths(data_dir_path)
+        self.wav_files = retrieve_file_paths(data_path)
                 
         self.mel_spectograms, self.embeddings, N = [], [], len(self.wav_files)
 
@@ -45,6 +45,7 @@ class TrainDataLoader(Dataset):
                 self.mel_spectograms.append(mel_frames)
                 self.embeddings.append(embeds)
             progbar(i+1, N)
+        close_progbar()
 
     def __len__(self):
         return len(self.wav_files)
@@ -63,7 +64,7 @@ class TrainDataLoader(Dataset):
 
         return torch.stack(padded_spectrograms), torch.stack(embeddings)
 
-    def get_dataloader(self, batch_size=1, shuffle=False,  num_workers=0, pin_memory=False, **kwargs):
+    def get_dataloader(self, batch_size=1, shuffle=False,  num_workers=0, pin_memory=False):
         return torch.utils.data.DataLoader(
             self,  
             batch_size=batch_size, 

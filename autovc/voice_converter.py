@@ -17,8 +17,9 @@ from autovc.utils.hparams import AutoEncoderParams, SpeakerEncoderParams, WaveRN
 
 class VoiceConverter:
     """
-    Collects Auto Encoder, Speaker Encoder and Vocoder for converting voices.\n
-    Can both be used for training a voice converter and using it for converting voices.
+    Collects a pretrained Auto Encoder, Speaker Encoder and Vocoder for converting voices.\n
+    Can both be used for continuing training of a voice converter and for converting voices.
+    All default values can be found in `autovc/utils/hparams.py`
     """
     
     def __init__(self,
@@ -28,6 +29,31 @@ class VoiceConverter:
         verbose = True,
         **kwargs 
     ):
+        """
+        Initialises a VoiceConverter instance
+
+        Params
+        ------
+        auto_encoder:
+            path to an auto encoder model
+        speaker_encoder:
+            path to a speaker encoder model
+        vocoder:
+            path to a vocoder model (for now only WaveRNN models are supported)
+        
+        Kwargs
+        ------
+        auto_encoder_params:
+            a dictionary with params for the auto encoder, default values can be found in `autovc/utils/hparams.py`
+        speaker_encoder_params:
+            a dictionary with params for the speaker encoder, default values can be found in `autovc/utils/hparams.py`
+        vocoder_params:
+            a dictionary with params for the vocoder, default values can be found in `autovc/utils/hparams.py`
+        wandb_params:
+            a dictionary with parameters to pass to `wandb.init()` when creating a run
+        device:
+            which device code should be run on, defaults to "cuda" if available else "cpu"
+        """
        
         # default wandb behaviour
         self.wandb_run = None
@@ -36,12 +62,13 @@ class VoiceConverter:
             "reinit":True,
             "entity" : "deep_voice_inc",
             # "name" : self.run_name,
-            "project" : "GetStarted", # wandb project name, each project correpsonds to an experiment
-            "dir" : "logs/" + "GetStarted", # dir to store the run in
+            "project" : "GettingStarted", # wandb project name, each project correpsonds to an experiment
+            # "dir" : "logs/" + "GetStarted", # dir to store the run in
             # "group" : self.agent_name, # uses the name of the agent class
             "save_code":True,
             "mode" : "online",
         }
+        wandb_defaults.update(kwargs.pop("wandb_params", {}))
 
         # setup config with params
         self.verbose = verbose
@@ -49,25 +76,20 @@ class VoiceConverter:
             "AE_params" : AutoEncoderParams().update(kwargs.pop("auto_encoder_params", {})).get_collection(),
             "SE_params" : SpeakerEncoderParams().update(kwargs.pop("speaker_encoder_params", {})).get_collection(),
             "vocoder_params" : WaveRNNParams().update(kwargs.pop("vocoder_params", {})).get_collection(),
-            "wandb_params" : wandb_defaults.update(kwargs.pop("wandb_params", {})),
-            **VoiceConverterParams().update(kwargs).get_collection(),
+            "wandb_params" : wandb_defaults,
+            **VoiceConverterParams().update(kwargs, auto_encoder, speaker_encoder, vocoder).get_collection(),
         }
 
         # initialise models
         self.AE, self.SE, self.vocoder = load_models(
             model_types= ["auto_encoder", "speaker_encoder", "vocoder"],
-            model_paths= [
-                # 'models/AutoVC/AutoVC_SMK.pt' if auto_encoder is None else auto_encoder, 
-                'models/AutoVC/AutoVC_seed40_200k.pt' if auto_encoder is None else auto_encoder, 
-                'models/SpeakerEncoder/SpeakerEncoder.pt' if speaker_encoder is None else speaker_encoder,
-                'models/WaveRNN/WaveRNN_Pretrained.pyt' if vocoder is None else vocoder
-                ],
+            model_paths= [self.config.get("AE_model"), self.config.get("SE_model"), self.config.get("vocoder_model")],
             device = self.config.get("device", None)
         )
         
         
 
-    def convert(self, source, target, out_name = None, out_folder = None, method = "zero_shot", wandb_run = None):
+    def convert(self, source, target, out_name = None, out_dir = None, clean = True):
         """
         Gives the features of the target to the content of the source
 
@@ -80,8 +102,10 @@ class VoiceConverter:
             if proper training has been done, it can also be a string with the name of the person
         outname:
             filename for converted sound
-        method:
-            how to convert the voice, can be one of ['zero_shot', 'one_to_one']
+        out_dir:
+            the folder/directory to store the converted file in, if this is equal to VoiceConvert.wandb_run the converted audio will be logged to this run
+        clean:
+            whether to try and clean the converted audio (remove noise etc.)
         """
 
         print("Beginning conversion...")
@@ -100,7 +124,8 @@ class VoiceConverter:
         waveform = self.vocoder.generate(post_out)
 
         # reduce noise
-        waveform = remove_noise(waveform, self.vocoder.params.sample_rate)
+        if clean:
+            waveform = remove_noise(waveform, self.config["vocoder_params"].get("sample_rate"))
 
         # ensure a np array is returned
         waveform = np.asarray(waveform)
@@ -111,19 +136,21 @@ class VoiceConverter:
             trg_speaker = os.path.splitext(os.path.basename(target))[0]
             out_name = f"{src_speaker}_to_{trg_speaker}.wav"
         
-        if out_folder == self.wandb_run and self.wandb_run is not None:
+        # if out_dir == self.wandb_run and self.wandb_run is not None:
+        if out_dir == "wandb":
             # TODO log as table
-            out_folder.log({out_name.replace(".wav", "") : wandb.Audio(waveform, caption = out_name, sample_rate = self.vocoder.params.sample_rate)})
+            assert self.wandb_run is not None
+            self.wandb_run.log({out_name.replace(".wav", "") : wandb.Audio(waveform, caption = out_name, sample_rate = self.config["vocoder_params"].get("sample_rate"))})
         else:
-            if out_folder is not None:
-                out_name = out_folder.strip("/") + "/" + out_name
-                os.makedirs(out_folder, exist_ok=True) # create folder
+            if out_dir is not None:
+                out_name = out_dir.strip("/") + "/" + out_name
+                os.makedirs(out_dir, exist_ok=True) # create folder
     
-            sf.write(out_name, waveform, samplerate =self.vocoder.params.sample_rate)
+            sf.write(out_name, waveform, samplerate =self.config["vocoder_params"].get("sample_rate"))
     
-        return waveform, self.vocoder.params.sample_rate
+        return waveform, self.config["vocoder_params"].get("sample_rate")
 
-    def train(self, model_type = "auto_encoder", n_epochs = 2, conversion_examples = None, data = 'data/samples', **train_params):
+    def train(self, model_type = "auto_encoder", n_epochs = 2, conversion_examples = None, data_path = 'data/samples', **train_params):
         """
         Trains a model
 
@@ -134,32 +161,40 @@ class VoiceConverter:
         conversion_examples:
 
         """
+        # asssert valid model type
+        if model_type not in ["auto_encoder", "speaker_encoder"]:
+            raise ValueError(f"'{model_type}' is not a supported model_type")
+
+        # update config with train params
+        model_params = "AE_params" if model_type == "auto_encoder" else "SE_params"
+        self.config[model_params].update({**train_params, "n_epochs" : n_epochs, "data_path" : data_path})
+
         # create a wandb run
         if self.wandb_run is None:
-            self.setup_wandb_run(**self.config["wandb_params"])
+            self.setup_wandb_run()
 
         start_time = time.time()
-        print(f"Starting to train {model_type}...")
+        # print(f"Starting to train {model_type}...")
         if model_type == "auto_encoder":
-            print(self.AE.params.device)
-            dataset = TrainDataLoader(data_dir_path = data, speaker_encoder = self.SE)
-            dataloader = dataset.get_dataloader(batch_size = 2, shuffle = True)
-            self.AE.learn(dataloader, n_epochs = n_epochs, wandb_run = self.wandb_run, **train_params)
+            # print("Training device: ", self.AE.params.device)
+            params = AutoEncoderParams().update(self.config[model_params])
+            dataset = TrainDataLoader(**params.get_collection("dataset"), speaker_encoder = self.SE)
+            dataloader = dataset.get_dataloader(**params.get_collection("dataloader"))
+            self.AE.learn(dataloader, wandb_run = self.wandb_run, **params.get_collection())
         elif model_type == "speaker_encoder":
             raise NotImplementedError()
-        else:
-            raise ValueError(f"'{model_type}' is not a supported model_type")
+            
         
         print(f"Training finished in {time.time() - start_time}")
 
         # conversion example
         if conversion_examples is None:
             self.convert(
-                # "data/samples/mette_183.wav", 
-                # "data/samples/chooped7.wav",
-                "data/samples/hilde_301.wav", 
-                "data/samples/HaegueYang_5.wav",
-                out_folder = self.wandb_run,
+                "data/samples/mette_183.wav", 
+                "data/samples/chooped7.wav",
+                # "data/samples/hilde_301.wav", 
+                # "data/samples/HaegueYang_5.wav",
+                out_dir = "wandb",
                 # out_folder=os.path.join(self.wandb_run.dir, "conversions")
             )
             # self.wandb_run.log({"example" : wandb.Audio(wav, caption = "test", sample_rate = sr)})
@@ -217,6 +252,7 @@ class VoiceConverter:
          # overwrite defaults with parsed arguments
         # wand_args = {**wand_defaults, **params}
         self.config["wandb_params"].update(params)
+        self.config["wandb_params"].update({"dir" : "logs/" + self.config["wandb_params"].get("project")})
 
         # create directory for logs if first run in project
         if not os.path.exists(self.config["wandb_params"].get("dir", "logs")+"/wandb"): 
@@ -229,16 +265,23 @@ class VoiceConverter:
         # watch models
         self.wandb_run.watch(self.AE, log_freq = self.AE.params.log_freq)
         self.wandb_run.watch(self.SE, log_freq = self.SE.params.log_freq)
-
+    
+    def close(self):
+        """
+        Closes the necesary processes
+        """
+        if self.wandb_run is not None:
+            self.wandb_run.finish()
+        wandb.finish()
 
 if __name__ == "__main__":
-    vc = VoiceConverter(wandb_params = {"mode" : "online"})#, auto_encoder="models/AutoVC/AutoVC_SMK_20211104_original_step42.05k.pt")
+    vc = VoiceConverter(wandb_params = {"mode" : "online", "project": "test21"})#, auto_encoder="models/AutoVC/AutoVC_SMK_20211104_original_step42.05k.pt")
     # print(vc.config)
     # vc.train("auto_encoder", conversion_examples=[["data/samples/mette_183.wav", 
                 # "data/samples/chooped7.wav"], "data/samples/chooped7.wav"])
 
-    vc.setup_wandb_run()
-    vc.convert("data/samples/mette_183.wav", "data/samples/chooped7.wav")
+    # vc.setup_wandb_run()
+    # vc.convert("data/samples/mette_183.wav", "data/samples/chooped7.wav")
 
     # vc.convert_multiple(
     #     ["data/samples/hillary_116.wav", "data/samples/mette_183.wav"], 
@@ -251,4 +294,7 @@ if __name__ == "__main__":
     # vc.setup_wandb_run(name = "SMK")
     # vc.train(data = "data/SMK_train/20211104", n_epochs = 1)
     # vc.train(data = "data/SMK_train", n_epochs = 1)
-    # vc.train(data = "data/samples", n_epochs = 1)
+    vc.train(data = "data/samples", n_epochs = 1)
+
+
+    vc.close()

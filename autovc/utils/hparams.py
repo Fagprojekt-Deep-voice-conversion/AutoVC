@@ -113,7 +113,7 @@ class AutoEncoderParams(ParamCollection):
 		self.n_speakers 					= -1
 
 		# Training:
-		self.batch_size 					= 2,
+		self.batch_size 					= 2
 		self.clip_thresh 					= -1
 		self.save_freq						= 1024
 		self.log_freq						= 1
@@ -144,6 +144,8 @@ class AutoEncoderParams(ParamCollection):
 		self.add_collection("Decoder", ["dim_neck", "dim_emb", "dim_pre"])
 		self.add_collection("Adam", ["betas", "eps", "amsgrad", "lr", "weight_decay"])
 		self.add_collection("lr_scheduler", ["dim_model", "n_warmup_steps"])
+		self.add_collection("dataset", ["data_path", "chop"])
+		self.add_collection("dataloader", ["batch_size", "shuffle", "num_workers", ])
 	
 
 
@@ -305,7 +307,16 @@ class VoiceConverterParams(ParamCollection):
 		self.SE_model = 'models/SpeakerEncoder/SpeakerEncoder.pt'
 		self.vocoder_model = 'models/WaveRNN/WaveRNN_Pretrained.pyt'
 
+		self.add_collection("model_names", ["AE_model", "SE_model", "vocoder_model"])
 
+	def update(self, params: dict = {}, auto_encoder_model = None, speaker_encoder_model = None, vocoder_model = None):
+		super().update({
+			**params, 
+			"AE_model" : self.AE_model if auto_encoder_model is None else auto_encoder_model,
+			"SE_model" : self.SE_model if speaker_encoder_model is None else speaker_encoder_model,
+			"vocoder_model" : self.vocoder_model if vocoder_model is None else vocoder_model,
+		})
+		return self 
 
 # class VoiceConverterParams:#(ParamCollection):
 # 	def __init__(self) -> None:
