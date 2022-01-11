@@ -12,7 +12,7 @@ from autovc.utils.model_loader import load_models
 import time
 import os
 from itertools import product
-from autovc.utils.hparams import AutoEncoderParams
+from autovc.utils.hparams import AutoEncoderParams, SpeakerEncoderParams, WaveRNNParams, VoiceConverterParams, Namespace
 
 
 class VoiceConverter:
@@ -29,25 +29,32 @@ class VoiceConverter:
         **kwargs 
     ):
        
-        # params = VoiceConverterParams().update(
-        #     AE_params = kwargs.pop("auto_encoder_params", {}),
-        #     SE_params = kwargs.pop("speaker_encoder_params", {}),
-        #     vocoder_params = kwargs.pop("vocoder_params", {})
-        #     **kwargs
-        # )
+        # default wandb behaviour
+        self.wandb_run = None
+        wandb_defaults = {
+            # "sync_tensorboard":True, 
+            "reinit":True,
+            "entity" : "deep_voice_inc",
+            # "name" : self.run_name,
+            "project" : "GetStarted", # wandb project name, each project correpsonds to an experiment
+            "dir" : "logs/" + "GetStarted", # dir to store the run in
+            # "group" : self.agent_name, # uses the name of the agent class
+            "save_code":True,
+            "mode" : "online",
+        }
 
         # setup config with params
         self.verbose = verbose
         self.config = {
-            "AE_params" : AutoEncoderParams().update(kwargs.pop("auto_encoder_params", {})),
-            "SE_params" : kwargs.pop("speaker_encoder_params", {}),
-            "vocoder_params" : kwargs.pop("vocoder_params", {}),
-            "wandb_params" : kwargs.pop("wandb_params", {}),
-            **kwargs
+            "AE_params" : AutoEncoderParams().update(kwargs.pop("auto_encoder_params", {})).get_collection(),
+            "SE_params" : SpeakerEncoderParams().update(kwargs.pop("speaker_encoder_params", {})).get_collection(),
+            "vocoder_params" : WaveRNNParams().update(kwargs.pop("vocoder_params", {})).get_collection(),
+            "wandb_params" : wandb_defaults.update(kwargs.pop("wandb_params", {})),
+            **VoiceConverterParams().update(kwargs).get_collection(),
         }
 
         # initialise models
-        self.wandb_run = None
+        
         self.AE, self.SE, self.vococder = load_models(
             model_types= ["auto_encoder", "speaker_encoder", "vocoder"],
             model_paths= [
@@ -204,30 +211,21 @@ class VoiceConverter:
 
     
     def setup_wandb_run(self, **params):
-        wand_defaults = {
-            # "sync_tensorboard":True, 
-            "reinit":True,
-            "entity" : "deep_voice_inc",
-            # "name" : self.run_name,
-            "project" : "GetStarted", # wandb project name, each project correpsonds to an experiment
-            "dir" : "logs/" + "GetStarted", # dir to store the run in
-            # "group" : self.agent_name, # uses the name of the agent class
-            "save_code":False,
-            "mode" : "online",
-            "config" : self.config,
-        }
+        
 
         # self.wandb_run = wandb.init(entity="deep_voice_inc", project= "GetStarted", config = self.config)
 
          # overwrite defaults with parsed arguments
-        wand_args = {**wand_defaults, **params}
+        # wand_args = {**wand_defaults, **params}
+        self.config["wandb_params"].update(params)
 
         # create directory for logs if first run in project
-        if not os.path.exists(wand_args["dir"]+"/wandb"): 
-            os.makedirs(wand_args["dir"]+"/wandb") 
+        if not os.path.exists(self.config["wandb_params"].get("dir", "logs")+"/wandb"): 
+            os.makedirs(self.config["wandb_params"].get("dir", "logs")+"/wandb") 
 
-        # init wandb
-        self.wandb_run = wandb.init(**wand_args)
+        # init wandb       
+        self.wandb_run = wandb.init(**self.config["wandb_params"], config = self.config)
+        self.config = self.wandb_run.config
 
         # watch models
         self.wandb_run.watch(self.AE, log_freq = self.AE.params.log_freq)
@@ -235,7 +233,7 @@ class VoiceConverter:
 
 
 if __name__ == "__main__":
-    vc = VoiceConverter(wandb_params = {"mode" : "online"}, auto_encoder="models/AutoVC/AutoVC_SMK_20211104_original_step42.05k.pt")
+    vc = VoiceConverter(wandb_params = {"mode" : "online"})#, auto_encoder="models/AutoVC/AutoVC_SMK_20211104_original_step42.05k.pt")
     # print(vc.config)
     # vc.train("auto_encoder", conversion_examples=[["data/samples/mette_183.wav", 
                 # "data/samples/chooped7.wav"], "data/samples/chooped7.wav"])

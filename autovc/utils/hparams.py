@@ -9,6 +9,10 @@ import torch
 from datetime import date
 
 
+class Namespace:
+    def __init__(self, **kwargs):
+        self.__dict__.update(kwargs)
+
 class ClassProperty(object):
     def __init__(self, func):
         self.func = func
@@ -44,6 +48,9 @@ class ParamCollection:
 
 	def add_collection(self, name, params):
 		self.collections[name] = params
+	
+	def __repr__(self) -> str:
+		return self.__dict__.__repr__()
 
 # class AudioParams(ParamCollection):
 # 	"""
@@ -137,6 +144,8 @@ class AutoEncoderParams(ParamCollection):
 		self.add_collection("Decoder", ["dim_neck", "dim_emb", "dim_pre"])
 		self.add_collection("Adam", ["betas", "eps", "amsgrad", "lr", "weight_decay"])
 		self.add_collection("lr_scheduler", ["dim_model", "n_warmup_steps"])
+	
+
 
 
 ############### WAVE RNN ###############
@@ -205,6 +214,8 @@ class WaveRNNParams(ParamCollection):
 			self.__dict__["seq_len"] = self.seq_len_prop
 
 		return self
+	
+	
 
 
 ############### SPEAKER ENCODER ###############
@@ -246,7 +257,40 @@ class SpeakerEncoderParams(ParamCollection):
 		# add collections
 		# self.add_collection("LSTM", [])
 
+
+# class WandbParams(ParamCollection):
+# 	# wand_defaults = {
+#     #         # "sync_tensorboard":True, 
+#     #         "reinit":True,
+#     #         "entity" : "deep_voice_inc",
+#     #         # "name" : self.run_name,
+#     #         "project" : "GetStarted", # wandb project name, each project correpsonds to an experiment
+#     #         "dir" : "logs/" + "GetStarted", # dir to store the run in
+#     #         # "group" : self.agent_name, # uses the name of the agent class
+#     #         "save_code":True,
+#     #         "mode" : "online",
+#     #         "config" : self.config,
+#     #     }
+
+# 	def __init__(self) -> None:
+# 		super().__init__()
+
+# 		self.reinit = True
+# 		self.entity = 'deep_voice_inc'
+# 		project = "test"
+
+
 ############## VOICE CONVERTER ###############
+class VoiceConverterParams(ParamCollection):
+	def __init__(self) -> None:
+		super().__init__()
+
+		self.AE_model = 'models/AutoVC/AutoVC_seed40_200k.pt'
+		self.SE_model = 'models/SpeakerEncoder/SpeakerEncoder.pt'
+		self.vocoder_model = 'models/WaveRNN/WaveRNN_Pretrained.pyt'
+
+
+
 # class VoiceConverterParams:#(ParamCollection):
 # 	def __init__(self) -> None:
 # 		super().__init__()
@@ -279,7 +323,8 @@ if __name__ == "__main__":
 	# 	for key, val in new_params:
 	# 		params().__set
 
-	p = WaveRNNParams()
+	# p = WaveRNNParams()
+	p = VoiceConverterParams()
 	# p.__setattr__("sample_rate", 2)
 	# p.update({"sample_rate" : 2})
 	# p.sample_rate = 2
@@ -287,7 +332,9 @@ if __name__ == "__main__":
 
 	p.update({"sample_rate" : 2, "n_fft" : 30, "batched" : False})
 	# print(p.__dict__)
-	print(p.get_collection("synthesize"))
-	print(p.sample_rate)
+	# print(p.get_collection("synthesize"))
+	# print(p.sample_rate)
 	# print(p.model)
 	# print(p.test)
+
+	print(p)
