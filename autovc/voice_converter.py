@@ -283,8 +283,8 @@ class VoiceConverter:
 
 if __name__ == "__main__":
     from autovc.utils.argparser import parse_vc_args
-    # args = "-mode train -model_type auto_encoder -wandb_params mode=disabled -n_epochs 1"
-    args = "-mode convert -sources data/samples/mette_183.wav -targets data/samples/chooped7.wav"
+    args = "-mode train -model_type auto_encoder -wandb_params mode=disabled -n_epochs 1"
+    # args = "-mode convert -sources data/samples/mette_183.wav -targets data/samples/chooped7.wav"
     args = vars(parse_vc_args(args))
 
     vc = VoiceConverter(
