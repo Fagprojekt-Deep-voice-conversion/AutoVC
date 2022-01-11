@@ -1,4 +1,5 @@
 from logging import setLogRecordFactory
+from re import S
 import wandb
 from wandb.sdk.wandb_run import Run
 from autovc.utils.audio import audio_to_melspectrogram, remove_noise
@@ -84,6 +85,7 @@ class VoiceConverter:
         self.AE, self.SE, self.vocoder = load_models(
             model_types= ["auto_encoder", "speaker_encoder", "vocoder"],
             model_paths= [self.config.get("AE_model"), self.config.get("SE_model"), self.config.get("vocoder_model")],
+            params = [self.config["AE_params"], self.config["SE_params"], self.config["vocoder_params"]],
             device = self.config.get("device", None)
         )
         
@@ -199,11 +201,11 @@ class VoiceConverter:
             )
             # self.wandb_run.log({"example" : wandb.Audio(wav, caption = "test", sample_rate = sr)})
         elif conversion_examples:
-            self.convert_multiple(conversion_examples[0], conversion_examples[1], save_folder = self.wandb_run)
+            self.convert_multiple(conversion_examples[0], conversion_examples[1], save_folder = "wandb")
 
 
 
-    def convert_multiple(self, sources, targets, save_folder = None, method = "all_combinations", bidirectional = False):
+    def convert_multiple(self, sources, targets, match_method = "all_combinations", bidirectional = False, **convert_params):
         """
         Uses the convert function on multiple files
 
@@ -213,31 +215,31 @@ class VoiceConverter:
             path or list of paths to source files
         targets:
             path or list of paths to target files
-        save_folder:
-            folder to save converted files in
         method:
             tells how to match sources and targets
             'all_combinations' will match each source with each target
             'align' will match sources and targets with same index in the given list
+        **convert_params
+            params to give to VoiceConverter.convert
         """
 
         sources = retrieve_file_paths(sources)
         targets = retrieve_file_paths(targets)
         wavs, sample_rates = [], []
 
-        if method == "align":
+        if match_method == "align":
             assert len(sources) == len(targets)
             matches = [*zip(sources, targets)]
-        elif method == "all_combinations":
+        elif match_method == "all_combinations":
             matches = product(sources, targets)
 
         for source, target in matches:
-            wav, sr = self.convert(source, target, out_folder = save_folder)
+            wav, sr = self.convert(source, target, **convert_params)
             wavs.append(wav)
             sample_rates.append(sr)
         
         if bidirectional:
-            wav, sr = self.convert_multiple(target, sources, save_folder, method)
+            wav, sr = self.convert_multiple(target, sources, match_method, **convert_params)
             wavs.extend(wav)
             sample_rates.extend(sr)
 
@@ -275,7 +277,66 @@ class VoiceConverter:
         wandb.finish()
 
 if __name__ == "__main__":
-    vc = VoiceConverter(wandb_params = {"mode" : "online", "project": "test21"})#, auto_encoder="models/AutoVC/AutoVC_SMK_20211104_original_step42.05k.pt")
+    from autovc.utils.argparser import parse_vc_args
+    args = "-mode train -model_type auto_encoder -wandb_params mode=disabled -n_epochs 1"
+    args = vars(parse_vc_args(args))
+
+    vc = VoiceConverter(
+        auto_encoder=args.pop("auto_encoder", None),
+        speaker_encoder= args.pop("speaker_encoder", None),
+        vocoder= args.pop("vocoder", None),
+        device = args.pop("device", None),
+        verbose=args.pop("verbose", None),
+        auto_encoder_params = args.pop("auto_encoder_params", {}),
+        speaker_encoder_params = args.pop("speaker_encoder_params", {}),
+        vocoder_params = args.pop("vocoder_params", {}),
+        wandb_params = args.pop("wandb_params", {})
+    )
+
+    # get mode
+    mode = args.pop("mode")
+
+    if mode == "train":
+        assert all([args.__contains__(key) for key in ["model_type", "n_epochs"]])
+        convert_examples = all([args.__contains__(key) for key in ["conversions_sources", "conversions_targets"]])
+        # train
+        vc.train(
+            **args
+            # model_type = args.model_type, 
+            # n_epochs = args.n_epochs, 
+            # data_path=args.data_path,
+            # conversion_examples= None if not convert_examples else [args.conversion_sources, args.conversion_targets]
+        )
+    elif mode == "convert":
+        assert all([args.__contains__(key) for key in ["conversions_sources", "conversions_targets"]])
+        vc.convert_multiple(
+            **args
+            # sources = args.conversion_sources, 
+            # targets = args.conversion_targets,
+            # save_folder = args.results_dir,
+            # bidirectional = args.bidirectional,
+            # method = args.conversion_data_alignment
+
+        )
+
+    
+    vc.close()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    # vc = VoiceConverter(wandb_params = {"mode" : "online", "project": "test21"})#, auto_encoder="models/AutoVC/AutoVC_SMK_20211104_original_step42.05k.pt")
     # print(vc.config)
     # vc.train("auto_encoder", conversion_examples=[["data/samples/mette_183.wav", 
                 # "data/samples/chooped7.wav"], "data/samples/chooped7.wav"])
@@ -294,7 +355,7 @@ if __name__ == "__main__":
     # vc.setup_wandb_run(name = "SMK")
     # vc.train(data = "data/SMK_train/20211104", n_epochs = 1)
     # vc.train(data = "data/SMK_train", n_epochs = 1)
-    vc.train(data = "data/samples", n_epochs = 1)
+    # vc.train(data = "data/samples", n_epochs = 1)
 
 
-    vc.close()
+    # vc.close()
