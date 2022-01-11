@@ -54,8 +54,7 @@ class VoiceConverter:
         }
 
         # initialise models
-        
-        self.AE, self.SE, self.vococder = load_models(
+        self.AE, self.SE, self.vocoder = load_models(
             model_types= ["auto_encoder", "speaker_encoder", "vocoder"],
             model_paths= [
                 # 'models/AutoVC/AutoVC_SMK.pt' if auto_encoder is None else auto_encoder, 
@@ -98,10 +97,10 @@ class VoiceConverter:
         out, post_out, content_codes = self.AE(mel_spec, c_source, c_target)
 
         # Use the Vocoder to generate waveform (use post_out as input)
-        waveform = self.vococder.generate(post_out)
+        waveform = self.vocoder.generate(post_out)
 
         # reduce noise
-        waveform = remove_noise(waveform, self.vococder.params.sample_rate)
+        waveform = remove_noise(waveform, self.vocoder.params.sample_rate)
 
         # ensure a np array is returned
         waveform = np.asarray(waveform)
@@ -114,15 +113,15 @@ class VoiceConverter:
         
         if out_folder == self.wandb_run and self.wandb_run is not None:
             # TODO log as table
-            out_folder.log({out_name.replace(".wav", "") : wandb.Audio(waveform, caption = out_name, sample_rate = self.vococder.params.sample_rate)})
+            out_folder.log({out_name.replace(".wav", "") : wandb.Audio(waveform, caption = out_name, sample_rate = self.vocoder.params.sample_rate)})
         else:
             if out_folder is not None:
                 out_name = out_folder.strip("/") + "/" + out_name
                 os.makedirs(out_folder, exist_ok=True) # create folder
     
-            sf.write(out_name, waveform, samplerate =self.vococder.params.sample_rate)
+            sf.write(out_name, waveform, samplerate =self.vocoder.params.sample_rate)
     
-        return waveform, self.vococder.params.sample_rate
+        return waveform, self.vocoder.params.sample_rate
 
     def train(self, model_type = "auto_encoder", n_epochs = 2, conversion_examples = None, data = 'data/samples', **train_params):
         """

@@ -14,7 +14,8 @@ from autovc.speaker_encoder.utils import wav_to_mel_spectrogram, compute_partial
 from autovc.utils.hparams import SpeakerEncoderParams as hparams
 import librosa
 from pathlib import Path
-
+from autovc.utils.progbar import progbar, close_progbar
+import time, wandb
 class SpeakerEncoder(nn.Module):
     """
     The Speaker Encoder module
@@ -25,10 +26,10 @@ class SpeakerEncoder(nn.Module):
     Not consistenet with AutoVC but the best i could find...
     Trained on GE2E loss for 1.5 M step
     """
-    def __init__(self, **params):
+    def __init__(self, verbose = True, **params):
         super().__init__()
         self.params = hparams().update(params)
-        
+        self.verbose = verbose
         # Network defition
         self.lstm = nn.LSTM(input_size  = self.params.mel_n_channels, #kwargs.get('mel_n_channels', hp.mel_n_channels),
                             hidden_size = self.params.model_hidden_size,#kwargs.get('model_hidden_size', hp.model_hidden_size),
@@ -48,6 +49,10 @@ class SpeakerEncoder(nn.Module):
 
         # Loss
         self.loss_fn = nn.CrossEntropyLoss().to(self.params.device)
+
+        self.optimiser = torch.optim.Adam(self.parameters(), **self.params.get_collection("Adam"))
+        self.lr_scheduler = self.params.lr_scheduler(self.optimiser, **self.params.get_collection("lr_scheduler"))
+        
         
     def do_gradient_ops(self):
         # Gradient scale
@@ -78,6 +83,9 @@ class SpeakerEncoder(nn.Module):
         embeds = embeds_raw / torch.norm(embeds_raw, dim=1, keepdim=True)
         
         return embeds
+
+    
+
     
     def load(self, weights_fpath, device = None):
         """
@@ -224,7 +232,6 @@ class SpeakerEncoder(nn.Module):
         # mask = np.where(eye)
         # sim_matrix2[mask] = (embeds * centroids_excl).sum(dim=2)
         # sim_matrix2 = sim_matrix2.transpose(1, 2)
-        
         sim_matrix = sim_matrix * self.similarity_weight + self.similarity_bias
         return sim_matrix
     
@@ -258,3 +265,58 @@ class SpeakerEncoder(nn.Module):
             
         return loss#, eer
 
+
+    def batch_forward(self, batch):
+
+        return torch.stack([self(b) for b in batch])
+
+    def learn(self, trainloader, n_epochs = 10, wandb_run = None,  **params):
+
+        self.train()
+        step = 0
+        N_iterations = n_epochs*len(trainloader)
+        progbar_interval = params.pop("progbar", 1)
+        if self.verbose:
+            progbar(step, N_iterations)
+        total_time = 0
+        for epoch in range(n_epochs):
+            step_start_time = time.time()
+            for batch in trainloader:
+                embeddings = self.batch_forward(batch)
+
+                loss = self.loss(embeddings)
+
+                # Compute gradients, clip and take a step
+                self.optimiser.zero_grad()
+                loss.backward()
+                # torch.nn.utils.clip_grad_norm_(self.parameters(), max_norm = 1) # Clip gradients (avoid exploiding gradients)
+
+                if self.lr_scheduler is not None: self.lr_scheduler._update_learning_rate()
+                self.optimiser.step()
+
+                step += 1
+                if (self.verbose) and ((step+1) % progbar_interval == 0):
+                    total_time += (time.time()-step_start_time)
+                    progbar(step, N_iterations, {"sec/step": np.round(total_time/step)})
+
+
+                if (step % self.params.log_freq == 0 or step == N_iterations) and wandb_run is not None:
+                    wandb_run.log({
+                        "loss" : loss
+                    }, step = step)
+                if step % self.params.save_freq == 0:
+                    save_name = self.params.model_dir.strip("/") + self.params.model_name
+                    torch.save({
+                        "step": step + 1,
+                        "model_state": self.state_dict(),
+                        "optimizer_state": self.optimiser.state_dict(),
+                    }, save_name)
+
+                    if wandb_run is not None:
+                        artifact = wandb.Artifact(self.params.model_name, "SpeakerEncoder")
+                        artifact.add_file(save_name)
+                        wandb_run.log_artifact(artifact)
+                        
+
+
+        close_progbar()

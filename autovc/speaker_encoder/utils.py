@@ -7,7 +7,7 @@ import librosa
 # from pathlib import Path
 import numpy as np
 import torch
-
+from pathlib import Path
 # int16_max = (2 ** 15) - 1
 # _model = None # type: SpeakerEncoder
 # _device = None # type: torch.device
@@ -48,6 +48,9 @@ def wav_to_mel_spectrogram(wav):
     Derives a mel spectrogram ready to be used by the encoder from a preprocessed audio waveform.
     Note: this not a log-mel spectrogram.
     """
+    if isinstance(wav, str) or isinstance(wav, Path):
+        wav, source_sr = librosa.load(wav, sr=None)
+
     frames = librosa.feature.melspectrogram(
         wav,
         hparams.sampling_rate,
@@ -71,7 +74,7 @@ def normalize_volume(wav, target_dBFS, increase_only=False, decrease_only=False)
 
 
 def compute_partial_slices(n_samples, partial_utterance_n_frames=hparams.partials_n_frames,
-                           min_pad_coverage=0.75, overlap=0.5):
+                           min_pad_coverage=0.75, overlap=0.5, sr = hparams.sampling_rate, mel_window_step = hparams.mel_window_step ):
     """
     Computes where to split an utterance waveform and its corresponding mel spectrogram to obtain 
     partial utterances of <partial_utterance_n_frames> each. Both the waveform and the mel 
@@ -99,7 +102,7 @@ def compute_partial_slices(n_samples, partial_utterance_n_frames=hparams.partial
     assert 0 <= overlap < 1
     assert 0 < min_pad_coverage <= 1
     
-    samples_per_frame = int((hparams.sampling_rate * hparams.mel_window_step / 1000))
+    samples_per_frame = int((sr * mel_window_step / 1000))
     n_frames = int(np.ceil((n_samples + 1) / samples_per_frame))
     frame_step = max(int(np.round(partial_utterance_n_frames * (1 - overlap))), 1)
 
