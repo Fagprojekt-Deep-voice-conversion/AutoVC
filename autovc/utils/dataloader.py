@@ -1,3 +1,4 @@
+from ctypes import ArgumentError
 import numpy as np 
 import torch
 import os
@@ -21,17 +22,22 @@ class TrainDataLoader(Dataset):
     If spectograms in batch are of unequal size the smaller are padded with zeros to match the size of the largest.
     '''
 
-    def __init__(self, data_path, speaker_encoder, chop = False):
+    def __init__(self, speaker_encoder, data_path = None, wav_files = None,  chop = False):
         super(TrainDataLoader, self).__init__()
 
         # Load wav files. Create spectograms and embeddings
-        self.wav_files = retrieve_file_paths(data_path)
+        if wav_files is not None:
+            self.wav_files = wav_files
+        elif data_path is not None:
+            self.wav_files = retrieve_file_paths(data_path)
+        else:
+            raise ArgumentError(f"Either data_path or wav_files must be different from None")
                 
         self.mel_spectograms, self.embeddings, N = [], [], len(self.wav_files)
 
         print("Creating mel spectrograms and embeddings...")
         progbar(0, N)
-        for i, wav in enumerate(self.wav_files[:20]):
+        for i, wav in enumerate(self.wav_files):
             # make nice sounds
 
             if chop:
@@ -127,8 +133,8 @@ def get_mel_frames(wav, audio_to_mel, min_pad_coverage=0.75, overlap=0.5, order 
         MF (Mels, Frames)
     '''
 
-
-    wav, _ = librosa.load(wav)
+    if isinstance(wav, str):
+        wav, _ = librosa.load(wav)
     wave_slices, mel_slices = compute_partial_slices(len(wav), min_pad_coverage=min_pad_coverage, overlap=overlap, **kwargs)
     max_wave_length = wave_slices[-1].stop
     if max_wave_length >= len(wav):
