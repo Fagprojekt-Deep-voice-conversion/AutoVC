@@ -63,16 +63,6 @@ def wav_to_mel_spectrogram(wav):
 
 
 
-def normalize_volume(wav, target_dBFS, increase_only=False, decrease_only=False):
-    if increase_only and decrease_only:
-        raise ValueError("Both increase only and decrease only are set")
-    dBFS_change = target_dBFS - 10 * np.log10(np.mean(wav ** 2))
-    if (dBFS_change < 0 and increase_only) or (dBFS_change > 0 and decrease_only):
-        return wav
-    return wav * (10 ** (dBFS_change / 20))
-
-
-
 def compute_partial_slices(n_samples, partial_utterance_n_frames=hparams.partials_n_frames,
                            min_pad_coverage=0.75, overlap=0.5, sr = hparams.sampling_rate, mel_window_step = hparams.mel_window_step ):
     """

@@ -157,6 +157,14 @@ def trim_long_silences(wav):
     
     return wav[audio_mask == True]
 
+def normalize_volume(wav, target_dBFS, increase_only=False, decrease_only=False):
+    if increase_only and decrease_only:
+        raise ValueError("Both increase only and decrease only are set")
+    dBFS_change = target_dBFS - 10 * np.log10(np.mean(wav ** 2))
+    if (dBFS_change < 0 and increase_only) or (dBFS_change > 0 and decrease_only):
+        return wav
+    return wav * (10 ** (dBFS_change / 20))
+
 # own tools
 
 def split_audio(wav_path, save_folder, allowed_pause = 2, remove_silence = False, max_len = 10):
