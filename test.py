@@ -5,14 +5,13 @@ import torch
 from sklearn.manifold import TSNE
 import matplotlib.pyplot as plt
 datadir = {'hilde': ['data/hyang_smk', 'data/hilde_20211020'], 'hague': ['data/HaegueYang_10sek', 'data/hyang_smk']}
-# Data = SpeakerEncoderDataLoader(datadir)
+Data = SpeakerEncoderDataLoader(datadir)
 SE = load_model('speaker_encoder', 'models/SpeakerEncoder/SpeakerEncoder.pt')
 
-Data = TrainDataLoader('data', SE, chop = True)
+# Data = TrainDataLoader('data', SE, chop = True)
 dataloader = Data.get_dataloader(batch_size=10)
 
-for batch in dataloader:
-    batch
+SE.learn(dataloader, save_freq = 10, log_freq = 10)
 
 # def batch_forward(batch):
 #     # embeddings = []

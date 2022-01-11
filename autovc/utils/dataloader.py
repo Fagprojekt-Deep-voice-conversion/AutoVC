@@ -78,7 +78,7 @@ class SpeakerEncoderDataLoader(Dataset):
         super(SpeakerEncoderDataLoader, self).__init__()
 
         # Find wav files in dictionary of data        
-        wav_files = [sum([retrieve_file_paths(data_dir_path)[:200] for data_dir_path in speaker_data_dir], []) for speaker_data_dir in data_dict.values()]
+        wav_files = [sum([retrieve_file_paths(data_dir_path)[:10] for data_dir_path in speaker_data_dir], []) for speaker_data_dir in data_dict.values()]
 
         # Compute mel spectograms
         speakers = len(data_dict.keys())

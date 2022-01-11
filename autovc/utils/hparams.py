@@ -243,6 +243,22 @@ class SpeakerEncoderParams(ParamCollection):
 		self.utterances_per_speaker 	= 10
 		self.log_freq 					= 1
 
+		# Learning rate scheduler
+		self.lr_scheduler 					= NoamScheduler # see lrschedule.py for available lr_schedule
+		self.dim_model						= 256 # The output dimension of the model
+		self.n_warmup_steps					= 200
+
+		# Optimizer
+		self.betas 							= (0.9, 0.999)
+		self.eps 							= 1e-8
+		self.amsgrad 						= False
+		self.lr 							= 1e-3 # learning rate
+		self.weight_decay 					= 0.0
+
+		
+		self.add_collection("lr_scheduler", ["dim_model", "n_warmup_steps"])
+		self.add_collection("Adam", ["betas", "eps", "amsgrad", "lr", "weight_decay"])
+
 		# add collections
 		# self.add_collection("LSTM", [])
 
