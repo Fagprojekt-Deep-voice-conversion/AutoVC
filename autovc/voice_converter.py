@@ -150,6 +150,7 @@ class VoiceConverter:
                 out_name = out_dir.strip("/") + "/" + out_name
                 os.makedirs(out_dir, exist_ok=True) # create folder
             else:
+                os.makedirs("results", exist_ok=True) # create folder
                 out_name = out_name if out_name.startswith("results") else "results/" + out_name 
     
             sf.write(out_name, waveform, samplerate =self.config["vocoder_params"].get("sample_rate"))
