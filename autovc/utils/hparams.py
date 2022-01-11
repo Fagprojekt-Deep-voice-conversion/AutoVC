@@ -152,7 +152,7 @@ class WaveRNNParams(ParamCollection):
 		self.fmin 				= 40
 		self.min_level_db 		= -100
 		self.ref_level_db 		= 20
-
+		self.mel_window_step 	= 12.5
 		# Model
 		self.rnn_dims 			= 512
 		self.fc_dims 			= 512
