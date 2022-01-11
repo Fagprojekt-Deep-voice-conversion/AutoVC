@@ -1,23 +1,12 @@
-# import os,sys,inspect
-# current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-# parent_dir = os.path.dirname(current_dir)
-# sys.path.insert(0, parent_dir) 
 import torch
-# print(sys.path[0])
 from autovc.utils.model_loader import load_vocoder
 
 
 from autovc.utils.hparams import WaveRNNParams as hparams
 import soundfile as sf
 import numpy as np
-from autovc.wavernn.model import WaveRNN
 import os
 
-# def load_model(model_path, **kwargs):
-#     device = torch.device(kwargs.get("device", "cuda" if torch.cuda.is_available() else "cpu"))
-#     model = WaveRNN(**hparams.model.__dict__).to(device=device)
-#     model.load(model_path)
-#     return model
 
 def synthesize(melspec, fpath = "results/synthesized.wav", model = None, **generate_args):
     """

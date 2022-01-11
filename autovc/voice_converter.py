@@ -105,7 +105,8 @@ class VoiceConverter:
         outname:
             filename for converted sound
         out_dir:
-            the folder/directory to store the converted file in, if this is equal to VoiceConvert.wandb_run the converted audio will be logged to this run
+            the folder/directory to store the converted file in, if this is 'wandb' the converted audio will be logged to this run
+            all conversions not stored in WANDB will be saved in `results/` folder
         clean:
             whether to try and clean the converted audio (remove noise etc.)
         """
@@ -145,8 +146,11 @@ class VoiceConverter:
             self.wandb_run.log({out_name.replace(".wav", "") : wandb.Audio(waveform, caption = out_name, sample_rate = self.config["vocoder_params"].get("sample_rate"))})
         else:
             if out_dir is not None:
+                out_dir = out_dir if out_dir.startswith("results") else "results/" + out_dir 
                 out_name = out_dir.strip("/") + "/" + out_name
                 os.makedirs(out_dir, exist_ok=True) # create folder
+            else:
+                out_name = out_name if out_name.startswith("results") else "results/" + out_name 
     
             sf.write(out_name, waveform, samplerate =self.config["vocoder_params"].get("sample_rate"))
     
@@ -278,7 +282,8 @@ class VoiceConverter:
 
 if __name__ == "__main__":
     from autovc.utils.argparser import parse_vc_args
-    args = "-mode train -model_type auto_encoder -wandb_params mode=disabled -n_epochs 1"
+    # args = "-mode train -model_type auto_encoder -wandb_params mode=disabled -n_epochs 1"
+    args = "-mode convert -sources data/samples/mette_183.wav -targets data/samples/chooped7.wav"
     args = vars(parse_vc_args(args))
 
     vc = VoiceConverter(
@@ -308,7 +313,7 @@ if __name__ == "__main__":
             # conversion_examples= None if not convert_examples else [args.conversion_sources, args.conversion_targets]
         )
     elif mode == "convert":
-        assert all([args.__contains__(key) for key in ["conversions_sources", "conversions_targets"]])
+        assert all([args.__contains__(key) for key in ["sources", "targets"]])
         vc.convert_multiple(
             **args
             # sources = args.conversion_sources, 

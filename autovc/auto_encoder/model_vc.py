@@ -116,8 +116,12 @@ class Generator(nn.Module):
         return mel_outputs, mel_outputs_postnet, content_codes
 
 
-    def load(self, weights_fpath, device):
-        checkpoint = torch.load(weights_fpath, map_location = device)
+    def load(self, weights_fpath, device = None):
+        device = device if device is not None else self.params.device
+        try:
+            checkpoint = torch.load(self.params.model_dir.strip("/") + "/" + weights_fpath, map_location = device)
+        except:
+            checkpoint = torch.load(weights_fpath, map_location = device)
         self.load_state_dict(checkpoint["model_state"])
         if self.verbose:
             print("Loaded auto encoder \"%s\" trained to step %d" % (weights_fpath, checkpoint["step"]))

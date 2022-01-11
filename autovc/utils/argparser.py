@@ -68,8 +68,8 @@ def parse_vc_args(args = None):
     parser.add_argument("--verbose", action="store_true", default=False)
 
     # conversion data
-    parser.add_argument("-conversions_sources", nargs='*', type = str, help = "path to source files")
-    parser.add_argument("-conversions_targets", nargs='*', type = str, help = "path to target files")
+    parser.add_argument("-sources", nargs='*', type = str, help = "path to source files")
+    parser.add_argument("-targets", nargs='*', type = str, help = "path to target files")
     
 
     # models

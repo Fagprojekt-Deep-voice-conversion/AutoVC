@@ -94,7 +94,11 @@ class SpeakerEncoder(nn.Module):
         
         :param weights_fpath: the path to saved model weights.
         """
-        checkpoint = torch.load(weights_fpath, map_location = self.params.device if device is None else device )
+        device = device if device is not None else self.params.device
+        try:
+            checkpoint = torch.load(self.params.model_dir.strip("/") + "/" + weights_fpath, map_location = device)
+        except:
+            checkpoint = torch.load(weights_fpath, map_location = device)
         self.load_state_dict(checkpoint["model_state"], strict = False)
         
         print("Loaded speaker encoder \"%s\" trained to step %d" % (weights_fpath, checkpoint["step"]))

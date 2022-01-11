@@ -425,7 +425,12 @@ class WaveRNN(nn.Module):
     def load(self, weights_fpath: Union[str, Path], device = None):
         # Use device of model params as location for loaded state
         device = next(self.parameters()).device if device is None else device
-        self.load_state_dict(torch.load(weights_fpath, map_location=device))
+  
+        try:
+            self.load_state_dict(torch.load(self.params.model_dir.strip("/") + "/" + weights_fpath, map_location=device))
+        except:
+            self.load_state_dict(torch.load(weights_fpath, map_location=device))
+
         print("Loaded vocoder \"%s\"" % (weights_fpath))
 
     def save(self, path: Union[str, Path]):
