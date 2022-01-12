@@ -309,7 +309,8 @@ class SpeakerEncoder(nn.Module):
                 log_steps += 1
 
                 # print information
-                if (self.verbose) and ((step+1) % progbar_interval == 0):
+                # if (self.verbose) and ((step+1) % progbar_interval == 0):
+                if self.verbose:
                     total_time += (time.time()-step_start_time)
                     progbar(step, N_iterations, {"sec/step": np.round(total_time/step)})
 
