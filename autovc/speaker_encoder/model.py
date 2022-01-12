@@ -308,7 +308,7 @@ class SpeakerEncoder(nn.Module):
                     wandb_run.log({
                         "loss" : loss
                     }, step = step)
-                if step % self.params.save_freq == 0:
+                if step % self.params.save_freq == 0 or step == N_iterations:
                     save_name = self.params.model_dir.strip("/") + self.params.model_name
                     torch.save({
                         "step": step + 1,
