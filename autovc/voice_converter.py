@@ -201,7 +201,7 @@ class VoiceConverter:
                 "data/samples/chooped7.wav",
                 # "data/samples/hilde_301.wav", 
                 # "data/samples/HaegueYang_5.wav",
-                out_dir = "wandb",
+                out_dir = "wandb" if not self.wandb_run.mode == "disabled" else ".",
                 # out_folder=os.path.join(self.wandb_run.dir, "conversions")
             )
             # self.wandb_run.log({"example" : wandb.Audio(wav, caption = "test", sample_rate = sr)})
