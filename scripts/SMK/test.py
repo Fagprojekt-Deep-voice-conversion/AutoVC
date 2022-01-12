@@ -11,7 +11,7 @@ args = " ".join(param.strip() for param in [
     "-n_epochs 1",
 
     # wandb
-    f"-wandb_params project={project} name={job_name} mode=disabled"
+    f"-wandb_params project={project} name={job_name}"
 ])
 execution_code = ["python " + script.strip() + " " + args]
 
