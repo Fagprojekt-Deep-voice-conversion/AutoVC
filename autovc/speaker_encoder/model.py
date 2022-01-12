@@ -275,12 +275,17 @@ class SpeakerEncoder(nn.Module):
         return torch.stack([self(b) for b in batch])
 
     def learn(self, trainloader, n_epochs = 10, wandb_run = None,  **params):
-
+        # initialisation
         self.train()
         step = 0
+        running_loss, log_steps = 0, 0
         N_iterations = n_epochs*len(trainloader)
-        progbar_interval = params.pop("progbar", 1)
+        self.params = hparams().update(params)
+        # progbar_interval = params.pop("progbar", 1)
+
+        # begin training
         if self.verbose:
+            print(f"Training Speaker Encoder on {torch.cuda.get_device_name()} ({self.params.device})...")
             progbar(step, N_iterations)
         total_time = 0
         for epoch in range(n_epochs):
@@ -298,16 +303,22 @@ class SpeakerEncoder(nn.Module):
                 if self.lr_scheduler is not None: self.lr_scheduler._update_learning_rate()
                 self.optimiser.step()
 
+                # update log params
                 step += 1
+                running_loss += loss
+                log_steps += 1
+
+                # print information
                 if (self.verbose) and ((step+1) % progbar_interval == 0):
                     total_time += (time.time()-step_start_time)
                     progbar(step, N_iterations, {"sec/step": np.round(total_time/step)})
 
-
+                # save model and log to wandb
                 if (step % self.params.log_freq == 0 or step == N_iterations) and wandb_run is not None:
                     wandb_run.log({
-                        "loss" : loss
+                        "loss" : running_loss/log_steps
                     }, step = step)
+                    running_loss, log_steps = 0, 0 # reset log 
                 if step % self.params.save_freq == 0 or step == N_iterations:
                     save_name = self.params.model_dir.strip("/") + self.params.model_name
                     torch.save({

@@ -179,6 +179,7 @@ class Generator(nn.Module):
 
         # initialisation
         step = 0
+        running_loss, log_steps = 0, 0
         N_iterations = n_epochs*len(trainloader)
         # progbar_interval = params.pop("progbar", 1)
         self.params = hparams().update(params)
@@ -221,11 +222,16 @@ class Generator(nn.Module):
                 To save the exponentially smothed params use self.load_flattenend_params first.
                 
                 '''
+                # update log params
+                running_loss += loss
+                log_steps += 1
 
+                # save model and log to wandb
                 if (step % self.params.log_freq == 0 or step == N_iterations) and wandb_run is not None:
                     wandb_run.log({
-                        "loss" : loss
+                        "loss" : running_loss/log_steps
                     }, step = step)
+                    running_loss, log_steps = 0, 0 # reset log 
                 if step % self.params.save_freq == 0 or step == N_iterations:
                     save_name = self.params.model_dir.strip("/") + self.params.model_name
                     torch.save({
