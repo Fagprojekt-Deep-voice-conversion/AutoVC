@@ -32,4 +32,7 @@ fi
 
 deactivate
 
+# tell use to manually install some packages as they have problems being installed through requirements.txt
+echo "\e[33mPlease activate the environment and use 'python -m pip install six setuptools appdirs'\e[0m"
+
 
