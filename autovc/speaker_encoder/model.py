@@ -16,6 +16,8 @@ import librosa
 from pathlib import Path
 from autovc.utils.progbar import progbar, close_progbar
 import time, wandb
+import matplotlib.pyplot as plt
+from sklearn.manifold import TSNE
 class SpeakerEncoder(nn.Module):
     """
     The Speaker Encoder module
@@ -324,3 +326,18 @@ class SpeakerEncoder(nn.Module):
 
 
         close_progbar()
+
+
+    def visualise_embedding(self, embeddings):
+        '''
+        embeddings = (number of speakers, number of utterances pr. speaker, lattent dimension)
+        
+        Returns a TSNE plot with 2 components
+        '''
+        X = TSNE(n_components=2 ).fit_transform(torch.flatten(embeddings, start_dim  = 0, end_dim = 1).detach().numpy())
+
+        fig, ax = plt.subplots(figsize = (10,10))
+        ax.scatter(X[:len(X)//2,0], X[:len(X)//2,1], alpha = 0.6, zorder = 3)
+        ax.scatter(X[len(X)//2:,0], X[len(X)//2:,1], alpha = 0.6, zorder = 3)
+        ax.grid(ls = '--')
+        plt.show()
