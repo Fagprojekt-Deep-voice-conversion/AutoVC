@@ -1,8 +1,9 @@
 import os
 import numpy as np
+import glob
 
 
-def retrieve_file_paths(paths):
+def retrieve_file_paths(paths, excluded = []):
     """
     Takes a path and returns all files in the folder and subfolders
     
@@ -11,22 +12,22 @@ def retrieve_file_paths(paths):
     paths:
         if it is a directory the files in this path will be returned as a list
     """
+    if excluded != []:
+        excluded = retrieve_file_paths(excluded)
 
     if isinstance(paths, str):
         if os.path.isfile(paths):
-            return [paths]
+            return [paths] if paths not in excluded else []
         
         if os.path.isdir(paths):
-            walks = [w for w in os.walk(paths)]#[0]
-            paths = []
-            # return walk
-            # print(walk)
-            for walk in walks:
-                root, _, data = [w for w in walk]
-                paths.extend([root + "/" + d for d in data])
+            walk = os.walk(paths)
+            paths = list()
+            
+            for (dirpath, dirnames, filenames) in walk:
+                paths += [os.path.join(dirpath, file).replace("\\", "/") for file in filenames]
     
     if isinstance(paths, list):
-        paths = sum([retrieve_file_paths(path) for path in paths], [])
+        paths = sum([retrieve_file_paths(path, excluded = excluded) for path in paths], [])
 
     return paths
 
@@ -42,6 +43,11 @@ class pformat:
    BOLD = '\033[1m'
    UNDERLINE = '\033[4m'
    END = '\033[0m'
+
+
+if __name__ == "__main__":
+    print(retrieve_file_paths(["data/samples"], excluded="data/samples/test/chooped7.wav"))
+    # print(calls)
 
 
 

@@ -185,8 +185,8 @@ class VoiceConverter:
         if model_type == "auto_encoder":
             # print("Training device: ", self.AE.params.device)
             params = AutoEncoderParams().update(self.config[model_params])
-            # dataset = TrainDataLoader(**params.get_collection("dataset"), speaker_encoder = self.SE, chop = True)
-            dataset = TrainDataLoader(speaker_encoder = self.SE, chop = True, data_path = 'data/test_data')
+            dataset = TrainDataLoader(**params.get_collection("dataset"), speaker_encoder = self.SE)
+            # dataset = TrainDataLoader(speaker_encoder = self.SE, chop = True, data_path = 'data/test_data')
             dataloader = dataset.get_dataloader(**params.get_collection("dataloader"))
             self.AE.learn(dataloader, wandb_run = self.wandb_run, **params.get_collection())
         elif model_type == "speaker_encoder":
@@ -289,9 +289,9 @@ class VoiceConverter:
 
 if __name__ == "__main__":
     from autovc.utils.argparser import parse_vc_args
-    # args = "-mode train -model_type auto_encoder -wandb_params mode=online -n_epochs 1 -data_path data/SMK_train/newest_trial"
+    args = "-mode train -model_type auto_encoder -wandb_params mode=disabled -n_epochs 1 -data_path data/samples -data_path_excluded data/samples/test/chooped7.wav"
     # args = "-mode convert -sources data/samples/mette_183.wav -targets data/samples/chooped7.wav"
-    args = None # make sure this is used when not testing
+    # args = None # make sure this is used when not testing
     args = vars(parse_vc_args(args))
 
     vc = VoiceConverter(

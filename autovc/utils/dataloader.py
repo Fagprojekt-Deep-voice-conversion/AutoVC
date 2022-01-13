@@ -22,14 +22,14 @@ class TrainDataLoader(Dataset):
     If spectograms in batch are of unequal size the smaller are padded with zeros to match the size of the largest.
     '''
 
-    def __init__(self, speaker_encoder, data_path = None, wav_files = None,  chop = False, **kwargs):
+    def __init__(self, speaker_encoder, data_path = None, data_path_excluded= None, wav_files = None,  chop = False, **kwargs):
         super(TrainDataLoader, self).__init__()
 
         # Load wav files. Create spectograms and embeddings
         if wav_files is not None:
             self.wav_files = wav_files
         elif data_path is not None:
-            self.wav_files = retrieve_file_paths(data_path)
+            self.wav_files = retrieve_file_paths(data_path, excluded=data_path_excluded if data_path_excluded is not None else [])
         else:
             raise ArgumentError(f"Either data_path or wav_files must be different from None")
                 

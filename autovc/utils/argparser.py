@@ -98,6 +98,9 @@ def parse_vc_args(args = None):
     parser.add_argument("-bidirectional", type = bool, help = "whether to also convert the targets to the sources") #default = False,
     parser.add_argument("-match_method", type = str, help = "how to match each source to a target (same as 'method' in VoiceConverter.convert)")
     parser.add_argument("-convert_params", nargs='*', action=ParseKwargs)
+
+    # data
+    parser.add_argument("-data_path_excluded", nargs='*', type = str)
     
 
     if args is None:
