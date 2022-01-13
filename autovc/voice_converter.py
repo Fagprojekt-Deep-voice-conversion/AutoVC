@@ -207,7 +207,7 @@ class VoiceConverter:
                 "data/samples/chooped7.wav",
                 # "data/samples/hilde_301.wav", 
                 # "data/samples/HaegueYang_5.wav",
-                out_dir = "wandb",
+                out_dir = "wandb" if not self.wandb_run.mode == "disabled" else ".",
                 # out_folder=os.path.join(self.wandb_run.dir, "conversions")
             )
             # self.wandb_run.log({"example" : wandb.Audio(wav, caption = "test", sample_rate = sr)})
@@ -290,7 +290,9 @@ class VoiceConverter:
 if __name__ == "__main__":
     from autovc.utils.argparser import parse_vc_args
     args = "-mode train -model_type auto_encoder -n_epochs 10 -wandb_params project=SpeakerEncoder  -data_path data/test_data -auto_encoder_params batch_size=32 "
+    # args = "-mode train -model_type auto_encoder -wandb_params mode=disabled -n_epochs 1"
     # args = "-mode convert -sources data/samples/mette_183.wav -targets data/samples/chooped7.wav"
+    args = None # make sure this is used when not testing
     args = vars(parse_vc_args(args))
 
     vc = VoiceConverter(

@@ -255,6 +255,8 @@ class SpeakerEncoderParams(ParamCollection):
 		self.speakers_per_batch 		= 64
 		self.utterances_per_speaker 	= 10
 		self.log_freq 					= 1
+		self.model_dir					= "models/AutoVC"
+		self.model_name					= "model_" + date.today().strftime("%Y%m%d") + ".pt"
 
 		# Learning rate scheduler
 		self.lr_scheduler 					= NoamScheduler # see lrschedule.py for available lr_schedule

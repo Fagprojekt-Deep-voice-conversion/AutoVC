@@ -281,13 +281,21 @@ class SpeakerEncoder(nn.Module):
         '''
         return torch.stack([self(b.to(self.params.device)) for b in batch])
 
-    def learn(self, trainloader, n_epochs = 10, wandb_run = None,  log_freq = 5, save_freq = 10):
+   
 
+    def learn(self, trainloader, n_epochs = 10, wandb_run = None,  **params):
+        # initialisation
         self.train()
         step = 0
+        running_loss, log_steps = 0, 0
         N_iterations = n_epochs*len(trainloader)
-        progbar_interval = 1
+        # progbar_interval = 1
+        self.params = hparams().update(params)
+        # progbar_interval = params.pop("progbar", 1)
+
+        # begin training
         if self.verbose:
+            print(f"Training Speaker Encoder on {torch.cuda.get_device_name() + ' (cuda)' if 'cuda' in self.params.device else 'cpu'}...")
             progbar(step, N_iterations)
         total_time = 0
         for epoch in range(n_epochs):
@@ -305,26 +313,31 @@ class SpeakerEncoder(nn.Module):
                 if self.lr_scheduler is not None: self.lr_scheduler._update_learning_rate()
                 self.optimiser.step()
 
+                # update log params
                 step += 1
-                if (self.verbose) and ((step+1) % progbar_interval == 0):
+                running_loss += loss
+                log_steps += 1
+
+                # print information
+                # if (self.verbose) and ((step+1) % progbar_interval == 0):
+                if self.verbose:
                     total_time += (time.time()-step_start_time)
                     progbar(step, N_iterations, {"sec/step": np.round(total_time/step)})
 
-
-                if (step % log_freq == 0 or step == N_iterations) and wandb_run is not None:
+                # save model and log to wandb
+                if (step % self.params.log_freq == 0 or step == N_iterations) and wandb_run is not None:
                     wandb_run.log({
-                        "loss" : loss
+                        "loss" : running_loss/log_steps
                     }, step = step)
                     wandb_run.log({
                          'TSNE': self.visualise_embedding(embeddings)
                         })
+                    running_loss, log_steps = 0, 0 # reset log 
 
-                    # wandb_run.log({
-                    #      'Mean Embedding': self.visualise_embedding_matrix(embeddings)
-                    #       })
+                           
 
-                if step % save_freq == 0:
-                    save_name = "SpeakerEncoder"
+                if step % self.params.save_freq == 0 or step == N_iterations:
+                    save_name = self.params.model_dir.strip("/") + "/" + self.params.model_name
                     torch.save({
                         "step": step + 1,
                         "model_state": self.state_dict(),
