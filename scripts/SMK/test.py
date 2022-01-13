@@ -1,10 +1,10 @@
 from autovc.utils.hpc import create_submit
-import os
+import os, sys
 
 project = "GettingStarted"
 job_name = "test"
 
-script = "autovc/voice_converter.py"
+# script = "autovc/voice_converter.py"
 args = " ".join(param.strip() for param in [
     "-mode train",
     "-model_type auto_encoder",
@@ -14,7 +14,8 @@ args = " ".join(param.strip() for param in [
     # wandb
     f"-wandb_params project={project} name={job_name}"
 ])
-execution_code = ["python " + script.strip() + " " + args]
+# execution_code = ["python " + script.strip() + " " + args]
+execution_code = ["python autovc" + " " + args]
 
 
 # set cluster settings
@@ -26,6 +27,8 @@ cluster_settings = {
     "notifications" : True
 }
 
-
-submit_file = create_submit(job_name, project, *execution_code, **cluster_settings)
-os.system(f"bsub < {submit_file}") # bsubs the created submition file
+if "win" in sys.platform:
+    os.system(*execution_code)
+else:
+    submit_file = create_submit(job_name, project, *execution_code, **cluster_settings)
+    os.system(f"bsub < {submit_file}") # bsubs the created submition file
