@@ -76,7 +76,8 @@ se_params = SpeakerEncoderParams()
 
 
 def preprocess_wav(wav: Union[str, Path, np.ndarray],
-                   source_sr: Optional[int] = None):
+                   source_sr: Optional[int] = None,
+                   trim = False):
     """
     Applies the preprocessing operations used in training the Speaker Encoder to a waveform 
     either on disk or in memory. The waveform will be resampled to match the data hyperparameters.
@@ -90,15 +91,18 @@ def preprocess_wav(wav: Union[str, Path, np.ndarray],
     """
     # Load the wav from disk if needed
     if isinstance(wav, str) or isinstance(wav, Path):
-        wav, source_sr = librosa.load(wav, sr=None)
+        wav, source_sr = librosa.load(wav, sr=vocoder_params.sample_rate)
     
     # Resample the wav if needed
-    if source_sr is not None and source_sr != se_params.sampling_rate:
-        wav = librosa.resample(wav, source_sr, se_params.sampling_rate)
+    # if source_sr is not None and source_sr != se_params.sampling_rate:
+    #     wav = librosa.resample(wav, source_sr, se_params.sampling_rate)
         
     # Apply the preprocessing: normalize volume and shorten long silences 
     #wav = normalize_volume(wav, audio_norm_target_dBFS, increase_only=True)
-    wav = trim_long_silences(wav)
+    wav = normalize_volume(wav, -20)
+    wav = remove_noise(wav, sample_rate=vocoder_params.sample_rate)
+    if trim:
+        wav = trim_long_silences(wav)
     
     return wav
 
@@ -263,23 +267,44 @@ def combine_audio(audio_clip_paths, save_name = "combined.wav"):
 def get_mel_frames(wav, audio_to_mel, min_pad_coverage=0.75, overlap=0.5, order = 'FM', **kwargs):
     '''
     Chops the mel spectograms.
+    params:
+        wav: file or waveform (array) of audio
+        
+        audio_to_mel: function to convert audio to spectogram
 
-    Order (the shape of the input):
-        FM (Frames, Mels) 
-        MF (Mels, Frames)
+        min_pad_coverage:   when chopping into equal sizes the last chop is often larger than the remaining audio. 
+                            This parameters ensures that a percentage of the remaining audio is in the chop before just padding
+
+        overlap: How much each consecutive frame overlap
+
+        Order (the shape of the input):
+            FM (Frames, Mels) 
+            MF (Mels, Frames)
     '''
 
     if isinstance(wav, str):
-        wav, _ = librosa.load(wav)
-    wave_slices, mel_slices = compute_partial_slices(len(wav), min_pad_coverage=min_pad_coverage, overlap=overlap, **kwargs)
+        wav, _ = librosa.load(wav, sr = kwargs.get('sr', None))
+
+    wave_slices, mel_slices = compute_partial_slices(len(wav),
+                                                     min_pad_coverage   = min_pad_coverage,
+                                                     overlap            = overlap,
+                                                     **kwargs)
+
+    # Pad last audio frame
     max_wave_length = wave_slices[-1].stop
     if max_wave_length >= len(wav):
         wav = np.pad(wav, (0, max_wave_length - len(wav)), "constant")
+
+    # Retrieve mel spectograms in chops
     frames = torch.from_numpy(audio_to_mel(wav))
     if order == 'FM':
         frames_batch = [frames[s] for s in mel_slices]
     elif order == 'MF':
         frames_batch = [frames[:,s] for s in mel_slices]
+
+    for i,s in enumerate(wave_slices[:-1]):
+        sf.write(f'data/chopped{i}.wav', np.array(wav[s]), samplerate =  kwargs.get('sr', None))
+        
     return frames_batch
 
 

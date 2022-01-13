@@ -2,7 +2,7 @@ from logging import setLogRecordFactory
 from re import S
 import wandb
 from wandb.sdk.wandb_run import Run
-from autovc.utils.audio import audio_to_melspectrogram, remove_noise
+from autovc.utils.audio import audio_to_melspectrogram, preprocess_wav, remove_noise
 from autovc.utils.core import retrieve_file_paths
 import soundfile as sf
 import torch
@@ -112,13 +112,13 @@ class VoiceConverter:
         """
 
         print("Beginning conversion...")
-
+        source_wav, target_wav = preprocess_wav(source), preprocess_wav(target)
         # Generate speaker embeddings
-        c_source = self.SE.embed_utterance(source).unsqueeze(0)
-        c_target = self.SE.embed_utterance(target).unsqueeze(0)
+        c_source = self.SE.embed_utterance(source_wav).unsqueeze(0)
+        c_target = self.SE.embed_utterance(target_wav).unsqueeze(0)
 
         # Create mel spectrogram
-        mel_spec = torch.from_numpy(audio_to_melspectrogram(source)).unsqueeze(0)
+        mel_spec = torch.from_numpy(audio_to_melspectrogram(source_wav)).unsqueeze(0)
         
         # Convert
         out, post_out, content_codes = self.AE(mel_spec, c_source, c_target)
@@ -203,10 +203,10 @@ class VoiceConverter:
         # conversion example
         if conversion_examples is None:
             self.convert(
-                "data/samples/mette_183.wav", 
-                "data/samples/chooped7.wav",
-                # "data/samples/hilde_301.wav", 
-                # "data/samples/HaegueYang_5.wav",
+                # "data/samples/mette_183.wav", 
+                # "data/samples/chooped7.wav",
+                "data/samples/hilde_1.wav", 
+                "data/samples/HaegueYang_5.wav",
                 out_dir = "wandb" if not self.wandb_run.mode == "disabled" else ".",
                 # out_folder=os.path.join(self.wandb_run.dir, "conversions")
             )
@@ -289,10 +289,10 @@ class VoiceConverter:
 
 if __name__ == "__main__":
     from autovc.utils.argparser import parse_vc_args
-    args = "-mode train -model_type auto_encoder -n_epochs 10 -wandb_params project=SpeakerEncoder  -data_path data/test_data -auto_encoder_params batch_size=32 "
+    args = "-mode train -model_type auto_encoder -n_epochs 10 -wandb_params project=SpeakerEncoder  -data_path data/test_data -auto_encoder_params batch_size=32 -speaker_encoder_params SE_model=SpeakerEncoder.pt "
     # args = "-mode train -model_type auto_encoder -wandb_params mode=disabled -n_epochs 1"
-    # args = "-mode convert -sources data/samples/mette_183.wav -targets data/samples/chooped7.wav"
-    args = None # make sure this is used when not testing
+    # args = "-mode convert -sources data/samples/hilde_1.wav -targets data/samples/HaegueYang_5.wav -auto_encoder models/AutoVC/model_20220113.pt"
+    # args = None # make sure this is used when not testing
     args = vars(parse_vc_args(args))
 
     vc = VoiceConverter(

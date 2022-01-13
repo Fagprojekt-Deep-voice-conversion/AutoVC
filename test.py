@@ -3,6 +3,7 @@ import torch
 from autovc.speaker_encoder.model import SpeakerEncoder
 from autovc.utils.model_loader import load_model
 import wandb
+dataset = TrainDataLoader(speaker_encoder = self.SE, chop = False, data_path = 'data/test_data')
 
 datadir = {'hilde': ['data/hilde_7sek'], 'hague': ['data/HaegueYang_10sek', 'data/hyang_smk']}
 Data = SpeakerEncoderDataLoader(datadir)

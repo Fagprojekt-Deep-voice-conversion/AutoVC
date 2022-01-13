@@ -63,8 +63,12 @@ def wav_to_mel_spectrogram(wav):
 
 
 
-def compute_partial_slices(n_samples, partial_utterance_n_frames=hparams.partials_n_frames,
-                           min_pad_coverage=0.75, overlap=0.5, sr = hparams.sampling_rate, mel_window_step = hparams.mel_window_step ):
+def compute_partial_slices(n_samples, 
+                           partial_utterance_n_frames = hparams.partials_n_frames,
+                           min_pad_coverage = 0.75,
+                           overlap = 0.5,
+                           sr = hparams.sampling_rate,
+                           mel_window_step = hparams.mel_window_step ):
     """
     Computes where to split an utterance waveform and its corresponding mel spectrogram to obtain 
     partial utterances of <partial_utterance_n_frames> each. Both the waveform and the mel 

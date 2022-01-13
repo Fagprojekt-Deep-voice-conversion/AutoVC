@@ -345,7 +345,7 @@ class SpeakerEncoder(nn.Module):
                     }, save_name)
 
                     if wandb_run is not None:
-                        artifact = wandb.Artifact("MrSnuffy", "SpeakerEncoder")
+                        artifact = wandb.Artifact(self.params.model_name, "SpeakerEncoder")
                         artifact.add_file(save_name)
                         wandb_run.log_artifact(artifact)
                         
