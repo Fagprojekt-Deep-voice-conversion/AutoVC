@@ -2,13 +2,13 @@ from logging import setLogRecordFactory
 from re import S
 import wandb
 from wandb.sdk.wandb_run import Run
-from autovc.utils.audio import audio_to_melspectrogram, remove_noise
+from autovc.utils.audio import audio_to_melspectrogram, preprocess_wav, remove_noise
 from autovc.utils.core import retrieve_file_paths
 import soundfile as sf
 import torch
 import numpy as np
 # from autovc.utils.hparams import VoiceConverterParams
-from autovc.utils.dataloader import TrainDataLoader
+from autovc.utils.dataloader import TrainDataLoader, SpeakerEncoderDataLoader
 from autovc.utils.model_loader import load_models
 import time
 import os
@@ -112,13 +112,13 @@ class VoiceConverter:
         """
 
         print("Beginning conversion...")
-
+        source_wav, target_wav = preprocess_wav(source), preprocess_wav(target)
         # Generate speaker embeddings
-        c_source = self.SE.embed_utterance(source).unsqueeze(0)
-        c_target = self.SE.embed_utterance(target).unsqueeze(0)
+        c_source = self.SE.embed_utterance(source_wav).unsqueeze(0)
+        c_target = self.SE.embed_utterance(target_wav).unsqueeze(0)
 
         # Create mel spectrogram
-        mel_spec = torch.from_numpy(audio_to_melspectrogram(source)).unsqueeze(0)
+        mel_spec = torch.from_numpy(audio_to_melspectrogram(source_wav)).unsqueeze(0)
         
         # Convert
         out, post_out, content_codes = self.AE(mel_spec, c_source, c_target)
@@ -185,11 +185,17 @@ class VoiceConverter:
         if model_type == "auto_encoder":
             # print("Training device: ", self.AE.params.device)
             params = AutoEncoderParams().update(self.config[model_params])
-            dataset = TrainDataLoader(**params.get_collection("dataset"), speaker_encoder = self.SE)
+            # dataset = TrainDataLoader(**params.get_collection("dataset"), speaker_encoder = self.SE, chop = True)
+            dataset = TrainDataLoader(speaker_encoder = self.SE, chop = True, data_path = 'data/test_data')
             dataloader = dataset.get_dataloader(**params.get_collection("dataloader"))
             self.AE.learn(dataloader, wandb_run = self.wandb_run, **params.get_collection())
         elif model_type == "speaker_encoder":
-            raise NotImplementedError()
+
+            datadir = {'hilde': ['data/hilde_7sek'], 'hague': ['data/HaegueYang_10sek', 'data/hyang_smk']}
+            dataset = SpeakerEncoderDataLoader(datadir, device = self.config.get("device", 'cuda'))
+            dataloader = dataset.get_dataloader(batch_size = 1024)
+            self.SE.learn(dataloader, n_epochs = 16, wandb_run = self.wandb_run,  log_freq = 4, save_freq = 32)
+            # raise NotImplementedError()
             
         
         print(f"Training finished in {time.time() - start_time}")
@@ -199,7 +205,7 @@ class VoiceConverter:
             self.convert(
                 # "data/samples/mette_183.wav", 
                 # "data/samples/chooped7.wav",
-                "data/samples/hilde_301.wav", 
+                "data/samples/hilde_1.wav", 
                 "data/samples/HaegueYang_5.wav",
                 out_dir = "wandb" if not self.wandb_run.mode == "disabled" else ".",
                 # out_folder=os.path.join(self.wandb_run.dir, "conversions")

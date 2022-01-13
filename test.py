@@ -1,30 +1,18 @@
-from torch.utils import data
-from autovc.utils.model_loader import load_model
-from autovc.utils.dataloader import SpeakerEncoderDataLoader, TrainDataLoader
+from autovc.utils.dataloader import SpeakerEncoderDataLoader
 import torch
-from sklearn.manifold import TSNE
-import matplotlib.pyplot as plt
-datadir = {'hilde': ['data/hyang_smk', 'data/hilde_20211020'], 'hague': ['data/HaegueYang_10sek', 'data/hyang_smk']}
+from autovc.speaker_encoder.model import SpeakerEncoder
+from autovc.utils.model_loader import load_model
+import wandb
+dataset = TrainDataLoader(speaker_encoder = self.SE, chop = False, data_path = 'data/test_data')
+
+datadir = {'hilde': ['data/hilde_7sek'], 'hague': ['data/HaegueYang_10sek', 'data/hyang_smk']}
 Data = SpeakerEncoderDataLoader(datadir)
+
+
 SE = load_model('speaker_encoder', 'models/SpeakerEncoder/SpeakerEncoder.pt')
+run = wandb.init(project = 'SpeakerEncoder',  entity = "deep_voice_inc", reinit = True)
 
-# Data = TrainDataLoader('data', SE, chop = True)
-dataloader = Data.get_dataloader(batch_size=10)
 
-SE.learn(dataloader, save_freq = 10, log_freq = 10)
+dataloader = Data.get_dataloader(batch_size = 5)
 
-# def batch_forward(batch):
-#     # embeddings = []
-#     # for b in batch:
-#     #     embed_speaker = torch.stack([SE.forward(torch.from_numpy(speaker).unsqueeze(0).to('cpu')) for speaker in b])
-#     #     embeddings.append(embed_speaker)
-#     # return torch.cat(embeddings, dim = 1)
-#     return torch.stack([SE(b) for b in batch])
-
-# for i in range(5):
-#     for batch in dataloader:
-#         embeds = batch_forward(batch)
-#         print(embeds.shape)
-#         X = TSNE(n_components=2 ).fit_transform(torch.flatten(embeds, start_dim  = 0, end_dim = 1).detach().numpy())
-#         plt.scatterplot(X[:, 0], X[:, 1])
-#         print(SE.loss(embeds))
+SE.learn(dataloader, n_epochs = 100, wandb_run = run, )

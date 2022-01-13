@@ -43,7 +43,7 @@ hparams = hparams()
 #     return _model is not None
 
 
-def wav_to_mel_spectrogram(wav):
+def wav_to_mel_spectrogram(wav, sampling_rate = None, mel_window_length = None, mel_window_step = None, mel_n_channels = None):
     """
     Derives a mel spectrogram ready to be used by the encoder from a preprocessed audio waveform.
     Note: this not a log-mel spectrogram.
@@ -51,20 +51,31 @@ def wav_to_mel_spectrogram(wav):
     if isinstance(wav, str) or isinstance(wav, Path):
         wav, source_sr = librosa.load(wav, sr=None)
 
+    # set default values
+    sampling_rate = sampling_rate if sampling_rate is not None else hparams.sampling_rate
+    mel_window_length = mel_window_length if mel_window_length is not None else hparams.mel_window_length
+    mel_window_step = mel_window_step if mel_window_step is not None else hparams.mel_window_step
+    mel_n_channels = mel_n_channels if mel_n_channels is not None else hparams.mel_n_channels
+
+
     frames = librosa.feature.melspectrogram(
         wav,
-        hparams.sampling_rate,
-        n_fft=int(hparams.sampling_rate * hparams.mel_window_length / 1000),
-        hop_length=int(hparams.sampling_rate * hparams.mel_window_step / 1000),
-        n_mels=hparams.mel_n_channels
+        sampling_rate,
+        n_fft=int(sampling_rate * mel_window_length / 1000),
+        hop_length=int(sampling_rate * mel_window_step / 1000),
+        n_mels=mel_n_channels
     )
 
     return frames.astype(np.float32).T
 
 
 
-def compute_partial_slices(n_samples, partial_utterance_n_frames=hparams.partials_n_frames,
-                           min_pad_coverage=0.75, overlap=0.5, sr = hparams.sampling_rate, mel_window_step = hparams.mel_window_step ):
+def compute_partial_slices(n_samples, 
+                           partial_utterance_n_frames = hparams.partials_n_frames,
+                           min_pad_coverage = 0.75,
+                           overlap = 0.5,
+                           sr = hparams.sampling_rate,
+                           mel_window_step = hparams.mel_window_step ):
     """
     Computes where to split an utterance waveform and its corresponding mel spectrogram to obtain 
     partial utterances of <partial_utterance_n_frames> each. Both the waveform and the mel 

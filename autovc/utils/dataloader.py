@@ -3,11 +3,11 @@ import numpy as np
 import torch
 import os
 from torch.utils.data import DataLoader, Dataset
-from autovc.utils.audio import audio_to_melspectrogram
+from autovc.utils.audio import audio_to_melspectrogram, get_mel_frames
 from autovc.speaker_encoder.model import SpeakerEncoder
 from autovc.speaker_encoder.utils import *
 from torch.nn.functional import pad
-from autovc.utils.audio import remove_noise
+from autovc.utils.audio import remove_noise, preprocess_wav
 from autovc.utils.progbar import close_progbar, progbar
 from autovc.utils.core import retrieve_file_paths
 from autovc.utils.hparams import WaveRNNParams 
@@ -22,7 +22,7 @@ class TrainDataLoader(Dataset):
     If spectograms in batch are of unequal size the smaller are padded with zeros to match the size of the largest.
     '''
 
-    def __init__(self, speaker_encoder, data_path = None, wav_files = None,  chop = False):
+    def __init__(self, speaker_encoder, data_path = None, wav_files = None,  chop = False, **kwargs):
         super(TrainDataLoader, self).__init__()
 
         # Load wav files. Create spectograms and embeddings
@@ -41,13 +41,30 @@ class TrainDataLoader(Dataset):
             # make nice sounds
 
             if chop:
-                mel_frames = get_mel_frames(wav, audio_to_melspectrogram, order = 'MF', sr = vocoder_params.sample_rate, mel_window_step = vocoder_params.mel_window_step, partial_utterance_n_frames = 160 )
+                # Chops the mel spectograms in size of 'partial_n_utterances
+
+
+                wav = preprocess_wav(wav)
+
+                
+                mel_frames = get_mel_frames(wav,
+                                            audio_to_melspectrogram,
+                                            order = 'MF',
+                                            sr = vocoder_params.sample_rate, 
+                                            mel_window_step = vocoder_params.mel_window_step, 
+                                            partial_utterance_n_frames = 250  )
+                # Get embeddings of speech
                 embeds     = speaker_encoder.embed_utterance(wav)
+
+                # Add to dataset - embeddings are cloned to match the number of mel frames
                 self.mel_spectograms.extend(mel_frames)
                 self.embeddings.extend([embeds.clone() for _ in range(len(mel_frames))])
             else:
+                # Compute mel spectogram and speaker embeddings
                 mel_frames = torch.from_numpy(audio_to_melspectrogram(wav))
                 embeds     = speaker_encoder.embed_utterance(wav)
+
+                # Add to dataset
                 self.mel_spectograms.append(mel_frames)
                 self.embeddings.append(embeds)
             progbar(i+1, N)
@@ -71,7 +88,7 @@ class TrainDataLoader(Dataset):
         return torch.stack(padded_spectrograms), torch.stack(embeddings)
 
     def get_dataloader(self, batch_size=1, shuffle=False,  num_workers=0, pin_memory=False):
-        return torch.utils.data.DataLoader(
+        return DataLoader(
             self,  
             batch_size=batch_size, 
             num_workers= num_workers, 
@@ -81,11 +98,11 @@ class TrainDataLoader(Dataset):
 
 
 class SpeakerEncoderDataLoader(Dataset):
-    def __init__(self, data_dict):
+    def __init__(self, data_dict, device = 'cpu'):
         super(SpeakerEncoderDataLoader, self).__init__()
-
+        self.device = device
         # Find wav files in dictionary of data        
-        wav_files = [sum([retrieve_file_paths(data_dir_path)[:10] for data_dir_path in speaker_data_dir], []) for speaker_data_dir in data_dict.values()]
+        wav_files = [sum([retrieve_file_paths(data_dir_path) for data_dir_path in speaker_data_dir], []) for speaker_data_dir in data_dict.values()]
 
         # Compute mel spectograms
         speakers = len(data_dict.keys())
@@ -96,6 +113,7 @@ class SpeakerEncoderDataLoader(Dataset):
         progbar(t, N)
         for i in range(speakers):
             for wav in wav_files[i]:
+                wav = preprocess_wav(wav)
                 # Compute where to split the utterance into partials and pad if necessary
                 frames_batch = get_mel_frames(wav, wav_to_mel_spectrogram )
                 
@@ -113,10 +131,10 @@ class SpeakerEncoderDataLoader(Dataset):
 
     def collate_fn(self, batch):
 
-        return torch.stack(tuple(torch.stack(b) for b in list(zip(*batch)) ))
+        return torch.stack(tuple(torch.stack(b) for b in list(zip(*batch)) )).to(self.device)
 
     def get_dataloader(self, batch_size=2, shuffle=False,  num_workers=0, pin_memory=False, **kwargs):
-        return torch.utils.data.DataLoader(
+        return DataLoader(
             self,  
             batch_size      = batch_size, 
             num_workers     = num_workers, 
@@ -124,24 +142,3 @@ class SpeakerEncoderDataLoader(Dataset):
             collate_fn      = self.collate_fn
         )
 
-def get_mel_frames(wav, audio_to_mel, min_pad_coverage=0.75, overlap=0.5, order = 'FM', **kwargs):
-    '''
-    Chops the mel spectograms.
-
-    Order (the shape of the input):
-        FM (Frames, Mels) 
-        MF (Mels, Frames)
-    '''
-
-    if isinstance(wav, str):
-        wav, _ = librosa.load(wav)
-    wave_slices, mel_slices = compute_partial_slices(len(wav), min_pad_coverage=min_pad_coverage, overlap=overlap, **kwargs)
-    max_wave_length = wave_slices[-1].stop
-    if max_wave_length >= len(wav):
-        wav = np.pad(wav, (0, max_wave_length - len(wav)), "constant")
-    frames = torch.from_numpy(audio_to_mel(wav))
-    if order == 'FM':
-        frames_batch = [frames[s] for s in mel_slices]
-    elif order == 'MF':
-        frames_batch = [frames[:,s] for s in mel_slices]
-    return frames_batch
