@@ -8,7 +8,7 @@ def retrieve_file_paths(paths):
     
     Params
     ------
-    path:
+    paths:
         if it is a directory the files in this path will be returned as a list
     """
 
@@ -17,8 +17,6 @@ def retrieve_file_paths(paths):
             return [paths]
         
         if os.path.isdir(paths):
-            
-
             walks = [w for w in os.walk(paths)]#[0]
             paths = []
             # return walk
@@ -26,6 +24,9 @@ def retrieve_file_paths(paths):
             for walk in walks:
                 root, _, data = [w for w in walk]
                 paths.extend([root + "/" + d for d in data])
+    
+    if isinstance(paths, list):
+        paths = [retrieve_file_paths(path) for path in paths]
 
     return paths
 
