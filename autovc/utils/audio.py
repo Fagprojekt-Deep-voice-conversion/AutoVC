@@ -16,8 +16,8 @@ import soundfile as sf
 import os
 import noisereduce as nr
 from autovc.utils.core import retrieve_file_paths
-import math
-
+import math, torch
+from autovc.speaker_encoder.utils import compute_partial_slices
 
 ######### FROM VOCODER #########
 vocoder_params = WaveRNNParams()
@@ -260,7 +260,27 @@ def combine_audio(audio_clip_paths, save_name = "combined.wav"):
 #     # convert mp3 to wav file
 #     subprocess.call(['ffmpeg', '-i', f'{audio_path}',
 #                     f'{root if save_folder is None else save_folder}/{filename}.{new_format}'])
+def get_mel_frames(wav, audio_to_mel, min_pad_coverage=0.75, overlap=0.5, order = 'FM', **kwargs):
+    '''
+    Chops the mel spectograms.
 
+    Order (the shape of the input):
+        FM (Frames, Mels) 
+        MF (Mels, Frames)
+    '''
+
+    if isinstance(wav, str):
+        wav, _ = librosa.load(wav)
+    wave_slices, mel_slices = compute_partial_slices(len(wav), min_pad_coverage=min_pad_coverage, overlap=overlap, **kwargs)
+    max_wave_length = wave_slices[-1].stop
+    if max_wave_length >= len(wav):
+        wav = np.pad(wav, (0, max_wave_length - len(wav)), "constant")
+    frames = torch.from_numpy(audio_to_mel(wav))
+    if order == 'FM':
+        frames_batch = [frames[s] for s in mel_slices]
+    elif order == 'MF':
+        frames_batch = [frames[:,s] for s in mel_slices]
+    return frames_batch
 
 
 if __name__ == "__main__":

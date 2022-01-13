@@ -5,6 +5,7 @@ Speaker Identity encoder from https://github.com/CorentinJ/Real-Time-Voice-Cloni
 
 from scipy.interpolate import interp1d
 from sklearn.metrics import roc_curve
+from sklearn.utils import axis0_safe_slice
 from torch.nn.utils import clip_grad_norm_
 from scipy.optimize import brentq
 from torch import nn
@@ -18,6 +19,7 @@ from autovc.utils.progbar import progbar, close_progbar
 import time, wandb
 import matplotlib.pyplot as plt
 from sklearn.manifold import TSNE
+import plotly.tools as tls
 class SpeakerEncoder(nn.Module):
     """
     The Speaker Encoder module
@@ -273,15 +275,18 @@ class SpeakerEncoder(nn.Module):
 
 
     def batch_forward(self, batch):
+        '''
+        Batch of
+        
+        '''
+        return torch.stack([self(b.to(self.params.device)) for b in batch])
 
-        return torch.stack([self(b) for b in batch])
-
-    def learn(self, trainloader, n_epochs = 10, wandb_run = None,  **params):
+    def learn(self, trainloader, n_epochs = 10, wandb_run = None,  log_freq = 5, save_freq = 10):
 
         self.train()
         step = 0
         N_iterations = n_epochs*len(trainloader)
-        progbar_interval = params.pop("progbar", 1)
+        progbar_interval = 1
         if self.verbose:
             progbar(step, N_iterations)
         total_time = 0
@@ -306,12 +311,20 @@ class SpeakerEncoder(nn.Module):
                     progbar(step, N_iterations, {"sec/step": np.round(total_time/step)})
 
 
-                if (step % self.params.log_freq == 0 or step == N_iterations) and wandb_run is not None:
+                if (step % log_freq == 0 or step == N_iterations) and wandb_run is not None:
                     wandb_run.log({
                         "loss" : loss
                     }, step = step)
-                if step % self.params.save_freq == 0:
-                    save_name = self.params.model_dir.strip("/") + self.params.model_name
+                    wandb_run.log({
+                         'TSNE': self.visualise_embedding(embeddings)
+                        })
+
+                    # wandb_run.log({
+                    #      'Mean Embedding': self.visualise_embedding_matrix(embeddings)
+                    #       })
+
+                if step % save_freq == 0:
+                    save_name = "SpeakerEncoder"
                     torch.save({
                         "step": step + 1,
                         "model_state": self.state_dict(),
@@ -319,7 +332,7 @@ class SpeakerEncoder(nn.Module):
                     }, save_name)
 
                     if wandb_run is not None:
-                        artifact = wandb.Artifact(self.params.model_name, "SpeakerEncoder")
+                        artifact = wandb.Artifact("MrSnuffy", "SpeakerEncoder")
                         artifact.add_file(save_name)
                         wandb_run.log_artifact(artifact)
                         
@@ -334,10 +347,27 @@ class SpeakerEncoder(nn.Module):
         
         Returns a TSNE plot with 2 components
         '''
-        X = TSNE(n_components=2 ).fit_transform(torch.flatten(embeddings, start_dim  = 0, end_dim = 1).detach().numpy())
+        X = TSNE(n_components = 2).fit_transform(torch.flatten(embeddings, start_dim  = 0, end_dim = 1).detach().cpu().numpy())
 
         fig, ax = plt.subplots(figsize = (10,10))
-        ax.scatter(X[:len(X)//2,0], X[:len(X)//2,1], alpha = 0.6, zorder = 3)
-        ax.scatter(X[len(X)//2:,0], X[len(X)//2:,1], alpha = 0.6, zorder = 3)
+        n_speakers = embeddings.size(0)
+        n_utterances = embeddings.size(1)
+        for speaker in range(n_speakers):
+            start = speaker * n_utterances
+            stop  = start + n_utterances
+            ax.scatter(X[start:stop, 0], X[start:stop,1], alpha = 0.6, zorder = 3)
         ax.grid(ls = '--')
-        plt.show()
+
+        
+        return fig
+
+    # def visualise_embedding_matrix(self, embedding):
+    #     fig, axes = plt.subplots(figsize = (10,10), nrows = 1, ncols = embedding.size(0))
+
+    #     for i, ax in enumerate(axes):
+    #         mean_emb = embedding[i].mean(axis = 0).detach().cpu().numpy().reshape(16, 16)
+    #         im = ax.imshow(mean_emb, vmin=0, vmax=0.3)
+    #     fig.colorbar(im, ax=axes.ravel().tolist())
+    #     return fig
+
+
