@@ -1,6 +1,4 @@
 import os
-import numpy as np
-import glob
 
 
 def retrieve_file_paths(paths, excluded = []):
@@ -19,12 +17,15 @@ def retrieve_file_paths(paths, excluded = []):
         if os.path.isfile(paths):
             return [paths] if paths not in excluded else []
         
-        if os.path.isdir(paths):
+        elif os.path.isdir(paths):
             walk = os.walk(paths)
             paths = list()
             
             for (dirpath, dirnames, filenames) in walk:
                 paths += [os.path.join(dirpath, file).replace("\\", "/") for file in filenames]
+        
+        else:
+            raise ValueError(f"No file or a directory named {paths}")
     
     if isinstance(paths, list):
         paths = sum([retrieve_file_paths(path, excluded = excluded) for path in paths], [])
