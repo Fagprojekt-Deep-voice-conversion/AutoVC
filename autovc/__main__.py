@@ -3,8 +3,7 @@ Sets up a command line tool for AutoVC
 """
 
 from autovc.utils.argparser import parse_vc_args
-from autovc.voice_converter import VoiceConverter
-
+from autovc import VoiceConverter
 
 if __name__ == "__main__":
     args = vars(parse_vc_args())

@@ -1,0 +1,1 @@
+from autovc.voice_converter import VoiceConverter

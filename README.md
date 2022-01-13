@@ -17,11 +17,25 @@ The `-e` flag can be deprecated as it only tells the package to track changes an
 
 ## Usage
 
-easy usage do this....
+This package uses [Weights & Biases (wandb)](https://docs.wandb.ai/) for profiling the code and a wandb account is therefore encouraged. If you do not want to create a wandb account, the code can be with `-wandb_params mode=disabled`
 
-This package uses [Weights & Biases (wandb)](https://docs.wandb.ai/) for profiling the code and a wandb account is therefore encouraged. If you do not want to create a wandb account, the code can be run `code -wandb mode=offline`
+Below is a minimal example of how to use both the command line tool and the python class, showing examples of how to train and convert. For a more detailed explanation of how each part of the model works see [docs/usage](docs/usage_old.md)
 
-For a more detailed explanation of how each part of the model works see [docs/usage](docs/usage_old.md)
+#### Command line usage:
+To train the default auto encoder for 10 epochs on the sample data:
+```bash 
+python autovc -mode train -model_type auto_encoder -n_epochs 10
+```
+
+#### Python usage
+To convert two audio files with the python class:
+```python
+from autovc import VoiceConverter
+
+vc = VoiceConverter()
+vc.convert(source, target)
+vc.close()
+```
 
 ## Ethical usage
 
