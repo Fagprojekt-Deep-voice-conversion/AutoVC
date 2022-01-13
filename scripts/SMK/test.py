@@ -9,6 +9,7 @@ args = " ".join(param.strip() for param in [
     "-mode train",
     "-model_type auto_encoder",
     "-n_epochs 1",
+    # "-data_path data/SMK_train/newest_trial",
 
     # wandb
     f"-wandb_params project={project} name={job_name}"

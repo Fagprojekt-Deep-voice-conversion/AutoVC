@@ -26,6 +26,9 @@ def retrieve_file_paths(paths):
             for walk in walks:
                 root, _, data = [w for w in walk]
                 paths.extend([root + "/" + d for d in data])
+    
+    if isinstance(paths, list):
+        paths = sum([retrieve_file_paths(path) for path in paths], [])
 
     return paths
 
