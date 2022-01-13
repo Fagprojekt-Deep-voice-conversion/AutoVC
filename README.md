@@ -9,7 +9,7 @@ The main idea is to loss every information about the speaker identity and then p
 
 This package is not supported by pypi and to the repository must therefore be downloaded. After downloading use `cd ...` to navigate to the `AutoVC` folder and type the command
 
-```
+```bash
 pip install -e .
 ```
 
