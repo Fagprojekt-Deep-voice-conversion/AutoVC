@@ -82,12 +82,7 @@ class VoiceConverter:
         }
 
         # initialise models
-        self.AE, self.SE, self.vocoder = load_models(
-            model_types= ["auto_encoder", "speaker_encoder", "vocoder"],
-            model_paths= [self.config.get("AE_model"), self.config.get("SE_model"), self.config.get("vocoder_model")],
-            params = [self.config["AE_params"], self.config["SE_params"], self.config["vocoder_params"]],
-            device = self.config.get("device", None)
-        )
+        self._init_models()
         
         
 
@@ -177,8 +172,7 @@ class VoiceConverter:
         self.config[model_params].update({**train_params, "n_epochs" : n_epochs, "data_path" : data_path})
 
         # create a wandb run
-        if self.wandb_run is None:
-            self.setup_wandb_run()
+        self._init_wandb()
 
         start_time = time.time()
         # print(f"Starting to train {model_type}...")
@@ -190,7 +184,6 @@ class VoiceConverter:
             dataloader = dataset.get_dataloader(**params.get_collection("dataloader"))
             self.AE.learn(dataloader, wandb_run = self.wandb_run, **params.get_collection())
         elif model_type == "speaker_encoder":
-
             datadir = {'hilde': ['data/hilde_7sek'], 'hague': ['data/HaegueYang_10sek', 'data/hyang_smk']}
             dataset = SpeakerEncoderDataLoader(datadir, device = self.config.get("device", 'cuda'))
             dataloader = dataset.get_dataloader(batch_size = 1024)
@@ -257,13 +250,12 @@ class VoiceConverter:
         return wavs, sample_rates
 
     
-    def setup_wandb_run(self, **params):
-        
+    def _init_wandb(self, **params):
+        # skip if setup has already been done
+        if self.wandb_run is not None:
+            return None
 
-        # self.wandb_run = wandb.init(entity="deep_voice_inc", project= "GetStarted", config = self.config)
-
-         # overwrite defaults with parsed arguments
-        # wand_args = {**wand_defaults, **params}
+        # overwrite defaults with parsed arguments
         self.config["wandb_params"].update(params)
         self.config["wandb_params"].update({"dir" : "logs/" + self.config["wandb_params"].get("project")})
 
@@ -275,9 +267,6 @@ class VoiceConverter:
         self.wandb_run = wandb.init(**self.config["wandb_params"], config = self.config)
         self.config = self.wandb_run.config
 
-        # watch models
-        self.wandb_run.watch(self.AE, log_freq = self.AE.params.log_freq)
-        self.wandb_run.watch(self.SE, log_freq = self.SE.params.log_freq)
     
     def close(self):
         """
@@ -287,9 +276,37 @@ class VoiceConverter:
             self.wandb_run.finish()
         wandb.finish()
 
+    def _init_models(self):
+        type_to_dir = {"auto_encoder" : "AutoVC", "speaker_encoder" : "SpeakerEncoder", "vocoder" : "WaveRNN"}
+        type_to_artifact = {"auto_encoder" : "AutoEncoder", "speaker_encoder" : "SpeakerEncoder"}
+        model_paths= [self.config.get("AE_model"), self.config.get("SE_model"), self.config.get("vocoder_model")]
+        model_types = list(type_to_dir.keys())
+
+        for i in range(len(model_paths)):
+            if not os.path.isfile(model_paths[i]):
+                if self.config["wandb_params"].get("mode") in ["disabled", "offline"]:
+                    raise ValueError(f"Model {model_paths[i]} was not found locally and it was not possible to look in wandb, as the wandb mode was not set to 'online'")
+                print(f"Looking for model {model_paths[i]} in wandb...")
+                self._init_wandb()
+                artifact = self.wandb_run.use_artifact(model_paths[i], type=type_to_artifact[model_types[i]])
+                model_path = "models/" + type_to_dir[model_types[i]]+"/"+os.path.basename(artifact.file())
+                if os.path.isfile(model_path):
+                    raise ValueError(f"The model '{model_path}' already exists, please use this path instead or delete the file if you want to use the model from wandb")
+    
+                artifact.download("models/" + type_to_dir[model_types[i]])
+                model_paths[i] = model_path
+        
+        self.AE, self.SE, self.vocoder = load_models(
+            model_types= model_types,
+            model_paths= model_paths,
+            params = [self.config["AE_params"], self.config["SE_params"], self.config["vocoder_params"]],
+            device = self.config.get("device", None),
+        )
+
+
 if __name__ == "__main__":
     from autovc.utils.argparser import parse_vc_args
-    args = "-mode train -model_type auto_encoder -wandb_params mode=disabled -n_epochs 1 -data_path data/samples -data_path_excluded data/samples/test/chooped7.wav"
+    args = "-mode train -model_type auto_encoder -wandb_params mode=online -n_epochs 1 -data_path data/samples -data_path_excluded data/samples/chooped7.wav -auto_encoder deep_voice_inc/SpeakerEncoder/model_20220113.pt:v4"
     # args = "-mode convert -sources data/samples/mette_183.wav -targets data/samples/chooped7.wav"
     # args = None # make sure this is used when not testing
     args = vars(parse_vc_args(args))
