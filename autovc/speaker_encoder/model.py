@@ -292,6 +292,8 @@ class SpeakerEncoder(nn.Module):
         # progbar_interval = 1
         self.params = hparams().update(params)
         # progbar_interval = params.pop("progbar", 1)
+        if wandb_run is not None:
+            wandb_run.watch(self, log_freq = self.params.log_freq)
 
         # begin training
         if self.verbose:

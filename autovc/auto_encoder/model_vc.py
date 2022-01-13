@@ -185,6 +185,8 @@ class Generator(nn.Module):
         self.params = hparams().update(params)
         self.train()
         avg_params = self.flatten_params()
+        if wandb_run is not None:
+            wandb_run.watch(self, log_freq = self.params.log_freq)
 
         # begin training
         if self.verbose:
