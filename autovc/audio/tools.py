@@ -138,7 +138,7 @@ def split_audio(wav, sr, filename = None, save_dir = "splitted_wavs/", allowed_p
     Return
     ------
     wavs:
-        List of np arrays with splitted audio content. The content is not ensured to have equal length.
+        List of numpy arrays with splitted audio content. The content is not ensured to have equal length.
 
     """
 
@@ -203,7 +203,7 @@ def normalize_volume(wav, target_dBFS = -30, increase_only=False, decrease_only=
     Return
     ------
     wav:
-        A np array containing audio data with a normalized volume.
+        A numpy array containing audio data with a normalized volume.
     """
     if increase_only and decrease_only:
         raise ValueError("Both increase only and decrease only are set")
@@ -229,7 +229,7 @@ def remove_noise(wav, sr, **kwargs):
     Return
     ------
     wav:
-        A np array containing audio data with reduced noise
+        A numpy array containing audio data with reduced noise
     """
     return nr.reduce_noise(y=wav, sr=sr, **kwargs)
 

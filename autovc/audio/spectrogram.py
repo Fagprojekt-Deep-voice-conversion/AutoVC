@@ -22,16 +22,50 @@ import math, torch
 from autovc.speaker_encoder.utils import compute_partial_slices
 
 def normalize_spec(spectrogram, min_level_db = -100):
-    return np.clip((S - min_level_db) / -min_level_db, 0, 1)
+    """
+    Normalizes a spectrogram.
 
-def denormalize_spec():
-    pass
+    Parameters
+    ----------
+    spectrogram:
+        A numpy array containg spectrogram data
+    min_level_db:
+        The minimum db level to normalize after
 
-def amp_to_db():
-    pass
+    Return
+    ------
+    spectrogram:
+        A numpy array with a normalized spectrogram
+    """
+    spectrogram = np.clip((spectrogram - min_level_db) / -min_level_db, 0, 1)
+    return spectrogram
 
-def db_to_amp():
-    pass
+def denormalize_spec(spectrogram, min_level_db = -100):
+    """
+    Denormalizes a spectrogram.
+
+    Parameters
+    ----------
+    spectrogram:
+        A numpy array containg spectrogram data
+    min_level_db:
+        The minimum db level to denormalize after
+    
+    Return
+    ------
+    spectrogram:
+        A numpy array with a denormalized spectrogram
+    """
+    spectrogram = (np.clip(spectrogram, 0, 1) * -min_level_db) + min_level_db
+    return spectrogram
+
+def amp_to_db(amplitude):
+    """Converts an amplitude to decibel"""
+    return 20 * np.log10(np.maximum(1e-5, amplitude))
+
+def db_to_amp(power):
+    """Converts a power (in decibel) to an amplitude"""
+    return np.power(10.0, power * 0.05)
 
 def audio_to_melspectrogram():
     pass
