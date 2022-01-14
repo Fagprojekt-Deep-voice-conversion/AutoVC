@@ -1,18 +1,9 @@
-from autovc.utils.dataloader import SpeakerEncoderDataLoader
-import torch
-from autovc.speaker_encoder.model import SpeakerEncoder
+from autovc.utils.audio import get_mel_frames, audio_to_melspectrogram
 from autovc.utils.model_loader import load_model
-import wandb
-dataset = TrainDataLoader(speaker_encoder = self.SE, chop = False, data_path = 'data/test_data')
-
-datadir = {'hilde': ['data/hilde_7sek'], 'hague': ['data/HaegueYang_10sek', 'data/hyang_smk']}
-Data = SpeakerEncoderDataLoader(datadir)
+import torch
 
 
-SE = load_model('speaker_encoder', 'models/SpeakerEncoder/SpeakerEncoder.pt')
-run = wandb.init(project = 'SpeakerEncoder',  entity = "deep_voice_inc", reinit = True)
+AE = load_model('auto_encoder', 'models/AutoVC/AutoVC_SMK.pt')
 
+print(torch.stack(get_mel_frames('data/conversions/hej.wav', audio_to_melspectrogram, sr = 22000, order = 'MF')).shape)
 
-dataloader = Data.get_dataloader(batch_size = 5)
-
-SE.learn(dataloader, n_epochs = 100, wandb_run = run, )

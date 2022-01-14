@@ -302,8 +302,6 @@ def get_mel_frames(wav, audio_to_mel, min_pad_coverage=0.75, overlap=0.5, order 
     elif order == 'MF':
         frames_batch = [frames[:,s] for s in mel_slices]
 
-    for i,s in enumerate(wave_slices[:-1]):
-        sf.write(f'data/chopped{i}.wav', np.array(wav[s]), samplerate =  kwargs.get('sr', None))
         
     return frames_batch
 
