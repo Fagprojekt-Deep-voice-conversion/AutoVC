@@ -21,26 +21,29 @@ class Audio:
             the samplerate of the given audio data, this is only necesary if wav is not a path
         """
 
+        
+
         # load file
         if isinstance(wav, str):
             self.wav_path = wav
-            self.wav, self.sr_org = librosa.load(self.wav_path, sr=sr_org)
-            # self.sr = self.sr_org
-            # self.wav = librosa.resample(self.wav, self.sr_org, self.sr_trg)
-            # self.wav = self.resample()
+            # self.wav, self.sr_org = librosa.load(self.wav_path, sr=sr_org)
+            self.wav, self.sr = librosa.load(self.wav_path, sr=sr_org)
         else:
             assert sr_org is not None, "sr_org must be given if wav is not a file path"
             self.wav_path = None
-            self.sr_org = sr_org
+            # self.sr_org = sr_org
             self.wav = wav
         
+        # make dictionary for storing already preprocessed versions of the wav and its sampling rate
+        self.versions = {"org" : [self.wav.copy(), self.sr]}
 
         # resample audio to target sr
-        self.wav_org = self.wav.copy() # store orginal wav (to use if wav has been changed for the worse)
-        self.sr = self.sr_org # sr is set to origninal sampling rate
+        # self.wav_org = self.wav.copy() # store orginal wav (to use if wav has been changed for the worse)
+        # self.sr = self.sr_org # sr is set to origninal sampling rate
         if sr is not None:
             self.wav = self.resample(sr)
             self.sr = sr # this is now the new sampling rate
+            self.versions["resampled"] = [self.wav.copy(), self.sr]
         
         
 
@@ -60,9 +63,18 @@ class Audio:
             return self.wav
         else:
             return librosa.resample(self.wav, self.sr, sr)
+    
+    def get_mels(model):
+        pass
+
+    def preprocess(name, *pipeline):
+        """
+        preprocess wav and add to a key in the dictionary with preprocessed versions
+        """
+        pass
 
 
 if __name__ == "__main__":
     wav = Audio("data/samples/chooped7.wav")
-    print(wav.sr, wav.sr_org)
+    print(wav.sr, wav.versions)
     wav.save()
