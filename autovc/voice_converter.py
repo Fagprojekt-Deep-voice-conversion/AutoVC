@@ -306,8 +306,8 @@ class VoiceConverter:
 
 if __name__ == "__main__":
     from autovc.utils.argparser import parse_vc_args
-    args = "-mode train -model_type auto_encoder -wandb_params mode=online -n_epochs 1 -data_path data/samples -data_path_excluded data/samples/chooped7.wav -auto_encoder deep_voice_inc/SpeakerEncoder/model_20220113.pt:v4"
-    # args = "-mode convert -sources data/samples/mette_183.wav -targets data/samples/chooped7.wav"
+    # args = "-mode train -model_type auto_encoder -wandb_params mode=online -n_epochs 1 -data_path data/samples -data_path_excluded data/samples/chooped7.wav -auto_encoder deep_voice_inc/SpeakerEncoder/model_20220113.pt:v4"
+    args = "-mode convert -sources data/samples/hilde_1.wav -targets data/samples/chooped7.wav -auto_encoder deep_voice_inc/AutoEncoder/model_20220114.pt:v0"
     # args = None # make sure this is used when not testing
     args = vars(parse_vc_args(args))
 
