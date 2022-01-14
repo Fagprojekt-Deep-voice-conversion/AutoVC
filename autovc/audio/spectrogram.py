@@ -67,8 +67,82 @@ def db_to_amp(power):
     """Converts a power (in decibel) to an amplitude"""
     return np.power(10.0, power * 0.05)
 
-def audio_to_melspectrogram():
-    pass
+def mel_spec_auto_encoder(wav, sr = 22050, n_mels = 80, n_fft = 2048, hop_length = 275, window_length = 1100, fmin = 40):
+    """
+    Computes a mel spectrogram in the format needed for the Auto Encoder
+    The given parameters should match the parameters given to the used vocoder for the best performance.
+
+    Parameters
+    ----------
+    wav:
+        A numpy array with audio content
+    sr:
+        The sampling rate of the audio content
+    n_mels:
+        Number of mels to use. See librosa for more info.
+        Should match the Auto Encoders feat_dims.
+    n_fft:
+        The lenght of the window - how many samples to include in Fourier Transformation. See librosa for more info.
+    hop_length:
+        Number of audio samples between adjacent STFT columns - how far the window moves for each FT. See librosa for more info.
+    window_length:
+        Each frame of audio is windowed by window of length win_length and then padded with zeros to match n_fft.
+    fmin:
+        The minimum frequency. See librosa.filters.mel for details.
+
+    Return
+    ------
+    mel_spec:
+        A numpy array with the mel spectrogram 
+    """
+    # Short-Time Fourier Transform
+    spectrogram = librosa.stft(wav, n_fft=n_fft, hop_length=hop_length, win_length=window_length)
+
+    # Convert to mel spectrum
+    mel_spec = librosa.feature.melspectrogram(S = np.abs(spectrogram), sr = sr, n_fft=n_fft, n_mels=n_mels, fmin=fmin )
+
+    # Convert amplitude to dB
+    mel_spec = amp_to_db(mel_spec)
+
+    # Normalised spectrogram    
+    mel_spec = normalize_spec(mel_spec)
+
+    return mel_spec
+
+def mel_spec_speaker_encoder(wav, sr = 16000, n_mels = 40, window_length = 25, window_step = 10):
+    """
+    Computes a mel spectrogram in the format needed for the Speaker Encoder
+
+    Parameters
+    ----------
+    wav:
+        A numpy array with audio content
+    sr:
+        The sampling rate of the audio content
+    n_mels:
+        Number of mels to use. See librosa for more info.
+    window_length:
+        In ms. Each frame of audio is windowed by window of length win_length and then padded with zeros to match n_fft.
+    window_step:
+        In ms. Used to calculate hop length
+
+    Return
+    ------
+    mel_spec:
+        A numpy array with the mel spectrogram 
+    """
+    mel_spec = librosa.feature.melspectrogram(
+        wav, sr,
+        n_fft=int(sr * window_length / 1000),
+        hop_length=int(sr * window_step / 1000),
+        n_mels=n_mels
+    )
+
+    # change type
+    mel_spec = mel_spec.astype(np.float32).T
+
+    return mel_spec
+
 
 def compute_partial_slices(n_samples, sr, partial_utterance_n_frames = 160,
                            min_pad_coverage = 0.75,
