@@ -79,8 +79,7 @@ def compute_partial_slices(n_samples, sr, partial_utterance_n_frames = 160,
     partial utterances of <partial_utterance_n_frames> each. Both the waveform and the mel 
     spectrogram slices are returned, so as to make each partial utterance waveform correspond to 
     its spectrogram. 
-    This function assumes that the mel spectrogram parameters used are those 
-    defined in params_data.py.
+    This function has only been tested for mel spectrograms created for the Speaker Encoder.
     
     The returned ranges may be indexing further than the length of the waveform. It is 
     recommended that you pad the waveform with zeros up to wave_slices[-1].stop.
