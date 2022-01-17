@@ -251,50 +251,6 @@ class Generator(nn.Module):
 
         close_progbar()
 
-    
-        #         if step % 10 == 0:
-        #             """ Append current error to L for plotting """
-        #             r = error.cpu().detach().numpy()
-        #             running_loss.append(r)
-        #             pickle.dump(running_loss, open(loss_fpath, "wb"))
-
-        #         if step % save_every == 0:
-        #             original_param = flatten_params(model)
-        #             load_params(model, avg_params)
-        #             print("Saving the model (step %d)" % step)
-        #             torch.save({
-        #                 "step": step + 1,
-        #                 "model_state": model.state_dict(),
-        #                 "optimizer_state": optimiser.state_dict(),
-        #             }, models_dir + "/" + model_path_name + "average_"+ f"_step{step / 1000}k" ".pt")
-        #             load_params(model, original_param)
-        #             torch.save({
-        #                 "step": step + 1,
-        #                 "model_state": model.state_dict(),
-        #                 "optimizer_state": optimiser.state_dict(),
-        #             }, models_dir + "/" + model_path_name + "_original" +f"_step{step / 1000}k" ".pt")
-
-        #         if step >= n_steps:
-        #             break
-
-
-
-        # pickle.dump(running_loss, open(loss_fpath, "wb"))
-        # print("Saving the model (step %d)" % step)
-        # torch.save({
-        #     "step": step + 1,
-        #     "model_state": model.state_dict(),
-        #     "optimizer_state": optimiser.state_dict(),
-        # }, models_dir + "/" + model_path_name + "_original" + f"_step{step / 1000}k" ".pt")
-        # load_params(model, avg_params)
-
-        # torch.save({
-        #     "step": step + 1,
-        #     "model_state": model.state_dict(),
-        #     "optimizer_state": optimiser.state_dict(),
-        # }, models_dir + "/" + model_path_name + "average_" + f"_step{step / 1000}k" ".pt")
-
-
     def flatten_params(self):
         '''
         Flattens the parameter to a single vector
@@ -311,3 +267,20 @@ class Generator(nn.Module):
             offset += param.nelement()
 
 
+    def batch_forward(self, batch, overlap = 0.5, window = 'hann'):
+
+        _, output, _ = self(batch)
+        output = output.detach().cpu().numpy()
+        N = output.size(-1)
+        
+        if window == 'hann':
+            W = np.hanning(N)
+        elif window == 'triangular':
+            W = np.bartlett(N)
+        else:
+            W = np.ones(N)
+
+        
+        
+
+        
