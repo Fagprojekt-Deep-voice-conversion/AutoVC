@@ -102,6 +102,7 @@ def parse_vc_args(args = None):
     # data
     parser.add_argument("-data_path_excluded", nargs='*', type = str)
     
+    # return parser
 
     if args is None:
         args = parser.parse_args()
@@ -112,5 +113,8 @@ def parse_vc_args(args = None):
 
 
 if __name__ == "__main__":
-    args = "-mode train -convert_params clean=True"
+    args = "-mode train -convert_params clean=True"# -test False -test2 Ture"
     print(parse_vc_args(args))
+    # parser = parse_vc_args(args)
+    # # print(parser.parse_args(args.split()))
+    # print(parser.parse_known_args(args.split()))

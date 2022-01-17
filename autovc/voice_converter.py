@@ -108,13 +108,9 @@ class VoiceConverter:
         pipes:
             Dictionary with pipelines for preprocessing audio, keys must be one of ['target', 'source', 'output'] 
             E.g. {"source" : ["normalize_volume", "remove_noise"], "target" : ["normalize_volume", "remove_noise"], "output" : ["remove_noise"] 
-        out_pipe:
-            Pipeline for preprocessing output audio after being synthesized, e.g. ["normalize_volume", "remove_noise"]
         pipe_args:
             Dictionary of dictionaries where outer key matches the pipe type and inner key matches string given in pipe and values are arguments to give to the function. 
             E.g. if "normalize_volume" is given in target pipe, pipe_args = {"target" : {"normalize_volume" : "target_dBFS" = -30}} can be given to select the normalisation volume
-        out_pipe_args:
-            Same as in_pipe_args but for the output pipeline
         """
 
         print("Beginning conversion...")
@@ -224,7 +220,11 @@ class VoiceConverter:
             )
             # self.wandb_run.log({"example" : wandb.Audio(wav, caption = "test", sample_rate = sr)})
         elif conversion_examples:
-            self.convert_multiple(conversion_examples[0], conversion_examples[1], save_folder = "wandb")
+            self.convert_multiple(
+                conversion_examples[0], 
+                conversion_examples[1], 
+                out_dir = "wandb" if not self.wandb_run.mode == "disabled" else ".",
+            )
 
 
 
@@ -326,7 +326,7 @@ class VoiceConverter:
 if __name__ == "__main__":
     from autovc.utils.argparser import parse_vc_args
     # args = "-mode train -model_type auto_encoder -wandb_params mode=online -n_epochs 1 -data_path data/samples -data_path_excluded data/samples/chooped7.wav -auto_encoder deep_voice_inc/SpeakerEncoder/model_20220113.pt:v4"
-    args = "-mode convert -sources data/samples/mette_183.wav -targets data/samples/chooped7.wav -convert_params pipes={output:[normalize_volume],source:[normalize_volume]}"# -auto_encoder deep_voice_inc/AutoEncoder/model_20220114.pt:v0"
+    args = "-mode convert -sources data/samples/hilde_301.wav -targets data/samples/chooped7.wav -convert_params pipes={output:[normalize_volume,remove_noise],source:[normalize_volume]} -auto_encoder models/AutoVC/AutoVC_SMK.pt"# -auto_encoder deep_voice_inc/AutoEncoder/model_20220114.pt:v0"
     # args = None # make sure this is used when not testing
     args = vars(parse_vc_args(args))
 
