@@ -17,7 +17,7 @@ from autovc.utils.hparams import AutoEncoderParams as hparams
 from autovc.utils.progbar import progbar, close_progbar
 import time
 import numpy as np
-
+from torch.nn.functional import pad
 class Generator(nn.Module):
     """
     Generator network. The entire thing pieced together (figure 3a and 3c)
@@ -267,18 +267,41 @@ class Generator(nn.Module):
             offset += param.nelement()
 
 
-    def batch_forward(self, batch, overlap = 0.5, window = 'hann'):
+    def batch_forward(self, batch, c_org, c_trg, overlap = 0.5):
+        '''
+        Converts a batch of mel frames and pastes them togehther again.
 
-        _, output, _ = self(batch)
-        output = output.detach().cpu().numpy()
-        N = output.size(-1)
+        params:
+            batch: (batch_size, 80 (mels), partial_n_utterances)
+                    here the batch size is the result of chopping the spectogram in frames of size 'partial_n_utterances'.
+
+            c_org: the speaker embedding of source (1, 256)
+            c_trg: the speaker embedding of target (1, 256)
+            overlap: hov much each frame in batch overlaps
         
-        if window == 'hann':
-            W = np.hanning(N)
-        elif window == 'triangular':
-            W = np.bartlett(N)
-        else:
-            W = np.ones(N)
+        returns:
+            A conversion, where each frame in batch is converted independently and pasted togehter afterwards
+        '''
+
+        # Expand embeddings to match the batch size and convert voice
+        c_org = c_org.expand(batch.size(0),-1)
+        c_trg = c_trg.expand(batch.size(0),-1)
+        _, output, _ = self(batch, c_org, c_trg)
+
+        # output = output.detach().cpu().numpy()
+        
+        N = batch.size(-1)
+
+        # Pad with nans, and take mean of converted frames.
+        frames = list(output)
+        M = len(frames)
+        T = int(N * (1-overlap))
+        for i in range(M):
+            frames[i] = pad(frames[i], (i * T, (M-i-1) * T) , mode = 'constant', value = torch.nan)
+        X = torch.stack(frames)
+        return X.nanmean(axis = 0)
+        
+        
 
         
         
