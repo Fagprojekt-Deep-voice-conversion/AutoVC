@@ -14,6 +14,7 @@ import time
 import os
 from itertools import product
 from autovc.utils.hparams import AutoEncoderParams, SpeakerEncoderParams, WaveRNNParams, VoiceConverterParams, Namespace
+from autovc.audio import Audio
 
 
 class VoiceConverter:
@@ -86,7 +87,7 @@ class VoiceConverter:
         
         
 
-    def convert(self, source, target, out_name = None, out_dir = None, clean = True):
+    def convert(self, source, target,  sr = 22050, out_name = None, out_dir = None, pipes = {}, pipe_args = {}):
         """
         Gives the features of the target to the content of the source
 
@@ -97,23 +98,38 @@ class VoiceConverter:
         target:
             soundfile containing the voice of the person which features to use
             if proper training has been done, it can also be a string with the name of the person
+        sr:
+            The sample rate to use for the audio
         outname:
             filename for converted sound
         out_dir:
             the folder/directory to store the converted file in, if this is 'wandb' the converted audio will be logged to this run
             all conversions not stored in WANDB will be saved in `results/` folder
-        clean:
-            whether to try and clean the converted audio (remove noise etc.)
+        pipes:
+            Dictionary with pipelines for preprocessing audio, keys must be one of ['target', 'source', 'output'] 
+            E.g. {"source" : ["normalize_volume", "remove_noise"], "target" : ["normalize_volume", "remove_noise"], "output" : ["remove_noise"] 
+        out_pipe:
+            Pipeline for preprocessing output audio after being synthesized, e.g. ["normalize_volume", "remove_noise"]
+        pipe_args:
+            Dictionary of dictionaries where outer key matches the pipe type and inner key matches string given in pipe and values are arguments to give to the function. 
+            E.g. if "normalize_volume" is given in target pipe, pipe_args = {"target" : {"normalize_volume" : "target_dBFS" = -30}} can be given to select the normalisation volume
+        out_pipe_args:
+            Same as in_pipe_args but for the output pipeline
         """
 
         print("Beginning conversion...")
-        source_wav, target_wav = preprocess_wav(source), preprocess_wav(target)
+        # source_wav, target_wav = preprocess_wav(source), preprocess_wav(target)
+        wav_src = Audio(source, sr).preprocess("convert_in", *pipes.get("source", []), **pipe_args.get("source", {}))
+        wav_trg = Audio(target, sr).preprocess("convert_in", *pipes.get("target", []), **pipe_args.get("target", {}))
+
+       
+       
         # Generate speaker embeddings
-        c_source = self.SE.embed_utterance(source_wav).unsqueeze(0)
-        c_target = self.SE.embed_utterance(target_wav).unsqueeze(0)
+        c_source = self.SE.embed_utterance(wav_src).unsqueeze(0)
+        c_target = self.SE.embed_utterance(wav_trg).unsqueeze(0)
 
         # Create mel spectrogram
-        mel_spec = torch.from_numpy(audio_to_melspectrogram(source_wav)).unsqueeze(0)
+        mel_spec = torch.from_numpy(audio_to_melspectrogram(wav_src)).unsqueeze(0)
         
         # Convert
         out, post_out, content_codes = self.AE(mel_spec, c_source, c_target)
@@ -121,12 +137,15 @@ class VoiceConverter:
         # Use the Vocoder to generate waveform (use post_out as input)
         waveform = self.vocoder.generate(post_out)
 
-        # reduce noise
-        if clean:
-            waveform = remove_noise(waveform, self.config["vocoder_params"].get("sample_rate"))
+        # # reduce noise
+        # if clean:
+        #     waveform = remove_noise(waveform, self.config["vocoder_params"].get("sample_rate"))
 
         # ensure a np array is returned
         waveform = np.asarray(waveform)
+        audio_out = Audio(waveform, sr = sr, sr_org = self.config["vocoder_params"].get("sample_rate"))
+        audio_out.preprocess("convert_out", *pipes.get("output", []), **pipe_args.get("output", {}))
+
 
         # Generate .wav file frowm waveform
         if out_name is None:
@@ -138,7 +157,7 @@ class VoiceConverter:
         if out_dir == "wandb":
             # TODO log as table
             assert self.wandb_run is not None
-            self.wandb_run.log({out_name.replace(".wav", "") : wandb.Audio(waveform, caption = out_name, sample_rate = self.config["vocoder_params"].get("sample_rate"))})
+            self.wandb_run.log({out_name.replace(".wav", "") : wandb.Audio(audio_out.wav, caption = out_name, sample_rate = audio_out.sr)})
         else:
             if out_dir is not None:
                 out_dir = out_dir if out_dir.startswith("results") else "results/" + out_dir 
@@ -148,9 +167,9 @@ class VoiceConverter:
                 os.makedirs("results", exist_ok=True) # create folder
                 out_name = out_name if out_name.startswith("results") else "results/" + out_name 
     
-            sf.write(out_name, waveform, samplerate =self.config["vocoder_params"].get("sample_rate"))
+            sf.write(out_name, audio_out.wav, samplerate =audio_out.sr)
     
-        return waveform, self.config["vocoder_params"].get("sample_rate")
+        return audio_out.wav, audio_out.sr
 
     def train(self, model_type = "auto_encoder", n_epochs = 2, conversion_examples = None, data_path = 'data/samples', **train_params):
         """
@@ -307,7 +326,7 @@ class VoiceConverter:
 if __name__ == "__main__":
     from autovc.utils.argparser import parse_vc_args
     # args = "-mode train -model_type auto_encoder -wandb_params mode=online -n_epochs 1 -data_path data/samples -data_path_excluded data/samples/chooped7.wav -auto_encoder deep_voice_inc/SpeakerEncoder/model_20220113.pt:v4"
-    args = "-mode convert -sources data/samples/hilde_1.wav -targets data/samples/chooped7.wav -auto_encoder deep_voice_inc/AutoEncoder/model_20220114.pt:v0"
+    args = "-mode convert -sources data/samples/mette_183.wav -targets data/samples/chooped7.wav -convert_params pipes={output:[normalize_volume],source:[normalize_volume]}"# -auto_encoder deep_voice_inc/AutoEncoder/model_20220114.pt:v0"
     # args = None # make sure this is used when not testing
     args = vars(parse_vc_args(args))
 
@@ -340,6 +359,7 @@ if __name__ == "__main__":
     elif mode == "convert":
         assert all([args.__contains__(key) for key in ["sources", "targets"]])
         vc.convert_multiple(
+            **args.pop("convert_params", {}),
             **args
             # sources = args.conversion_sources, 
             # targets = args.conversion_targets,

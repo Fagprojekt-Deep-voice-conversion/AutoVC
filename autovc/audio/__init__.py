@@ -4,9 +4,8 @@ A class for handling audio data
 
 import librosa
 import soundfile as sf
-from autovc.audio.tools import remove_noise
-import tools
-import spectrogram
+from autovc.audio import tools
+from autovc.audio import spectrogram
 import inspect 
 
 class Audio:
@@ -37,6 +36,7 @@ class Audio:
             self.wav_path = None
             # self.sr_org = sr_org
             self.wav = wav
+            self.sr = sr_org
         
         # make dictionary for storing already preprocessed versions of the wav and its sampling rate
         self.versions = {"org" : [self.wav.copy(), self.sr]}
@@ -96,6 +96,8 @@ class Audio:
         """
   
         for fun in pipeline:
+            if fun is None:
+                continue
             func = tools.__dict__.get(fun, spectrogram.__dict__.get(fun, False))
             if not func:
                 raise ModuleNotFoundError(f"The function {fun} was not found.")
@@ -113,7 +115,7 @@ class Audio:
 
             
         
-        self.versions[pipe_type] = self.wav.copy()
+        self.versions[pipe_type] = [self.wav.copy(), self.sr]
         return self.wav
 
             
