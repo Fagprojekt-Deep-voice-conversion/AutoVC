@@ -20,6 +20,7 @@ import time, wandb
 import matplotlib.pyplot as plt
 from sklearn.manifold import TSNE
 import plotly.tools as tls
+from autovc.utils.core import retrieve_file_paths
 class SpeakerEncoder(nn.Module):
     """
     The Speaker Encoder module
@@ -56,7 +57,7 @@ class SpeakerEncoder(nn.Module):
 
         self.optimiser = torch.optim.Adam(self.parameters(), **self.params.get_collection("Adam"))
         self.lr_scheduler = self.params.lr_scheduler(self.optimiser, **self.params.get_collection("lr_scheduler"))
-        
+        self.speakers = {}
         
     def do_gradient_ops(self):
         # Gradient scale
@@ -104,7 +105,9 @@ class SpeakerEncoder(nn.Module):
         except:
             checkpoint = torch.load(weights_fpath, map_location = device)
         self.load_state_dict(checkpoint["model_state"], strict = False)
-        
+
+        self.speakers.update(checkpoint.get('speakers', {}))
+
         print("Loaded speaker encoder \"%s\" trained to step %d" % (weights_fpath, checkpoint["step"]))
 
     # @stat
@@ -340,12 +343,13 @@ class SpeakerEncoder(nn.Module):
 
                 if step % self.params.save_freq == 0 or step == N_iterations:
                     save_name = self.params.model_dir.strip("/") + "/" + self.params.model_name
-                    torch.save({
-                        "step": step + 1,
-                        "model_state": self.state_dict(),
-                        "optimizer_state": self.optimiser.state_dict(),
-                    }, save_name)
-
+                    # torch.save({
+                    #     "step": step + 1,
+                    #     "model_state": self.state_dict(),
+                    #     "optimizer_state": self.optimiser.state_dict(),
+                    #     "speakers": self.speakers
+                    # }, save_name)
+                    self.save(save_name, step = step)
                     if wandb_run is not None:
                         artifact = wandb.Artifact(self.params.model_name, "SpeakerEncoder")
                         artifact.add_file(save_name)
@@ -376,13 +380,24 @@ class SpeakerEncoder(nn.Module):
         
         return fig
 
-    # def visualise_embedding_matrix(self, embedding):
-    #     fig, axes = plt.subplots(figsize = (10,10), nrows = 1, ncols = embedding.size(0))
+    def learn_speaker(self, speaker, speaker_folder):
+        '''
+        Learns the mean speaker embedding of a speaker given a speaker and a folder of .wavs of this speaker
+        Saves the embedding in self.speakers, which is saved together with the state_dict
+        '''
+        wav_files = retrieve_file_paths(speaker_folder)
 
-    #     for i, ax in enumerate(axes):
-    #         mean_emb = embedding[i].mean(axis = 0).detach().cpu().numpy().reshape(16, 16)
-    #         im = ax.imshow(mean_emb, vmin=0, vmax=0.3)
-    #     fig.colorbar(im, ax=axes.ravel().tolist())
-    #     return fig
+        embeddings = torch.stack([self.embed_utterance(wav) for wav in wav_files])
+        mean_embedding = embeddings.mean(axis = 0, keepdim = True)
 
+        self.speakers[speaker] = mean_embedding
 
+    def save(self, save_name, step = 0):
+        save_name = self.params.model_dir.strip("/") + "/" + self.params.model_name
+        torch.save({
+            "step": step + 1,
+            "model_state": self.state_dict(),
+            "optimizer_state": self.optimiser.state_dict(),
+            "speakers": self.speakers
+        }, save_name)
+        
