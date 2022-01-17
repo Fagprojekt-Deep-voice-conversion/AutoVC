@@ -143,6 +143,32 @@ def mel_spec_speaker_encoder(wav, sr = 16000, n_mels = 40, window_length = 25, w
 
     return mel_spec
 
+def mel_spectrogram(wav, model, **kwargs):
+    """
+    Function for getting a mel spectrogram
+
+    Parameters
+    ----------
+    wav:
+        A numpy array with audio content
+    model:
+        Chooses which spectrogram function to use. Must be one of 'auto_encoder' or 'speaker_encoder'
+    **kwargs
+        kwargs are parsed to either `mel_spec_auto_encoder()` or `mel_spec_speaker_encoder()` based on which model is chosen.
+    
+    Return
+    ------
+    mel_spec:
+        A numpy array with the mel spectrogram 
+    """
+    if model == "auto_encoder":
+        mel_spec = mel_spec_auto_encoder(wav, **kwargs)
+    elif model == "speaker_encoder":
+        mel_spec = mel_spec_speaker_encoder(wav, **kwargs)
+    else:
+        raise ValueError(f"'{model}' is not a valid model type. Must be either 'auto_encoder' or 'speaker_encoder'")
+
+    return mel_spec
 
 def compute_partial_slices(n_samples, sr, partial_utterance_n_frames = 160,
                            min_pad_coverage = 0.75,
@@ -206,5 +232,3 @@ def compute_partial_slices(n_samples, sr, partial_utterance_n_frames = 160,
     
     return wav_slices, mel_slices
 
-def split_melspectrograms():
-    pass
