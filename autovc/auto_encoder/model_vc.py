@@ -13,6 +13,7 @@ from autovc.auto_encoder.net_layers import *
 from autovc.auto_encoder.encoder import Encoder
 from autovc.auto_encoder.decoder import Decoder
 from autovc.auto_encoder.postnet import Postnet
+from autovc.utils.audio import get_mel_frames
 from autovc.utils.hparams import AutoEncoderParams as hparams
 from autovc.utils.progbar import progbar, close_progbar
 import time
@@ -272,8 +273,8 @@ class Generator(nn.Module):
         Converts a batch of mel frames and pastes them togehther again.
 
         params:
-            batch: (batch_size, 80 (mels), partial_n_utterances)
-                    here the batch size is the result of chopping the spectogram in frames of size 'partial_n_utterances'.
+            batch: (batch_size, 80 (mels), partial_utterance_n_frames)
+                    here the batch size is the result of chopping the spectogram in frames of size 'partial_utterance_n_frames'.
 
             c_org: the speaker embedding of source (1, 256)
             c_trg: the speaker embedding of target (1, 256)
@@ -282,13 +283,23 @@ class Generator(nn.Module):
         returns:
             A conversion, where each frame in batch is converted independently and pasted togehter afterwards
         '''
+        
+        # mel_frames = get_mel_frames(wav,
+        #                             audio_to_melspectrogram,
+        #                             min_pad_coverage=0.75,
+        #                             order = 'MF',
+        #                             sr = 22050, 
+        #                             mel_window_step = 12.5, 
+        #                             partial_utterance_n_frames = 250,
+        #                             overlap = overlap,
+                                    
+        # batch = torch.stack(mel_frames)
 
         # Expand embeddings to match the batch size and convert voice
         c_org = c_org.expand(batch.size(0),-1)
         c_trg = c_trg.expand(batch.size(0),-1)
         _, output, _ = self(batch, c_org, c_trg)
 
-        # output = output.detach().cpu().numpy()
         
         N = batch.size(-1)
 
