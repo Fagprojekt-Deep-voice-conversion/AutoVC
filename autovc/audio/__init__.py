@@ -4,6 +4,10 @@ A class for handling audio data
 
 import librosa
 import soundfile as sf
+from autovc.audio.tools import remove_noise
+import tools
+import spectrogram
+import inspect 
 
 class Audio:
     def __init__(self, wav, sr = 22050, sr_org = None) -> None:
@@ -64,17 +68,59 @@ class Audio:
         else:
             return librosa.resample(self.wav, self.sr, sr)
     
-    def get_mels(model):
-        pass
+    # def get_melspectrogram(model):
+    #     pass
 
-    def preprocess(name, *pipeline):
+    # def get_mel_frames():
+    #     pass
+
+    def preprocess(self, pipe_type, *pipeline, **pipeline_args):
         """
         preprocess wav and add to a key in the dictionary with preprocessed versions
+
+        Parameters
+        ---------
+        pipe_type:
+            What to use the pipe line for.
+            If eg. 'train' the audio is passed through the pipe line and saved with the key 'train' in the versions.
+        *pipeline:
+            Names of functions as str in either audio.tools or audio.spectrogram to use on self.wav.
+        **pipeline:
+            Used to pass arguments for the functions specified in pipeline
+            Key is a function in either audio.tools or audio.spectrogram.
+            The value is passed as arguments to the specified function
+        Return
+        ------
+        wav:
+            The preprocessed wav. this also stored in the versions dict with pipe_type as key
         """
-        pass
+  
+        for fun in pipeline:
+            func = tools.__dict__.get(fun, spectrogram.__dict__.get(fun, False))
+            if not func:
+                raise ModuleNotFoundError(f"The function {fun} was not found.")
+
+            # apply function
+            args = pipeline_args.get(fun)
+            if isinstance(args, dict):
+                self.wav = func(self.wav, **args) if "sr" not in inspect.getfullargspec(func).args else func(self.wav, sr = self.sr, **args)
+            elif isinstance(args,list):
+                self.wav = func(self.wav, *args) if "sr" not in inspect.getfullargspec(func).args else func(self.wav, *args, sr = self.sr, )
+            elif args is not None:
+                self.wav = func(self.wav, args) if "sr" not in inspect.getfullargspec(func).args else func(self.wav, args, sr = self.sr)
+            else:
+                self.wav = func(self.wav) if "sr" not in inspect.getfullargspec(func).args else func(self.wav, sr = self.sr)
+
+            
+        
+        self.versions[pipe_type] = self.wav.copy()
+        return self.wav
+
+            
 
 
 if __name__ == "__main__":
     wav = Audio("data/samples/chooped7.wav")
-    print(wav.sr, wav.versions)
+    # print(wav.sr, wav.versions)
+    wav.preprocess("train", "remove_noise")
     wav.save()
