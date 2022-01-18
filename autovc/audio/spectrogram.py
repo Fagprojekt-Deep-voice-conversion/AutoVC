@@ -67,7 +67,7 @@ def db_to_amp(power):
     """Converts a power (in decibel) to an amplitude"""
     return np.power(10.0, power * 0.05)
 
-def mel_spec_auto_encoder(wav, sr = 22050, n_mels = 80, n_fft = 2048, hop_length = 275, window_length = 1100, fmin = 40):
+def mel_spec_auto_encoder(wav, sr = 22050, n_mels = 80, n_fft = 2048, hop_length = 275, window_length = 1100, fmin = 40, cut = False, **kwargs):
     """
     Computes a mel spectrogram in the format needed for the Auto Encoder
     The given parameters should match the parameters given to the used vocoder for the best performance.
@@ -89,11 +89,15 @@ def mel_spec_auto_encoder(wav, sr = 22050, n_mels = 80, n_fft = 2048, hop_length
         Each frame of audio is windowed by window of length win_length and then padded with zeros to match n_fft.
     fmin:
         The minimum frequency. See librosa.filters.mel for details.
+    cut:
+        If true `compute_partial_slices()` is used to cut the mel spectrogram in slices
+    **kwargs:
+        kwargs are passed to `compute_partial_slices()`
 
     Return
     ------
     mel_spec:
-        A numpy array with the mel spectrogram 
+        A numpy array with the mel spectrogram, this will be a list [(Mels, Frames)] of mel spectrograms if 'cut' is True
     """
     # Short-Time Fourier Transform
     spectrogram = librosa.stft(wav, n_fft=n_fft, hop_length=hop_length, win_length=window_length)
@@ -107,9 +111,32 @@ def mel_spec_auto_encoder(wav, sr = 22050, n_mels = 80, n_fft = 2048, hop_length
     # Normalised spectrogram    
     mel_spec = normalize_spec(mel_spec)
 
+    # torch
+    mel_spec = torch.from_numpy(mel_spec)
+
+    # split into multiple if batch is True
+    if cut:
+        wave_slices, mel_slices = compute_partial_slices(len(wav),
+                                                     min_pad_coverage   = kwargs.pop("min_pad_coverage", 0.75),
+                                                     overlap            = kwargs.pop("overlap", 0.5),
+                                                     sr                 = kwargs.pop("sr", 22050), # sr from vocoder
+                                                     mel_window_step    = kwargs.pop("mel_window_step", 12.5), # from vocoder
+                                                     partial_utterance_n_frames = kwargs.pop("partial_utterance_n_frames", 250), 
+                                                     **kwargs)
+         # Pad last audio frame
+        max_wave_length = wave_slices[-1].stop
+        if max_wave_length >= len(wav):
+            wav = np.pad(wav, (0, max_wave_length - len(wav)), "constant")
+        
+        order = "MF"
+        if order == 'FM':
+            mel_spec = [mel_spec[s] for s in mel_slices]
+        elif order == 'MF':
+            mel_spec = [mel_spec[:,s] for s in mel_slices]
+
     return mel_spec
 
-def mel_spec_speaker_encoder(wav, sr = 16000, n_mels = 40, window_length = 25, window_step = 10):
+def mel_spec_speaker_encoder(wav, sr = 16000, n_mels = 40, window_length = 25, window_step = 10, cut = False, **kwargs):
     """
     Computes a mel spectrogram in the format needed for the Speaker Encoder
 
@@ -125,11 +152,14 @@ def mel_spec_speaker_encoder(wav, sr = 16000, n_mels = 40, window_length = 25, w
         In ms. Each frame of audio is windowed by window of length win_length and then padded with zeros to match n_fft.
     window_step:
         In ms. Used to calculate hop length
-
+    cut:
+        If true `compute_partial_slices()` is used to cut the mel spectrogram in slices
+    **kwargs:
+        kwargs are passed to `compute_partial_slices()`
     Return
     ------
     mel_spec:
-        A numpy array with the mel spectrogram 
+        A numpy array with the mel spectrogram, this will be a list [(Frames, Mels)] of mel spectrograms if 'cut' is True
     """
     mel_spec = librosa.feature.melspectrogram(
         wav, sr,
@@ -140,6 +170,22 @@ def mel_spec_speaker_encoder(wav, sr = 16000, n_mels = 40, window_length = 25, w
 
     # change type
     mel_spec = mel_spec.astype(np.float32).T
+
+    if cut:
+        wave_slices, mel_slices = compute_partial_slices(len(wav),
+                                                     min_pad_coverage   = kwargs.pop("min_pad_coverage", 0.75),
+                                                     overlap            = kwargs.pop("overlap", 0.5),
+                                                     **kwargs)
+         # Pad last audio frame
+        max_wave_length = wave_slices[-1].stop
+        if max_wave_length >= len(wav):
+            wav = np.pad(wav, (0, max_wave_length - len(wav)), "constant")
+        
+        order = "FM"
+        if order == 'FM':
+            mel_spec = [mel_spec[s] for s in mel_slices]
+        elif order == 'MF':
+            mel_spec = [mel_spec[:,s] for s in mel_slices]
 
     return mel_spec
 

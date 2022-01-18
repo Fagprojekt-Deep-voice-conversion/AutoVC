@@ -45,7 +45,7 @@ class Audio:
         # self.wav_org = self.wav.copy() # store orginal wav (to use if wav has been changed for the worse)
         # self.sr = self.sr_org # sr is set to origninal sampling rate
         if sr is not None:
-            self.wav = self.resample(sr)
+            self.resample(sr)
             # self.sr = sr # this is now the new sampling rate
             self.versions["resampled"] = [self.wav.copy(), self.sr]
         
@@ -93,8 +93,8 @@ class Audio:
             The value is passed as arguments to the specified function
         Return
         ------
-        wav:
-            The preprocessed wav. this also stored in the versions dict with pipe_type as key
+        self:
+            An instance of the Audio class where the wav has been preprocessed
         """
   
         for fun in pipeline:
