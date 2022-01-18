@@ -21,6 +21,7 @@ import matplotlib.pyplot as plt
 from sklearn.manifold import TSNE
 import plotly.tools as tls
 from autovc.utils.core import retrieve_file_paths
+import tqdm
 class SpeakerEncoder(nn.Module):
     """
     The Speaker Encoder module
@@ -300,7 +301,7 @@ class SpeakerEncoder(nn.Module):
 
         # begin training
         if self.verbose:
-            print(f"Training Speaker Encoder on {torch.cuda.get_device_name() + ' (cuda)' if 'cuda' in self.params.device else 'cpu'}...")
+            # print(f"Training Speaker Encoder on {torch.cuda.get_device_name() + ' (cuda)' if 'cuda' in self.params.device else 'cpu'}...")
             progbar(step, N_iterations)
         total_time = 0
         for epoch in range(n_epochs):
@@ -387,13 +388,17 @@ class SpeakerEncoder(nn.Module):
         '''
         wav_files = retrieve_file_paths(speaker_folder)
 
-        embeddings = torch.stack([self.embed_utterance(wav) for wav in wav_files])
+        embeddings = []
+        print("Computing speaker embeddings...")
+        for wav in tqdm.tqdm(wav_files):
+            embeddings.append(self.embed_utterance(wav))
+        embeddings = torch.stack(embeddings)
         mean_embedding = embeddings.mean(axis = 0, keepdim = True)
 
         self.speakers[speaker] = mean_embedding
 
     def save(self, save_name, step = 0):
-        save_name = self.params.model_dir.strip("/") + "/" + self.params.model_name
+        # save_name = self.params.model_dir.strip("/") + "/" + self.params.model_name
         torch.save({
             "step": step + 1,
             "model_state": self.state_dict(),

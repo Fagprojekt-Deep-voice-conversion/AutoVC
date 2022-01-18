@@ -44,7 +44,7 @@ class TrainDataLoader(Dataset):
                 # Chops the mel spectograms in size of 'partial_n_utterances
 
 
-                wav = preprocess_wav(wav)
+                # wav = preprocess_wav(wav)
 
                 
                 mel_frames = get_mel_frames(wav,
