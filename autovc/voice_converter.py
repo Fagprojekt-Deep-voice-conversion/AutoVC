@@ -199,10 +199,10 @@ class VoiceConverter:
             dataloader = dataset.get_dataloader(**params.get_collection("dataloader"))
             self.AE.learn(dataloader, wandb_run = self.wandb_run, **params.get_collection())
         elif model_type == "speaker_encoder":
-            datadir = {'hilde': ['data/hilde_7sek'], 'hague': ['data/HaegueYang_10sek', 'data/hyang_smk']}
+            datadir = {'hilde': ['data/test_data/hilde_7sek'], 'hague': ['data/test_data/HaegueYang_10sek']}
             dataset = SpeakerEncoderDataLoader(datadir, device = self.config.get("device", 'cuda'))
             dataloader = dataset.get_dataloader(batch_size = 1024)
-            self.SE.learn(dataloader, n_epochs = 16, wandb_run = self.wandb_run,  log_freq = 4, save_freq = 32)
+            self.SE.learn(dataloader, n_epochs = 128, wandb_run = self.wandb_run,  log_freq = 16, save_freq = 32)
             # raise NotImplementedError()
             
         

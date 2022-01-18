@@ -1,13 +1,8 @@
-from autovc.utils.audio import get_mel_frames, audio_to_melspectrogram
 from autovc.utils.model_loader import load_model
-import torch
-import numpy as np
-import matplotlib.pyplot as plt
-# AE = load_model('auto_encoder', 'models/AutoVC/AutoVC_SMK.pt')
 
-
-SE = load_model('speaker_encoder', 'models/SpeakerEncoder/SpeakerEncoder.pt')
-
-SE.learn_speaker('hilde', 'data/samples')
-SE.speakers
+SE = load_model('speaker_encoder', 'artifacts/speaker1/model_20220117.pt')
+SE.learn_speaker('hilde', 'data/test_data/hilde_7sek')
+SE.learn_speaker('yang', 'data/test_data/HaegueYang_10sek')
+SE.save('SpeakerEncoder2.pt')
+SE = load_model('speaker_encoder', 'SpeakerEncoder2.pt')
 print(SE.speakers)
