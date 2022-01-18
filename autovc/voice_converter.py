@@ -115,17 +115,17 @@ class VoiceConverter:
 
         print("Beginning conversion...")
         # source_wav, target_wav = preprocess_wav(source), preprocess_wav(target)
-        wav_src = Audio(source, sr).preprocess("convert_in", *pipes.get("source", []), **pipe_args.get("source", {}))
-        wav_trg = Audio(target, sr).preprocess("convert_in", *pipes.get("target", []), **pipe_args.get("target", {}))
+        audio_src = Audio(source, sr).preprocess("convert_in", *pipes.get("source", []), **pipe_args.get("source", {}))
+        audio_trg = Audio(target, sr).preprocess("convert_in", *pipes.get("target", []), **pipe_args.get("target", {}))
 
        
        
         # Generate speaker embeddings
-        c_source = self.SE.embed_utterance(wav_src).unsqueeze(0)
-        c_target = self.SE.embed_utterance(wav_trg).unsqueeze(0)
+        c_source = self.SE.embed_utterance(audio_src.wav).unsqueeze(0)
+        c_target = self.SE.embed_utterance(audio_trg.wav).unsqueeze(0)
 
         # Create mel spectrogram
-        mel_spec = torch.from_numpy(audio_to_melspectrogram(wav_src)).unsqueeze(0)
+        mel_spec = torch.from_numpy(audio_to_melspectrogram(audio_src.wav)).unsqueeze(0)
         
         # Convert
         out, post_out, content_codes = self.AE(mel_spec, c_source, c_target)
@@ -152,7 +152,7 @@ class VoiceConverter:
         # if out_dir == self.wandb_run and self.wandb_run is not None:
         if out_dir == "wandb":
             # TODO log as table
-            assert self.wandb_run is not None
+            assert self.wandb_run is not None, "A wandb run has to be setup with _init_wandb() to save conversion in wandb"
             self.wandb_run.log({out_name.replace(".wav", "") : wandb.Audio(audio_out.wav, caption = out_name, sample_rate = audio_out.sr)})
         else:
             if out_dir is not None:

@@ -46,7 +46,7 @@ class Audio:
         # self.sr = self.sr_org # sr is set to origninal sampling rate
         if sr is not None:
             self.wav = self.resample(sr)
-            self.sr = sr # this is now the new sampling rate
+            # self.sr = sr # this is now the new sampling rate
             self.versions["resampled"] = [self.wav.copy(), self.sr]
         
         
@@ -63,10 +63,12 @@ class Audio:
         """
         Resamples self.wav with new sample rate
         """
-        if sr == self.sr:
-            return self.wav
-        else:
-            return librosa.resample(self.wav, self.sr, sr)
+    
+        if sr != self.sr:
+            self.wav = librosa.resample(self.wav, self.sr, sr)
+            self.sr = sr
+        
+        return self
     
     # def get_melspectrogram(model):
     #     pass
@@ -116,7 +118,7 @@ class Audio:
             
         
         self.versions[pipe_type] = [self.wav.copy(), self.sr]
-        return self.wav
+        return self
 
             
 
