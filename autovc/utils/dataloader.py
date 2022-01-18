@@ -11,6 +11,8 @@ from autovc.utils.audio import remove_noise, preprocess_wav
 from autovc.utils.progbar import close_progbar, progbar
 from autovc.utils.core import retrieve_file_paths
 from autovc.utils.hparams import WaveRNNParams 
+# from autovc.audio.spectrogram import mel_spectrogram
+from autovc import audio
 
 vocoder_params = WaveRNNParams()
 class TrainDataLoader(Dataset):
@@ -22,51 +24,75 @@ class TrainDataLoader(Dataset):
     If spectograms in batch are of unequal size the smaller are padded with zeros to match the size of the largest.
     '''
 
-    def __init__(self, speaker_encoder, data_path = None, data_path_excluded= None, wav_files = None,  chop = False, **kwargs):
+    def __init__(self, speaker_encoder, data_path = None, data_path_excluded= [], **kwargs):
+        """
+        Initilialises the data loader
+        """
         super(TrainDataLoader, self).__init__()
 
         # Load wav files. Create spectograms and embeddings
-        if wav_files is not None:
-            self.wav_files = wav_files
-        elif data_path is not None:
-            self.wav_files = retrieve_file_paths(data_path, excluded=data_path_excluded if data_path_excluded is not None else [])
-        else:
-            raise ArgumentError(f"Either data_path or wav_files must be different from None")
+        # if wav_files is not None:
+        #     self.wav_files = wav_files
+        # elif data_path is not None:
+        self.wav_files = retrieve_file_paths(data_path, excluded=data_path_excluded)
+        # else:
+        #     raise ArgumentError(f"Either data_path or wav_files must be different from None")
                 
         self.mel_spectograms, self.embeddings, N = [], [], len(self.wav_files)
+        # cut = kwargs.pop("cut", False)
+        cut = kwargs.pop("cut", True)
 
         print("Creating mel spectrograms and embeddings...")
         progbar(0, N)
         for i, wav in enumerate(self.wav_files):
-            # make nice sounds
+            data = audio.Audio(wav, sr = vocoder_params.sample_rate)
 
-            if chop:
-                # Chops the mel spectograms in size of 'partial_n_utterances
+            # TODO - preprocess
+            # data.preprocess()
 
-
-                # wav = preprocess_wav(wav)
-
-                
-                mel_frames = get_mel_frames(wav,
-                                            audio_to_melspectrogram,
-                                            order = 'MF',
-                                            sr = vocoder_params.sample_rate, 
-                                            mel_window_step = vocoder_params.mel_window_step, 
-                                            partial_utterance_n_frames = 250  )
-                # Get embeddings of speech
-                embeds     = speaker_encoder.embed_utterance(wav)
-
-                # Add to dataset - embeddings are cloned to match the number of mel frames
+            # get mel spectrogram
+            mel_frames = audio.spectrogram.mel_spectrogram(data.wav, model = "auto_encoder", sr = data.sr, cut = cut, **kwargs)
+            
+            # get embeddings
+            embeds     = speaker_encoder.embed_utterance(data.wav)
+            
+            if cut:
                 self.mel_spectograms.extend(mel_frames)
                 self.embeddings.extend([embeds.clone() for _ in range(len(mel_frames))])
             else:
-                # Compute mel spectogram and speaker embeddings
-                mel_frames = torch.from_numpy(audio_to_melspectrogram(wav))
-                embeds     = speaker_encoder.embed_utterance(wav)
-
-                # Add to dataset
                 self.mel_spectograms.append(mel_frames)
                 self.embeddings.append(embeds)
+
+
+            # make nice sounds
+
+            # if chop:
+            #     # Chops the mel spectograms in size of 'partial_n_utterances
+
+
+            #     # wav = preprocess_wav(wav)
+
+                
+            #     mel_frames = get_mel_frames(wav,
+            #                                 audio_to_melspectrogram,
+            #                                 order = 'MF',
+            #                                 sr = vocoder_params.sample_rate, 
+            #                                 mel_window_step = vocoder_params.mel_window_step, 
+            #                                 partial_utterance_n_frames = 250  )
+            #     # Get embeddings of speech
+            #     embeds     = speaker_encoder.embed_utterance(wav)
+
+            #     # Add to dataset - embeddings are cloned to match the number of mel frames
+            #     self.mel_spectograms.extend(mel_frames)
+            #     self.embeddings.extend([embeds.clone() for _ in range(len(mel_frames))])
+            # else:
+            #     # Compute mel spectogram and speaker embeddings
+            #     mel_frames = torch.from_numpy(audio_to_melspectrogram(wav))
+            #     embeds     = speaker_encoder.embed_utterance(wav)
+
+            #     # Add to dataset
+            #     self.mel_spectograms.append(mel_frames)
+            #     self.embeddings.append(embeds)
             progbar(i+1, N)
         close_progbar()
 
