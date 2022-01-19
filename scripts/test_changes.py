@@ -4,10 +4,11 @@
 from autovc import VoiceConverter
 from autovc.utils.model_loader import load_model
 
-vc = VoiceConverter(wandb_params = {"mode" : "disabled"})
+vc = VoiceConverter(wandb_params = {"mode" : "disabled"}, speaker_encoder = "models/SpeakerEncoder/SpeakerEncoder_SMK.pt")
 
 print("Testing Auto Encoder training...")
-vc.train(n_epochs = 1, data_path = ["data/samples/mette_183.wav", "data/samples/chooped7.wav"], conversion_examples = False)
+# vc.train(n_epochs = 1, data_path = ["data/samples/mette_183.wav", "data/samples/chooped7.wav"], conversion_examples = False)
+vc.train(n_epochs = 1, data_path = ["data/yang_long.wav", "data/samples/chooped7.wav"], conversion_examples = False, auto_encoder_params = {"cut" : True, "speakers" : True})
 
 print("Testing conversion...")
 vc.convert("data/samples/mette_183.wav", "data/samples/chooped7.wav", out_name = "conversion_test.wav")
