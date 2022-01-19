@@ -219,11 +219,13 @@ def combine_audio(audio_file_paths, excluded_audio_file_paths = [], sr = 16000, 
         A numpy array with the combined audio data
     """
 
+    # TODO - Combine in order
+
     is_array = isinstance(audio_file_paths[0], np.ndarray)
 
     if not is_array:
         audio_file_paths = retrieve_file_paths(audio_file_paths, excluded=excluded_audio_file_paths)
-    
+
     # combine files
     wav_combined = []
     for wav in audio_file_paths:
@@ -235,7 +237,8 @@ def combine_audio(audio_file_paths, excluded_audio_file_paths = [], sr = 16000, 
     if filename is not None:
         filename += "" if filename.endswith(".wav") else ".wav"
         sf.write(filename, np.array(wav_combined), samplerate = int(np.mean(sr)))
-    return wav_combined
+    
+    return np.array(wav_combined)
 
 def normalize_volume(wav, target_dBFS = -30, increase_only=False, decrease_only=False):
     """
@@ -287,8 +290,8 @@ def remove_noise(wav, sr, **kwargs):
 
 
 if __name__ == "__main__":
-    wav, sr = librosa.load("example_audio.wav", sr = 48000)
-    wavs = split_audio(wav, sr, filename="example_audio.wav", allowed_pause = .1)
+    # wav, sr = librosa.load("example_audio.wav", sr = 48000)
+    # wavs = split_audio(wav, sr, filename="example_audio.wav", allowed_pause = .1)
     # remove_noise(wav, sr)
 
-    combine_audio(wavs, filename = "combined.wav", sr = 48000)
+    combine_audio("data/HY", filename = "combined.wav", sr = 48000)
