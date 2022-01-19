@@ -19,6 +19,7 @@ from autovc.utils.progbar import progbar, close_progbar
 import time
 import numpy as np
 from torch.nn.functional import pad
+import matplotlib.pyplot as plt
 class Generator(nn.Module):
     """
     Generator network. The entire thing pieced together (figure 3a and 3c)
@@ -234,6 +235,10 @@ class Generator(nn.Module):
                     wandb_run.log({
                         "loss" : running_loss/log_steps
                     }, step = step)
+                    wandb_run.log({
+                         'Conversion': self.plot_conversion(X[0], out_postnet[0])
+                        })
+                    plt.close()
                     running_loss, log_steps = 0, 0 # reset log 
                 if step % self.params.save_freq == 0 or step == N_iterations:
                     save_name = self.params.model_dir.strip("/") + "/" + self.params.model_name
@@ -311,6 +316,20 @@ class Generator(nn.Module):
             frames[i] = pad(frames[i], (i * T, (M-i-1) * T) , mode = 'constant', value = torch.nan)
         X = torch.stack(frames)
         return X.nanmean(axis = 0)
+
+    def plot_conversion(self, original, converted):
+        fig, ax = plt.subplots(ncols = 2, figsize = (20,10))
+
+        original = original.detach().cpu().numpy()
+        converted = converted.detach().cpu().numpy()
+        ax[0].matshow(original)
+        ax[0].set_title("Original")
+        ax[1].matshow(converted)
+        ax[1].set_title("Reconstructed")
+
+
+        return fig
+
         
         
 
