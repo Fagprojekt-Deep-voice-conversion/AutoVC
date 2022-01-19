@@ -144,7 +144,7 @@ class AutoEncoderParams(ParamCollection):
 		self.add_collection("Decoder", ["dim_neck", "dim_emb", "dim_pre"])
 		self.add_collection("Adam", ["betas", "eps", "amsgrad", "lr", "weight_decay"])
 		self.add_collection("lr_scheduler", ["dim_model", "n_warmup_steps"])
-		self.add_collection("dataset", ["data_path", "data_path_excluded", "chop"])
+		self.add_collection("dataset", ["data_path", "data_path_excluded", "cut", "speakers"])
 		self.add_collection("dataloader", ["batch_size", "shuffle", "num_workers", ])
 	
 
