@@ -25,7 +25,7 @@ class TrainDataLoader(Dataset):
     If spectograms in batch are of unequal size the smaller are padded with zeros to match the size of the largest.
     '''
 
-    def __init__(self, speaker_encoder, data_path = None, data_path_excluded= [], **kwargs):
+    def __init__(self, speaker_encoder, data_path = None, data_path_excluded= [], speakers = False, **kwargs):
         """
         Initilialises the data loader
         """
@@ -55,7 +55,14 @@ class TrainDataLoader(Dataset):
             mel_frames = audio.spectrogram.mel_spectrogram(data.wav, model = "auto_encoder", sr = data.sr, cut = cut, **kwargs)
             
             # get embeddings
-            embeds     = speaker_encoder.embed_utterance(data.wav)
+            # embeds     = speaker_encoder.embed_utterance(data.wav)
+
+            # Get embeddings of speech
+            if not speakers:
+                embeds     = speaker_encoder.embed_utterance(data.wav)
+            else:
+                name = 'hilde' if 'hilde' in wav else 'HaegueYang'
+                embeds = speaker_encoder.speakers[name]
             
             if cut:
                 self.mel_spectograms.extend(mel_frames)

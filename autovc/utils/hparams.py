@@ -7,7 +7,7 @@ These default params shpould not be changed unless a better combination has been
 from autovc.utils.lr_scheduler import NoamScheduler
 import torch
 from datetime import date
-
+import random, string
 
 class Namespace:
     def __init__(self, **kwargs):
@@ -116,9 +116,9 @@ class AutoEncoderParams(ParamCollection):
 		self.batch_size 					= 2
 		self.clip_thresh 					= -1
 		self.save_freq						= 1024
-		self.log_freq						= 1
+		self.log_freq						= 8
 		self.model_dir						= "models/AutoVC"
-		self.model_name						= "model_" + date.today().strftime("%Y%m%d") + ".pt"
+		self.model_name						= "model_" + date.today().strftime("%Y%m%d") + "".join(random.choices(string.ascii_uppercase + string.digits, k=6)) +".pt"
 		self.example_freq					= None
 
 		# Optimizer
@@ -131,7 +131,7 @@ class AutoEncoderParams(ParamCollection):
 		# Learning rate scheduler
 		self.lr_scheduler 					= NoamScheduler # see lrschedule.py for available lr_schedule
 		self.dim_model						= 80 # The output dimension of the model
-		self.n_warmup_steps					= 200
+		self.n_warmup_steps					= 64
 
 		# max time steps can either be specified as sec or steps if both are None, then full audio samples are used in a batch
 		self.max_time_sec 					=  None
