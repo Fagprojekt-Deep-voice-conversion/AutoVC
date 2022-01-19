@@ -1,20 +1,15 @@
 from autovc.utils.hpc import create_submit
 import os, sys
 
-project = "NewSpeaker"
-job_name = "test_speakers"
-
 # script = "autovc/voice_converter.py"
 args = " ".join(param.strip() for param in [
-    "-mode train",
-    "-model_type auto_encoder",
-    "-n_epochs 10",
+    "-mode convert",
+    "-auto_encoder models/AutoVC/model_20220119RU35A9.pt",
     "-speaker_encoder models/SpeakerEncoder/SpeakerEncoder_SMK.pt",
-    "-auto_encoder_params cut=True speakers=True",
-    "-data_path data/yang_long.wav data/samples/chooped7.wav",
-
-    # wandb
-    f"-wandb_params project={project} name={job_name}"
+    # "-auto_encoder_params cut=True speakers=True",
+    "-sources data/HY -targets HaegueYang",
+    # "-convert_params pipes={output:[normalize_volume,remove_noise],source:[normalize_volume]}",
+    "-convert_params out_dir=SMK_material"
 ])
 # execution_code = ["python " + script.strip() + " " + args]
 execution_code = ["python autovc/voice_converter.py" + " " + args]
@@ -25,7 +20,7 @@ cluster_settings = {
     "overwrite" : True, 
     "n_cores" : 1, 
     "system_memory" : 5, 
-    "walltime" : "08:00", 
+    "walltime" : "01:00", 
     "notifications" : True
 }
 
