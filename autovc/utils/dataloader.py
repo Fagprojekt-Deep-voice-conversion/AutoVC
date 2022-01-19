@@ -22,7 +22,7 @@ class TrainDataLoader(Dataset):
     If spectograms in batch are of unequal size the smaller are padded with zeros to match the size of the largest.
     '''
 
-    def __init__(self, speaker_encoder, data_path = None, data_path_excluded= None, wav_files = None,  chop = False, **kwargs):
+    def __init__(self, speaker_encoder, data_path = None, data_path_excluded= None, wav_files = None,  chop = False, speakers = False, **kwargs):
         super(TrainDataLoader, self).__init__()
 
         # Load wav files. Create spectograms and embeddings
@@ -54,8 +54,11 @@ class TrainDataLoader(Dataset):
                                             mel_window_step = vocoder_params.mel_window_step, 
                                             partial_utterance_n_frames = 250  )
                 # Get embeddings of speech
-                embeds     = speaker_encoder.embed_utterance(wav)
-
+                if not speakers:
+                    embeds     = speaker_encoder.embed_utterance(wav)
+                else:
+                    name = 'hilde' if 'hilde' in wav else 'HaegueYang'
+                    embeds = speaker_encoder.speakers[name]
                 # Add to dataset - embeddings are cloned to match the number of mel frames
                 self.mel_spectograms.extend(mel_frames)
                 self.embeddings.extend([embeds.clone() for _ in range(len(mel_frames))])
