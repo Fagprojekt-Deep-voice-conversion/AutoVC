@@ -55,8 +55,9 @@ class Audio:
         """
         Saves the audio data to the given path with the given sampling rate (sr). Sampling rate is set objects value if None is given
         """
-        sr = self.sr if sr is None else sr
-        sf.write(save_path, self.resample(sr), samplerate=sr)
+        # sr = self.sr if sr is None else sr
+
+        sf.write(save_path, self.wav, samplerate=self.sr)
         
 
     def resample(self, sr):
