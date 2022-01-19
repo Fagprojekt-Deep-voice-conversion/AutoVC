@@ -118,7 +118,7 @@ def mel_spec_auto_encoder(
         wave_slices, mel_slices = compute_partial_slices(len(wav),
                                                      sr                 = sr,
                                                      mel_window_step    = kwargs.pop("mel_window_step", 12.5), # from vocoder
-                                                     partial_utterance_n_frames = kwargs.pop("partial_utterance_n_frames", 250), 
+                                                     partial_utterance_n_frames = kwargs.pop("partial_utterance_n_frames", 400), 
                                                      **kwargs)
          # Pad last audio frame
         max_wave_length = wave_slices[-1].stop
