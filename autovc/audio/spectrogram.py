@@ -21,6 +21,9 @@ from autovc.utils.core import retrieve_file_paths
 import math, torch
 from autovc.speaker_encoder.utils import compute_partial_slices
 
+se_params = SpeakerEncoderParams()
+vocoder_params = WaveRNNParams()
+
 def normalize_spec(spectrogram, min_level_db = -100):
     """
     Normalizes a spectrogram.
