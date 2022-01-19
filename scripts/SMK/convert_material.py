@@ -6,10 +6,10 @@ args = " ".join(param.strip() for param in [
     "-mode convert",
     "-auto_encoder models/AutoVC/model_20220119RU35A9.pt",
     "-speaker_encoder models/SpeakerEncoder/SpeakerEncoder_SMK.pt",
-    # "-auto_encoder_params cut=True speakers=True",
-    "-sources data/HY -targets HaegueYang",
-    # "-convert_params pipes={output:[normalize_volume,remove_noise],source:[normalize_volume]}",
-    "-convert_params out_dir=SMK_material"
+    # "-sources data/HY -targets HaegueYang",
+    "-sources data/HY/HY1.wav -targets HaegueYang",
+    # "-convert_params pipes={source:[normalize_volume],output:[normalize_volume,remove_noise]}",
+    "-convert_params out_dir=HY1 cut=True partial_utterance_n_frames=160"
 ])
 # execution_code = ["python " + script.strip() + " " + args]
 execution_code = ["python autovc/voice_converter.py" + " " + args]

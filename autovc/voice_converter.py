@@ -87,7 +87,7 @@ class VoiceConverter:
         
         
 
-    def convert(self, source, target,  sr = 22050, out_name = None, out_dir = None, pipes = {}, pipe_args = {}):
+    def convert(self, source, target,  sr = 22050, out_name = None, out_dir = None, pipes = {}, pipe_args = {}, **kwargs):
         """
         Gives the features of the target to the content of the source
 
@@ -114,12 +114,16 @@ class VoiceConverter:
         """
 
         print("Beginning conversion...")
-        # source_wav, target_wav = preprocess_wav(source), preprocess_wav(target)
-        audio_src = Audio(source, sr).preprocess("convert_in", *pipes.get("source", []), **pipe_args.get("source", {}))
-        
 
+        # source_wav, target_wav = preprocess_wav(source), preprocess_wav(target)
+
+        # source data
+        audio_src = Audio(source, sr).preprocess("convert_in", *(pipes.get("source", ["normalize_volume"])), **pipe_args.get("source", {}))
+        c_source = self.SE.embed_utterance(audio_src.wav).unsqueeze(0)
+        
+        # target data
         if not target in self.SE.speakers.keys():
-            audio_trg = Audio(target, sr).preprocess("convert_in", *pipes.get("target", []), **pipe_args.get("target", {}))
+            audio_trg = Audio(target, sr).preprocess("convert_in", *pipes.get("target", ["normalize_volume"]), **pipe_args.get("target", {}))
             c_target = self.SE.embed_utterance(audio_trg.wav).unsqueeze(0)
         else:
             c_target = self.SE.speakers[target].unsqueeze(0)
@@ -127,18 +131,29 @@ class VoiceConverter:
        
        
         # Generate speaker embeddings
-        c_source = self.SE.embed_utterance(audio_src.wav).unsqueeze(0)
+        # c_source = self.SE.embed_utterance(audio_src.wav).unsqueeze(0)
         # c_target = self.SE.embed_utterance(audio_trg.wav).unsqueeze(0)
-
-        # Create mel spectrogram
-        # mel_spec = torch.from_numpy(audio_to_melspectrogram(audio_src.wav)).unsqueeze(0)
-        mel_spec = spectrogram.mel_spectrogram(audio_src.wav, "auto_encoder").unsqueeze(0)
         
-        # Convert
-        out, post_out, content_codes = self.AE(mel_spec, c_source, c_target)
+        
+        mel_spec = spectrogram.mel_spec_auto_encoder(audio_src.wav, **kwargs)
+
+        if kwargs.get("cut", False):
+            mel_batch = torch.stack(mel_spec) # stack list of mel slices
+            post_out = self.AE.batch_forward(mel_batch, c_source, c_target, overlap = kwargs.get("overlap", 0.5)) # overlap set to compute_partial_slices default, as they must be equal
+            waveform = self.vocoder.generate(post_out.unsqueeze(0))
+        else:
+            out, post_out, content_codes = self.AE(mel_spec.unsqueeze(0), c_source, c_target)
+            waveform = self.vocoder.generate(post_out)
+
+       
+        # # Create mel spectrogram
+        # mel_spec = spectrogram.mel_spectrogram(audio_src.wav, "auto_encoder").unsqueeze(0)
+        
+        # # Convert
+        # out, post_out, content_codes = self.AE(mel_spec, c_source, c_target)
 
         # Use the Vocoder to generate waveform (use post_out as input)
-        waveform = self.vocoder.generate(post_out)
+        # waveform = self.vocoder.generate(post_out)
 
         # # reduce noise
         # if clean:
@@ -371,9 +386,9 @@ if __name__ == "__main__":
         )
     elif mode == "convert":
         assert all([args.__contains__(key) for key in ["sources", "targets"]])
+        convert_params = args.pop("convert_params", {})
         vc.convert_multiple(
-            **args.pop("convert_params", {}),
-            **args
+            **args, **convert_params
             # sources = args.conversion_sources, 
             # targets = args.conversion_targets,
             # save_folder = args.results_dir,

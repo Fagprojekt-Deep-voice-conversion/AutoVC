@@ -113,8 +113,9 @@ def parse_vc_args(args = None):
 
 
 if __name__ == "__main__":
-    args = "-mode train -convert_params clean=True"# -test False -test2 Ture"
-    print(parse_vc_args(args))
+    args = "-mode train -convert_params pipes={source:[normalize_volume],output:[normalize_volume,remove_noise]}"#"# -test False -test2 Ture"
+    print(vars(parse_vc_args(args)))
+
     # parser = parse_vc_args(args)
     # # print(parser.parse_args(args.split()))
     # print(parser.parse_known_args(args.split()))
