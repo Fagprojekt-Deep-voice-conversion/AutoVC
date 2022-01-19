@@ -116,13 +116,19 @@ class VoiceConverter:
         print("Beginning conversion...")
         # source_wav, target_wav = preprocess_wav(source), preprocess_wav(target)
         audio_src = Audio(source, sr).preprocess("convert_in", *pipes.get("source", []), **pipe_args.get("source", {}))
-        audio_trg = Audio(target, sr).preprocess("convert_in", *pipes.get("target", []), **pipe_args.get("target", {}))
+        
+
+        if not target in self.SE.speakers.keys():
+            audio_trg = Audio(target, sr).preprocess("convert_in", *pipes.get("target", []), **pipe_args.get("target", {}))
+            c_target = self.SE.embed_utterance(audio_trg.wav).unsqueeze(0)
+        else:
+            c_target = self.SE.speakers[target].unsqueeze(0)
 
        
        
         # Generate speaker embeddings
         c_source = self.SE.embed_utterance(audio_src.wav).unsqueeze(0)
-        c_target = self.SE.embed_utterance(audio_trg.wav).unsqueeze(0)
+        # c_target = self.SE.embed_utterance(audio_trg.wav).unsqueeze(0)
 
         # Create mel spectrogram
         # mel_spec = torch.from_numpy(audio_to_melspectrogram(audio_src.wav)).unsqueeze(0)
@@ -248,7 +254,10 @@ class VoiceConverter:
         """
 
         sources = retrieve_file_paths(sources)
-        targets = retrieve_file_paths(targets)
+        if len(targets) > 1 or  os.path.isdir(targets[0]):
+            # targets = targets[0]
+        # else:
+            targets = retrieve_file_paths(targets)
         wavs, sample_rates = [], []
 
         if match_method == "align":
@@ -327,11 +336,11 @@ class VoiceConverter:
 if __name__ == "__main__":
     from autovc.utils.argparser import parse_vc_args
     # args = "-mode train -model_type auto_encoder -wandb_params mode=online -n_epochs 1 -data_path data/samples -data_path_excluded data/samples/chooped7.wav -auto_encoder deep_voice_inc/SpeakerEncoder/model_20220113.pt:v4"
-    args = "-mode convert -sources data/samples/hilde_301.wav -targets data/samples/chooped7.wav -convert_params pipes={output:[normalize_volume,remove_noise],source:[normalize_volume]} -auto_encoder models/AutoVC/AutoVC_SMK.pt"# -auto_encoder deep_voice_inc/AutoEncoder/model_20220114.pt:v0"
+    # args = "-mode convert -sources data/samples/hilde_301.wav -targets data/samples/chooped7.wav -convert_params pipes={output:[normalize_volume,remove_noise],source:[normalize_volume]} -auto_encoder models/AutoVC/AutoVC_SMK.pt"# -auto_encoder deep_voice_inc/AutoEncoder/model_20220114.pt:v0"
     # args = "-mode train -model_type auto_encoder -wandb_params mode=online project=SpeakerEncoder2 -data_path data/test_data -n_epochs 16 -speaker_encoder SpeakerEncoder3.pt -auto_encoder_params batch_size=32 chop=True speakers=True save_freq=64 freq=80 "
     # args = "-mode train -model_type speaker_encoder -wandb_params mode=online project=SpeakerEncoder2 -data_path data/test_data -n_epochs 128 -speaker_encoder_params SE_model=models/SpeakerEncoder/SpeakerEncoder.pt"
     # args = "-mode convert -sources data/samples/mette_183.wav -targets data/samples/chooped7.wav"
-    # args = None # make sure this is used when not testing
+    args = None # make sure this is used when not testing
     args = vars(parse_vc_args(args))
 
     vc = VoiceConverter(

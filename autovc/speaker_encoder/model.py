@@ -402,7 +402,7 @@ class SpeakerEncoder(nn.Module):
         embeddings = torch.stack(embeddings)
         mean_embedding = embeddings.mean(axis = 0, keepdim = True)
 
-        self.speakers[speaker] = mean_embedding
+        self.speakers[speaker] = mean_embedding.squeeze()
 
     def save(self, save_name, step = 0):
         # save_name = self.params.model_dir.strip("/") + "/" + self.params.model_name
