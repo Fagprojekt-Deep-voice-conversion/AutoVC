@@ -13,7 +13,7 @@ from autovc.auto_encoder.net_layers import *
 from autovc.auto_encoder.encoder import Encoder
 from autovc.auto_encoder.decoder import Decoder
 from autovc.auto_encoder.postnet import Postnet
-from autovc.utils.audio import get_mel_frames
+# from autovc.utils.audio import get_mel_frames
 from autovc.utils.hparams import AutoEncoderParams as hparams
 from autovc.utils.progbar import progbar, close_progbar
 import time

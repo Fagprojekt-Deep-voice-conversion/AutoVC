@@ -16,14 +16,18 @@ import noisereduce as nr
 import math
 
 from autovc.utils.core import retrieve_file_paths
+from autovc.utils.hparams import SpeakerEncoderParams
 
 INT_16_MAX = (2 ** 15) - 1
-# se_params = SpeakerEncoderParams()
-
-global pipeline
+se_params = SpeakerEncoderParams()
 
 
-def create_silence_mask(wav, sr, vad_window_length = 20, vad_moving_average_width = 8, vad_max_silence_length = 2):
+def create_silence_mask(
+    wav, 
+    sr, 
+    vad_window_length = se_params.vad_window_length, 
+    vad_moving_average_width = se_params.vad_moving_average_width, 
+    vad_max_silence_length = se_params.vad_max_silence_length):
     """
     Creates a mask where silence frames are set to False. VAD is short for voice activation detection.
 
@@ -110,7 +114,15 @@ def trim_long_silences(wav, sr, **kwargs):
     wav = wav[audio_mask == True]
     return wav
 
-def split_audio(wav, sr, filename = None, save_dir = "splitted_wavs/", allowed_pause = 2, remove_silence = False, max_len = 10, **kwargs):
+def split_audio(
+    wav, 
+    sr, 
+    filename = None, 
+    save_dir = "splitted_wavs/", 
+    allowed_pause = 2, 
+    remove_silence = False, 
+    max_len = 10, 
+    **kwargs):
     """
     Splits the content of the wav into multiple files, based on when there is a longer period if silence.
     Silence is determined with `create_silence_mask()`.

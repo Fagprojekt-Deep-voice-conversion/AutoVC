@@ -2,7 +2,7 @@ from logging import setLogRecordFactory
 from re import S
 import wandb
 from wandb.sdk.wandb_run import Run
-from autovc.utils.audio import audio_to_melspectrogram, preprocess_wav, remove_noise
+# from autovc.utils.audio import audio_to_melspectrogram, preprocess_wav, remove_noise
 from autovc.utils.core import retrieve_file_paths
 import soundfile as sf
 import torch
@@ -14,7 +14,7 @@ import time
 import os
 from itertools import product
 from autovc.utils.hparams import AutoEncoderParams, SpeakerEncoderParams, WaveRNNParams, VoiceConverterParams, Namespace
-from autovc.audio import Audio
+from autovc.audio import Audio, spectrogram
 
 
 class VoiceConverter:
@@ -125,7 +125,8 @@ class VoiceConverter:
         c_target = self.SE.embed_utterance(audio_trg.wav).unsqueeze(0)
 
         # Create mel spectrogram
-        mel_spec = torch.from_numpy(audio_to_melspectrogram(audio_src.wav)).unsqueeze(0)
+        # mel_spec = torch.from_numpy(audio_to_melspectrogram(audio_src.wav)).unsqueeze(0)
+        mel_spec = spectrogram.mel_spectrogram(audio_src.wav, "auto_encoder").unsqueeze(0)
         
         # Convert
         out, post_out, content_codes = self.AE(mel_spec, c_source, c_target)

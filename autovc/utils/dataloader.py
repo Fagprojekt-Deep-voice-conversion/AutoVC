@@ -3,18 +3,19 @@ import numpy as np
 import torch
 import os
 from torch.utils.data import DataLoader, Dataset
-from autovc.utils.audio import audio_to_melspectrogram, get_mel_frames
+# from autovc.utils.audio import audio_to_melspectrogram, get_mel_frames
 from autovc.speaker_encoder.model import SpeakerEncoder
 from autovc.speaker_encoder.utils import *
 from torch.nn.functional import pad
-from autovc.utils.audio import remove_noise, preprocess_wav
+# from autovc.utils.audio import remove_noise, preprocess_wav
 from autovc.utils.progbar import close_progbar, progbar
 from autovc.utils.core import retrieve_file_paths
-from autovc.utils.hparams import WaveRNNParams 
+from autovc.utils.hparams import WaveRNNParams, SpeakerEncoderParams
 # from autovc.audio.spectrogram import mel_spectrogram
 from autovc import audio
 
 vocoder_params = WaveRNNParams()
+se_params = SpeakerEncoderParams()
 class TrainDataLoader(Dataset):
     '''
     A Data Loader class for training AutoVC.
@@ -124,7 +125,7 @@ class TrainDataLoader(Dataset):
 
 
 class SpeakerEncoderDataLoader(Dataset):
-    def __init__(self, data_dict, device = 'cpu'):
+    def __init__(self, data_dict, cut = True, device = 'cpu', **kwargs):
         super(SpeakerEncoderDataLoader, self).__init__()
         self.device = device
         # Find wav files in dictionary of data        
@@ -139,11 +140,23 @@ class SpeakerEncoderDataLoader(Dataset):
         progbar(t, N)
         for i in range(speakers):
             for wav in wav_files[i]:
-                wav = preprocess_wav(wav)
-                # Compute where to split the utterance into partials and pad if necessary
-                frames_batch = get_mel_frames(wav, wav_to_mel_spectrogram )
+                data = audio.Audio(wav, sr = kwargs.pop("sr", se_params.sample_rate))
                 
-                self.datasets[i].extend(frames_batch)
+                # TODO - preprocess
+                # data.preprocess()
+
+                frames_batch = audio.spectrogram.mel_spectrogram(data.wav, model = "speaker_encoder", sr = data.sr, cut = cut, **kwargs)
+
+
+                # wav = preprocess_wav(wav)
+                # Compute where to split the utterance into partials and pad if necessary
+                # frames_batch = get_mel_frames(wav, wav_to_mel_spectrogram )
+                
+                if cut:
+                    self.datasets[i].extend(frames_batch)
+                else:
+                    self.datasets[i].append(frames_batch)
+                
                 t += 1
                 progbar(t, N)
         

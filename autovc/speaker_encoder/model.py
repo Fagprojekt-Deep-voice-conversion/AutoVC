@@ -3,15 +3,16 @@ Speaker Identity encoder from https://github.com/CorentinJ/Real-Time-Voice-Cloni
 """
 
 
-from scipy.interpolate import interp1d
-from sklearn.metrics import roc_curve
-from sklearn.utils import axis0_safe_slice
+# from scipy.interpolate import interp1d
+# from sklearn.metrics import roc_curve
+# from sklearn.utils import axis0_safe_slice
 from torch.nn.utils import clip_grad_norm_
-from scipy.optimize import brentq
+# from scipy.optimize import brentq
 from torch import nn
 import numpy as np
 import torch
-from autovc.speaker_encoder.utils import wav_to_mel_spectrogram, compute_partial_slices
+# from autovc.speaker_encoder.utils import wav_to_mel_spectrogram, compute_partial_slices
+from autovc.audio.spectrogram import mel_spec_speaker_encoder
 from autovc.utils.hparams import SpeakerEncoderParams as hparams
 import librosa
 from pathlib import Path
@@ -19,9 +20,10 @@ from autovc.utils.progbar import progbar, close_progbar
 import time, wandb
 import matplotlib.pyplot as plt
 from sklearn.manifold import TSNE
-import plotly.tools as tls
+# import plotly.tools as tls
 from autovc.utils.core import retrieve_file_paths
 import tqdm
+
 class SpeakerEncoder(nn.Module):
     """
     The Speaker Encoder module
@@ -178,22 +180,27 @@ class SpeakerEncoder(nn.Module):
 
         # Process the entire utterance if not using partials
         if not using_partials:
-            frames = wav_to_mel_spectrogram(wav)
+            # frames = wav_to_mel_spectrogram(wav)
+            frames = mel_spec_speaker_encoder(wav, cut = False)
             embed = self.embed_frames_batch(frames[None, ...])[0]
             if return_partials:
                 return embed, None, None
             return embed
         
-        # Compute where to split the utterance into partials and pad if necessary
-        wave_slices, mel_slices = compute_partial_slices(len(wav), **kwargs)
-        max_wave_length = wave_slices[-1].stop
-        if max_wave_length >= len(wav):
-            wav = np.pad(wav, (0, max_wave_length - len(wav)), "constant")
+        # # Compute where to split the utterance into partials and pad if necessary
+        # wave_slices, mel_slices = compute_partial_slices(len(wav), **kwargs)
+        # max_wave_length = wave_slices[-1].stop
+        # if max_wave_length >= len(wav):
+        #     wav = np.pad(wav, (0, max_wave_length - len(wav)), "constant")
         
-        # Split the utterance into partials
-        frames = wav_to_mel_spectrogram(wav)
-        frames_batch = np.array([frames[s] for s in mel_slices])
-        partial_embeds = self.embed_frames_batch(frames_batch)
+        # # Split the utterance into partials
+        # frames = wav_to_mel_spectrogram(wav)
+        # frames_batch = np.array([frames[s] for s in mel_slices])
+
+        frames_batch, wave_slices, _ = mel_spec_speaker_encoder(wav, cut = True, return_slices=True)
+        # frames_batch = np.array(frames_batch)
+        # partial_embeds = self.embed_frames_batch(frames_batch)
+        partial_embeds =  self.embed_frames_batch(np.array(frames_batch))
         
         # Compute the utterance embedding from the partial embeddings
         raw_embed = partial_embeds.mean(axis=0)
