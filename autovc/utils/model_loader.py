@@ -44,7 +44,9 @@ def load_models(model_types, model_paths, params = None, device = None):
     params = [{}]*len(model_types) if params == None else params
     models = []
     for model_type, model_path, params in [*zip(model_types, model_paths, params)]:
-        models.append(load_model(model_type, model_path, device))
+        if device is not None: params['device'] = device
+        models.append(load_model(model_type, model_path, **params))
+        # models.append(load_model(model_type, model_path, device))
 
     return models
 
