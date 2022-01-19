@@ -272,6 +272,7 @@ def compute_partial_slices(n_samples, sr, partial_utterance_n_frames = 160,
         The number of samples in the waveform
     partial_utterance_n_frames: 
         The number of mel spectrogram frames in each partial utterance (x*10 ms)
+        For 1 second samples use partial_utterance_n_frames = 1000/mel_window_step
     min_pad_coverage: 
         When reaching the last partial utterance, it may or may not have 
         enough frames. If at least <min_pad_coverage> of <partial_utterance_n_frames> are present, 
