@@ -2,7 +2,7 @@ from paramiko import SSHClient, AutoAddPolicy
 from getpass import getpass
 import time
 import sys, os
-from autovc.utils.core import pformat
+from autovc.utils import pformat
 import pandas as pd
 
 class HPC:
