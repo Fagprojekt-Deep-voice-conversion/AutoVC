@@ -4,22 +4,9 @@ Some useful tools for spectrograms.
 
 import librosa
 import numpy as np
-# from autovc.utils.hparams import hparams_autoVC as hp
-from autovc.utils.hparams import WaveRNNParams 
-from scipy.ndimage.morphology import binary_dilation
-from autovc.utils.hparams import SpeakerEncoderParams
-from pathlib import Path
-from typing import Optional, Union
+from autovc.utils.hparams import SpeakerEncoderParams, WaveRNNParams
 import numpy as np
-import webrtcvad
-import librosa
-import struct
-import soundfile as sf
-import os
-import noisereduce as nr
-from autovc.utils.core import retrieve_file_paths
-import math, torch
-# from autovc.speaker_encoder.utils import compute_partial_slices
+import torch
 
 se_params = SpeakerEncoderParams()
 vocoder_params = WaveRNNParams()

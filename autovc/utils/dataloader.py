@@ -1,20 +1,13 @@
-from ctypes import ArgumentError
-import numpy as np 
 import torch
-import os
 from torch.utils.data import DataLoader, Dataset
-# from autovc.utils.audio import audio_to_melspectrogram, get_mel_frames
-from autovc.speaker_encoder.model import SpeakerEncoder
-from autovc.speaker_encoder.utils import *
 from torch.nn.functional import pad
-# from autovc.utils.audio import remove_noise, preprocess_wav
 from autovc.utils.core import retrieve_file_paths, close_progbar, progbar
 from autovc.utils.hparams import WaveRNNParams, SpeakerEncoderParams
-# from autovc.audio.spectrogram import mel_spectrogram
 from autovc import audio
 
 vocoder_params = WaveRNNParams()
 se_params = SpeakerEncoderParams()
+
 class TrainDataLoader(Dataset):
     '''
     A Data Loader class for training AutoVC.
