@@ -2,7 +2,6 @@
 
 
 from autovc import VoiceConverter
-from autovc.utils.model_loader import load_model
 
 vc = VoiceConverter(wandb_params = {"mode" : "disabled"}, speaker_encoder = "models/SpeakerEncoder/SpeakerEncoder.pt")
 

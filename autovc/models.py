@@ -1,7 +1,7 @@
 from pathlib import Path
-from autovc.speaker_encoder.model import SpeakerEncoder
+from autovc.speaker_encoder import SpeakerEncoder
+from autovc.auto_encoder import AutoEncoder
 from autovc.wavernn.model import WaveRNN
-from autovc import AutoEncoder
 import torch
 
 

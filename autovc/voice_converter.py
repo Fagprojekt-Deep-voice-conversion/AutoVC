@@ -9,7 +9,7 @@ import torch
 import numpy as np
 # from autovc.utils.hparams import VoiceConverterParams
 from autovc.utils.dataloader import TrainDataLoader, SpeakerEncoderDataLoader
-from autovc.utils.model_loader import load_models
+from autovc.models import load_models
 import time
 import os
 from itertools import product
