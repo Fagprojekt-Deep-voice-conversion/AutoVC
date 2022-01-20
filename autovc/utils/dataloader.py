@@ -1,7 +1,7 @@
 import torch
 from torch.utils.data import DataLoader, Dataset
 from torch.nn.functional import pad
-from autovc.utils.core import retrieve_file_paths, close_progbar, progbar
+from autovc.utils import retrieve_file_paths, close_progbar, progbar
 from autovc.utils.hparams import WaveRNNParams, SpeakerEncoderParams
 from autovc import audio
 

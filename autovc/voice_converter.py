@@ -3,7 +3,7 @@ from re import S
 import wandb
 from wandb.sdk.wandb_run import Run
 # from autovc.utils.audio import audio_to_melspectrogram, preprocess_wav, remove_noise
-from autovc.utils.core import retrieve_file_paths
+from autovc.utils import retrieve_file_paths
 import soundfile as sf
 import torch
 import numpy as np
@@ -13,7 +13,7 @@ from autovc.models import load_models
 import time
 import os
 from itertools import product
-from autovc.utils.hparams import AutoEncoderParams, SpeakerEncoderParams, WaveRNNParams, VoiceConverterParams, Namespace
+from autovc.utils.hparams import AutoEncoderParams, SpeakerEncoderParams, WaveRNNParams, VoiceConverterParams
 from autovc.audio import Audio, spectrogram
 
 

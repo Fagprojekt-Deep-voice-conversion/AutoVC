@@ -15,7 +15,7 @@ from autovc.auto_encoder.decoder import Decoder
 from autovc.auto_encoder.postnet import Postnet
 # from autovc.utils.audio import get_mel_frames
 from autovc.utils.hparams import AutoEncoderParams as hparams
-from autovc.utils.core import progbar, close_progbar
+from autovc.utils import progbar, close_progbar
 import time
 import numpy as np
 from torch.nn.functional import pad

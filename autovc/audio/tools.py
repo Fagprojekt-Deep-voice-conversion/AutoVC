@@ -16,7 +16,7 @@ import os
 import noisereduce as nr
 import math
 
-from autovc.utils.core import retrieve_file_paths
+from autovc.utils import retrieve_file_paths
 from autovc.utils.hparams import SpeakerEncoderParams
 
 INT_16_MAX = (2 ** 15) - 1

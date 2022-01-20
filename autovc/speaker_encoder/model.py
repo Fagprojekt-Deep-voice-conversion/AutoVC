@@ -9,11 +9,10 @@ import torch
 from autovc.audio.spectrogram import mel_spec_speaker_encoder
 from autovc.utils.hparams import SpeakerEncoderParams as hparams
 import librosa
-from autovc.utils.core import progbar, close_progbar
+from autovc.utils import progbar, close_progbar, retrieve_file_paths
 import time, wandb
 import matplotlib.pyplot as plt
 from sklearn.manifold import TSNE
-from autovc.utils.core import retrieve_file_paths
 import tqdm
 
 class SpeakerEncoder(nn.Module):
