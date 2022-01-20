@@ -164,6 +164,8 @@ class WaveRNNParams(ParamCollection):
 		self.min_level_db 		= -100
 		self.ref_level_db 		= 20
 		self.mel_window_step 	= 12.5
+		self.partials_n_frames = 400
+
 		# Model
 		self.rnn_dims 			= 512
 		self.fc_dims 			= 512
@@ -183,7 +185,6 @@ class WaveRNNParams(ParamCollection):
 		self.gen_at_checkpoint	= 5  # number of samples to generate at each checkpoint
 		self.total_steps		= 1_000_000  # Total number of training steps
 		self.test_samples		= 50  # How many unseen samples to put aside for testing
-		
 		self.seq_len			= self.seq_len_prop  # must be a multiple of hop_length
 		self.clip_grad_norm 	= 4  # set to None if no gradient clipping needed
 

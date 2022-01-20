@@ -105,7 +105,7 @@ def mel_spec_auto_encoder(
     cut:
         If true `compute_partial_slices()` is used to cut the mel spectrogram in slices
     **kwargs:
-        kwargs such as 'min_pad_coverage' and 'overlap' are passed to `compute_partial_slices()`
+        kwargs such as 'partial_utterance_n_frames', 'min_pad_coverage' and 'overlap' are passed to `compute_partial_slices()`
 
     Return
     ------
@@ -117,8 +117,8 @@ def mel_spec_auto_encoder(
     if cut:
         wave_slices, mel_slices = compute_partial_slices(len(wav),
                                                      sr                 = sr,
-                                                     mel_window_step    = kwargs.pop("mel_window_step", 12.5), # from vocoder
-                                                     partial_utterance_n_frames = kwargs.pop("partial_utterance_n_frames", 400), 
+                                                     mel_window_step    = kwargs.pop("mel_window_step", vocoder_params.mel_window_step), 
+                                                     partial_utterance_n_frames = kwargs.pop("partial_utterance_n_frames", vocoder_params.partials_n_frames), 
                                                      **kwargs)
          # Pad last audio frame
         max_wave_length = wave_slices[-1].stop
@@ -141,6 +141,7 @@ def mel_spec_auto_encoder(
     mel_spec = torch.from_numpy(mel_spec)
 
     # slice the mel spec
+    mel_spec = [mel_spec[:,s] for s in mel_slices]
     if cut:
         order = "MF"
         if order == 'FM':
@@ -179,7 +180,7 @@ def mel_spec_speaker_encoder(
     return_slices:
         If true, the computed slices are also returned
     **kwargs:
-        kwargs such as 'min_pad_coverage' and 'overlap' are passed to `compute_partial_slices()`
+        kwargs such as 'partial_utterance_n_frames', 'min_pad_coverage' and 'overlap' are passed to `compute_partial_slices()`
     
     Return
     ------
@@ -194,7 +195,7 @@ def mel_spec_speaker_encoder(
 
     # get slices
     if cut:
-        wave_slices, mel_slices = compute_partial_slices(len(wav), sr = kwargs.pop("sr", se_params.sampling_rate), **kwargs)
+        wave_slices, mel_slices = compute_partial_slices(len(wav), sr = sr, **kwargs)
          # Pad last audio frame
         max_wave_length = wave_slices[-1].stop
         if max_wave_length >= len(wav):
@@ -212,12 +213,13 @@ def mel_spec_speaker_encoder(
     mel_spec = mel_spec.astype(np.float32).T
 
     # slice the mel spec
-    if cut:   
-        order = "FM"
-        if order == 'FM':
-            mel_spec = [mel_spec[s] for s in mel_slices]
-        elif order == 'MF':
-            mel_spec = [mel_spec[:,s] for s in mel_slices]
+    mel_spec = [mel_spec[s] for s in mel_slices]
+    # if cut:   
+    #     order = "FM"
+    #     if order == 'FM':
+    #         mel_spec = [mel_spec[s] for s in mel_slices]
+    #     elif order == 'MF':
+    #         mel_spec = [mel_spec[:,s] for s in mel_slices]
 
 
     if return_slices:
@@ -252,10 +254,10 @@ def mel_spectrogram(wav, model, **kwargs):
 
     return mel_spec
 
-def compute_partial_slices(n_samples, sr, partial_utterance_n_frames = 160,
+def compute_partial_slices(n_samples, sr, partial_utterance_n_frames = se_params.partials_n_frames,
                            min_pad_coverage = 0.75,
                            overlap = 0.5,
-                           mel_window_step = 10):
+                           mel_window_step = se_params.mel_window_step):
     """
     Computes where to split an utterance waveform and its corresponding mel spectrogram to obtain 
     partial utterances of <partial_utterance_n_frames> each. Both the waveform and the mel 

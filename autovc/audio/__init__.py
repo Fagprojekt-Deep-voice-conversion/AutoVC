@@ -9,7 +9,7 @@ from autovc.audio import spectrogram
 import inspect 
 
 class Audio:
-    def __init__(self, wav, sr = 22050, sr_org = None) -> None:
+    def __init__(self, wav, sr = None, sr_org = None) -> None:
         """
         Initlialises the audio class
 
@@ -34,29 +34,24 @@ class Audio:
         else:
             assert sr_org is not None, "sr_org must be given if wav is not a file path"
             self.wav_path = None
-            # self.sr_org = sr_org
             self.wav = wav
             self.sr = sr_org
         
         # make dictionary for storing already preprocessed versions of the wav and its sampling rate
-        self.versions = {"org" : [self.wav.copy(), self.sr]}
+        # self.versions = {"org" : [self.wav.copy(), self.sr]}
 
         # resample audio to target sr
-        # self.wav_org = self.wav.copy() # store orginal wav (to use if wav has been changed for the worse)
-        # self.sr = self.sr_org # sr is set to origninal sampling rate
         if sr is not None:
             self.resample(sr)
             # self.sr = sr # this is now the new sampling rate
-            self.versions["resampled"] = [self.wav.copy(), self.sr]
+            # self.versions["resampled"] = [self.wav.copy(), self.sr]
         
         
 
-    def save(self, save_path = "example_audio.wav", sr = None):
+    def save(self, save_path = "example_audio.wav"):
         """
-        Saves the audio data to the given path with the given sampling rate (sr). Sampling rate is set objects value if None is given
+        Saves the audio data to the given path.
         """
-        # sr = self.sr if sr is None else sr
-
         sf.write(save_path, self.wav, samplerate=self.sr)
         
 
@@ -70,28 +65,18 @@ class Audio:
             self.sr = sr
         
         return self
-    
-    # def get_melspectrogram(model):
-    #     pass
 
-    # def get_mel_frames():
-    #     pass
-
-    def preprocess(self, pipe_type, *pipeline, **pipeline_args):
+    def preprocess(self, *pipeline, **kwargs):
         """
         preprocess wav and add to a key in the dictionary with preprocessed versions
 
         Parameters
         ---------
-        pipe_type:
-            What to use the pipe line for.
-            If eg. 'train' the audio is passed through the pipe line and saved with the key 'train' in the versions.
         *pipeline:
-            Names of functions as str in either audio.tools or audio.spectrogram to use on self.wav.
-        **pipeline:
-            Used to pass arguments for the functions specified in pipeline
-            Key is a function in either audio.tools or audio.spectrogram.
-            The value is passed as arguments to the specified function
+            Names of functions as str in either audio.tools to use on self.wav.
+        **kwargs:
+            Kwargs matching a valid key word argument in the function will be given to the function.
+            E.g. if two functions are found in the pipeline and the both have have 'arg' as a valid argument and it is found in kwargs, both functions will receive the same value of the argument.
         Return
         ------
         self:
@@ -99,26 +84,20 @@ class Audio:
         """
   
         for fun in pipeline:
+            # get function from tools
             if fun is None:
                 continue
-            func = tools.__dict__.get(fun, spectrogram.__dict__.get(fun, False))
+            func = tools.__dict__.get(fun, False)
             if not func:
-                raise ModuleNotFoundError(f"The function {fun} was not found.")
+                raise ModuleNotFoundError(f"The function {fun} was not found in audio.tools")
 
-            # apply function
-            args = pipeline_args.get(fun)
-            if isinstance(args, dict):
-                self.wav = func(self.wav, **args) if "sr" not in inspect.getfullargspec(func).args else func(self.wav, sr = self.sr, **args)
-            elif isinstance(args,list):
-                self.wav = func(self.wav, *args) if "sr" not in inspect.getfullargspec(func).args else func(self.wav, *args, sr = self.sr, )
-            elif args is not None:
-                self.wav = func(self.wav, args) if "sr" not in inspect.getfullargspec(func).args else func(self.wav, args, sr = self.sr)
-            else:
-                self.wav = func(self.wav) if "sr" not in inspect.getfullargspec(func).args else func(self.wav, sr = self.sr)
-
-            
-        
-        self.versions[pipe_type] = [self.wav.copy(), self.sr]
+            # find kwargs to pass to func
+            allowed_keys = list(set(func.__annotations__["args"]).union(set(func.__annotations__["kwargs"])))
+            func_kwargs = {key:value for key, value in kwargs.items() if key in allowed_keys}
+            func_kwargs.update({"sr" : self.sr} if "sr" in allowed_keys else {})
+    
+            # apply function to wav
+            self.wav = func(wav = self.wav, **func_kwargs)
         return self
 
             
@@ -127,5 +106,5 @@ class Audio:
 if __name__ == "__main__":
     wav = Audio("data/samples/chooped7.wav")
     # print(wav.sr, wav.versions)
-    wav.preprocess("train", "remove_noise")
+    wav.preprocess("remove_noise", "normalize_volume", time_constant_s = 1)
     wav.save()

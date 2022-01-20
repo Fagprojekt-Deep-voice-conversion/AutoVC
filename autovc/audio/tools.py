@@ -3,6 +3,7 @@ Some useful tools to use on audio files.
 To use the tools load an audio file with librosa.load() or the Audio class provided (`from autovc import Audio`)
 """
 
+import inspect
 import librosa
 import numpy as np
 from scipy.ndimage.morphology import binary_dilation
@@ -117,8 +118,8 @@ def trim_long_silences(wav, sr, **kwargs):
 def split_audio(
     wav, 
     sr, 
-    filename = None, 
-    save_dir = "splitted_wavs/", 
+    save_name = None, 
+    save_dir = "data/splitted_wavs/", 
     allowed_pause = 2, 
     remove_silence = False, 
     max_len = 10, 
@@ -134,7 +135,7 @@ def split_audio(
         A numpy array with audio content
     sr:
         The sampling rate of the audio content
-    filename:
+    save_name:
         Basename of the resulting files, this is extended with a number indicating the order the content appeared in. 
         If None, the files will NOT be saved. 
         Any leading directories will be ignored and should be given to save_dir instead. (` os.path.split()` makes this easy)
@@ -182,8 +183,8 @@ def split_audio(
                 split_masks.append(split)
     
     # save splitted files
-    if filename is not None:
-        filename = os.path.split(filename)[-1]
+    if save_name is not None:
+        filename = os.path.split(save_name)[-1]
         filename += "" if filename.endswith(".wav") else ".wav"
         os.makedirs(save_dir, exist_ok=True)
     
@@ -197,7 +198,7 @@ def split_audio(
 
     return wavs
 
-def combine_audio(audio_file_paths, excluded_audio_file_paths = [], sr = 16000, filename = None):
+def combine_audio(audio_file_paths, excluded_audio_file_paths = [], sr = 16000, save_name = None):
     """
     Combines multiple audio files into one. 
     Audio fiules are resampled to the given sample rate.
@@ -210,7 +211,7 @@ def combine_audio(audio_file_paths, excluded_audio_file_paths = [], sr = 16000, 
         Path or list of paths to ignore in the given audio_file_paths. Ignored if audio_file_paths is a list of numpy arrays.
     sr:
         The sample rate to use. If audio_file_paths is a list of arrays, this must match their original sample rate
-    filename:
+    save_name:
         The filename to use for saving the combined file. If None, no file is saved.
 
     Return
@@ -234,9 +235,9 @@ def combine_audio(audio_file_paths, excluded_audio_file_paths = [], sr = 16000, 
         wav_combined.extend(wav)
 
     # save file
-    if filename is not None:
-        filename += "" if filename.endswith(".wav") else ".wav"
-        sf.write(filename, np.array(wav_combined), samplerate = int(np.mean(sr)))
+    if save_name is not None:
+        save_name += "" if save_name.endswith(".wav") else ".wav"
+        sf.write(save_name, np.array(wav_combined), samplerate = int(np.mean(sr)))
     
     return np.array(wav_combined)
 
@@ -287,6 +288,23 @@ def remove_noise(wav, sr, **kwargs):
         A numpy array containing audio data with reduced noise
     """
     return nr.reduce_noise(y=wav, sr=sr, **kwargs)
+
+
+# add annotations to use for preprocessing
+trim_long_silences.__annotations__ = {
+    "args" : inspect.getfullargspec(trim_long_silences).args,
+    "kwargs" : inspect.getfullargspec(create_silence_mask).args
+}
+
+normalize_volume.__annotations__ = {
+    "args" : inspect.getfullargspec(normalize_volume).args,
+    "kwargs" : []
+}
+
+remove_noise.__annotations__ = {
+    "args" : inspect.getfullargspec(remove_noise).args,
+    "kwargs" : inspect.getfullargspec(nr.reduce_noise).args
+}
 
 
 if __name__ == "__main__":
