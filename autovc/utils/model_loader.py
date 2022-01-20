@@ -1,7 +1,7 @@
 from pathlib import Path
 from autovc.speaker_encoder.model import SpeakerEncoder
 from autovc.wavernn.model import WaveRNN
-from autovc.auto_encoder.model_vc import Generator
+from autovc import AutoEncoder
 import torch
 
 
@@ -23,7 +23,7 @@ def load_model(model_type: str, model_path: Path, device=None, **model_params):
     device = torch.device(model_params.pop("device", _device))
 
     if model_type == "auto_encoder":
-        model = Generator(device = device, **model_params)
+        model = AutoEncoder(device = device, **model_params)
     elif model_type == "speaker_encoder":
         model = SpeakerEncoder(device = device, **model_params)
     elif model_type == "vocoder":
