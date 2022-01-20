@@ -206,8 +206,8 @@ def create_submit(jobname: str, project:str, *scripts, **kwargs):
 if __name__ == "__main__":
     # HPC().shell()
     hpc = HPC()
-    # hpc.receive_data("Downloads/args.py", "playground/")
-    hpc.send_data("data/long_hilde/Hilde.wav", "/work1/s183920/AutoVC/data/SMK_train/")
+    hpc.receive_data("/work1/s183920/AutoVC/results/SMK_material/*", "results/SMK_material")
+    # hpc.send_data("data/long_hilde/Hilde.wav", "/work1/s183920/AutoVC/data/SMK_train/")
 
     # file = hpc.client.open_sftp()
     # file.get("s183920@transfer.gbar.dtu.dk:Downloads/args.py", "playground/")
