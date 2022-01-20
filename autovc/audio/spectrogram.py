@@ -141,13 +141,14 @@ def mel_spec_auto_encoder(
     mel_spec = torch.from_numpy(mel_spec)
 
     # slice the mel spec
-    mel_spec = [mel_spec[:,s] for s in mel_slices]
     if cut:
-        order = "MF"
-        if order == 'FM':
-            mel_spec = [mel_spec[s] for s in mel_slices]
-        elif order == 'MF':
-            mel_spec = [mel_spec[:,s] for s in mel_slices]
+        mel_spec = [mel_spec[:,s] for s in mel_slices]
+    # if cut:
+    #     order = "MF"
+    #     if order == 'FM':
+    #         mel_spec = [mel_spec[s] for s in mel_slices]
+    #     elif order == 'MF':
+    #         mel_spec = [mel_spec[:,s] for s in mel_slices]
 
     return mel_spec
 
@@ -213,7 +214,8 @@ def mel_spec_speaker_encoder(
     mel_spec = mel_spec.astype(np.float32).T
 
     # slice the mel spec
-    mel_spec = [mel_spec[s] for s in mel_slices]
+    if cut:
+        mel_spec = [mel_spec[s] for s in mel_slices]
     # if cut:   
     #     order = "FM"
     #     if order == 'FM':
