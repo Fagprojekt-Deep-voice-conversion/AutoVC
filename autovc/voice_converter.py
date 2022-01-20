@@ -87,7 +87,7 @@ class VoiceConverter:
         
         
 
-    def convert(self, source, target,  sr = 22050, out_name = None, out_dir = None, pipes = {}, pipe_args = {}, **kwargs):
+    def convert(self, source, target,  sr = 22050, out_name = None, save_dir = None, **kwargs):
         """
         Gives the features of the target to the content of the source
 
@@ -102,15 +102,15 @@ class VoiceConverter:
             The sample rate to use for the audio
         outname:
             filename for converted sound
-        out_dir:
+        save_dir:
             the folder/directory to store the converted file in, if this is 'wandb' the converted audio will be logged to this run
             all conversions not stored in WANDB will be saved in `results/` folder
-        pipes:
-            Dictionary with pipelines for preprocessing audio, keys must be one of ['target', 'source', 'output'] 
-            E.g. {"source" : ["normalize_volume", "remove_noise"], "target" : ["normalize_volume", "remove_noise"], "output" : ["remove_noise"] 
-        pipe_args:
-            Dictionary of dictionaries where outer key matches the pipe type and inner key matches string given in pipe and values are arguments to give to the function. 
-            E.g. if "normalize_volume" is given in target pipe, pipe_args = {"target" : {"normalize_volume" : "target_dBFS" = -30}} can be given to select the normalisation volume
+        # pipes:
+        #     Dictionary with pipelines for preprocessing audio, keys must be one of ['target', 'source', 'output'] 
+        #     E.g. {"source" : ["normalize_volume", "remove_noise"], "target" : ["normalize_volume", "remove_noise"], "output" : ["remove_noise"] 
+        # pipe_args:
+        #     Dictionary of dictionaries where outer key matches the pipe type and inner key matches string given in pipe and values are arguments to give to the function. 
+        #     E.g. if "normalize_volume" is given in target pipe, pipe_args = {"target" : {"normalize_volume" : "target_dBFS" = -30}} can be given to select the normalisation volume
         """
 
         print("Beginning conversion...")
@@ -118,23 +118,18 @@ class VoiceConverter:
         # source_wav, target_wav = preprocess_wav(source), preprocess_wav(target)
 
         # source data
-        audio_src = Audio(source, sr).preprocess("convert_in", *(pipes.get("source", ["normalize_volume"])), **pipe_args.get("source", {}))
+        audio_src = Audio(source, sr)
         c_source = self.SE.embed_utterance(audio_src.wav).unsqueeze(0)
         
         # target data
         if not target in self.SE.speakers.keys():
-            audio_trg = Audio(target, sr).preprocess("convert_in", *pipes.get("target", ["normalize_volume"]), **pipe_args.get("target", {}))
+            audio_trg = Audio(target, sr)
             c_target = self.SE.embed_utterance(audio_trg.wav).unsqueeze(0)
         else:
             c_target = self.SE.speakers[target].unsqueeze(0)
 
-       
-       
-        # Generate speaker embeddings
-        # c_source = self.SE.embed_utterance(audio_src.wav).unsqueeze(0)
-        # c_target = self.SE.embed_utterance(audio_trg.wav).unsqueeze(0)
-        
-        
+             
+        # create spectrogram 
         mel_spec = spectrogram.mel_spec_auto_encoder(audio_src.wav, **kwargs)
 
         if kwargs.get("cut", False):
@@ -145,24 +140,11 @@ class VoiceConverter:
             out, post_out, content_codes = self.AE(mel_spec.unsqueeze(0), c_source, c_target)
             waveform = self.vocoder.generate(post_out)
 
-       
-        # # Create mel spectrogram
-        # mel_spec = spectrogram.mel_spectrogram(audio_src.wav, "auto_encoder").unsqueeze(0)
-        
-        # # Convert
-        # out, post_out, content_codes = self.AE(mel_spec, c_source, c_target)
-
-        # Use the Vocoder to generate waveform (use post_out as input)
-        # waveform = self.vocoder.generate(post_out)
-
-        # # reduce noise
-        # if clean:
-        #     waveform = remove_noise(waveform, self.config["vocoder_params"].get("sample_rate"))
 
         # ensure a np array is returned
         waveform = np.asarray(waveform)
         audio_out = Audio(waveform, sr = sr, sr_org = self.config["vocoder_params"].get("sample_rate"))
-        audio_out.preprocess("convert_out", *pipes.get("output", []), **pipe_args.get("output", {}))
+        # audio_out.preprocess("convert_out", *pipes.get("output", []), **pipe_args.get("output", {}))
 
 
         # Generate .wav file frowm waveform
@@ -172,13 +154,13 @@ class VoiceConverter:
             out_name = f"{src_speaker}_to_{trg_speaker}.wav"
         
         # if out_dir == self.wandb_run and self.wandb_run is not None:
-        if out_dir == "wandb":
+        if save_dir == "wandb":
             # TODO log as table
             assert self.wandb_run is not None, "A wandb run has to be setup with _init_wandb() to save conversion in wandb"
             self.wandb_run.log({out_name.replace(".wav", "") : wandb.Audio(audio_out.wav, caption = out_name, sample_rate = audio_out.sr)})
         else:
-            if out_dir is not None:
-                out_dir = out_dir if out_dir.startswith("results") else "results/" + out_dir 
+            if save_dir is not None:
+                out_dir = save_dir if save_dir.startswith("results") else "results/" + save_dir 
                 out_name = out_dir.strip("/") + "/" + out_name
                 os.makedirs(out_dir, exist_ok=True) # create folder
             else:
@@ -346,6 +328,9 @@ class VoiceConverter:
             params = [self.config["AE_params"], self.config["SE_params"], self.config["vocoder_params"]],
             device = self.config.get("device", None),
         )
+
+    def setup_audio_processing_pipeline(self):
+        pass
 
 
 if __name__ == "__main__":
