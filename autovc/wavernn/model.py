@@ -5,7 +5,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from autovc.utils.progbar import close_progbar
+from autovc.utils.core import close_progbar
 from autovc.wavernn.distribution import sample_from_discretized_mix_logistic
 from autovc.wavernn.display import *
 from autovc.utils.hparams import WaveRNNParams as hparams

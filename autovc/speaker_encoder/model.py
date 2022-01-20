@@ -16,7 +16,7 @@ from autovc.audio.spectrogram import mel_spec_speaker_encoder
 from autovc.utils.hparams import SpeakerEncoderParams as hparams
 import librosa
 from pathlib import Path
-from autovc.utils.progbar import progbar, close_progbar
+from autovc.utils.core import progbar, close_progbar
 import time, wandb
 import matplotlib.pyplot as plt
 from sklearn.manifold import TSNE
