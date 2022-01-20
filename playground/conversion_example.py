@@ -1,5 +1,5 @@
 
-from autovc.utils.audio import audio_to_melspectrogram, remove_noise
+from playground.audio import audio_to_melspectrogram, remove_noise
 # from autovc.speaker_encoder.model import SpeakerEncoder
 # from autovc.auto_encoder.model_vc import Generator
 # from autovc.wavernn.model import WaveRNN

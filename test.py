@@ -1,5 +1,5 @@
 from autovc.utils.model_loader import load_model
-from autovc.utils.audio import audio_to_melspectrogram, get_mel_frames, remove_noise, normalize_volume
+from playground.audio import audio_to_melspectrogram, get_mel_frames, remove_noise, normalize_volume
 import torch
 
 import soundfile as sf

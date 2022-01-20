@@ -1,6 +1,6 @@
 from conversion import *
 import torch
-from autovc.utils.audio import audio_to_melspectrogram
+from playground.audio import audio_to_melspectrogram
 import matplotlib.pyplot as plt
 import numpy as np
 from autovc.wavernn.synthesizer import synthesize

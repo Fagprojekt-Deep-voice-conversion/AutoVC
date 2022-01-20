@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import librosa, time, torch
 from autovc.utils.dataloaders import DataLoad2
-from autovc.utils.audio import audio_to_melspectrogram
+from playground.audio import audio_to_melspectrogram
 from autovc.auto_encoder.model_vc import Generator
 # from autovc.wavernn.WaveNet import build_model
 # from autovc.wavernn.WaveNet import wavegen
