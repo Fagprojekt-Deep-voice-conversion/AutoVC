@@ -309,7 +309,7 @@ remove_noise.__annotations__ = {
 
 if __name__ == "__main__":
     wav, sr = librosa.load("data/HY/HY1.wav", sr = 32000)
-    wavs = split_audio(wav, sr, filename="HY1.wav", allowed_pause = .1)
+    wavs = split_audio(wav, sr, save_name="HY1.wav", allowed_pause = 2, max_len = 5)
     # remove_noise(wav, sr)
 
     # combine_audio("data/HY", filename = "combined.wav", sr = 48000)

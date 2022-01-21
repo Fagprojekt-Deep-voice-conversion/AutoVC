@@ -113,7 +113,7 @@ class VoiceConverter:
         #     E.g. if "normalize_volume" is given in target pipe, pipe_args = {"target" : {"normalize_volume" : "target_dBFS" = -30}} can be given to select the normalisation volume
         """
 
-        print("Beginning conversion...")
+        print(f"Beginning conversion of {source} to {target}...")
 
         # source_wav, target_wav = preprocess_wav(source), preprocess_wav(target)
 
