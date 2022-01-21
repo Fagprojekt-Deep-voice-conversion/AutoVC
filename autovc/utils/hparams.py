@@ -43,10 +43,10 @@ AutoEncoderParams = {
 }
 
 SpeakerEncoderParams = {
-    "audio" : {
-        "sr" : 16000,
-        "num_mels" : 40,
-    },
+    # "audio" : {
+    #     "sr" : 16000,
+    #     "num_mels" : 40,
+    # },
     "model" : {
         "input_size" : 40, # same as number of mels
         "hidden_size" : 256,
@@ -73,12 +73,45 @@ SpeakerEncoderParams = {
         
 
     },
-    "data_loader" : {
-            "batch_size" : 2,
-        },
+    # "data_loader" : {
+    #         "batch_size" : 2,
+    #     },
 }
 
 WaveRNNParams = {
+	"model_dir"	: "models/SpeakerEncoder",
+	"audio" : {
+		# "sample_rate"	: 22050,
+		# "n_fft" 			: 2048,
+		# "fft_bins" 		: 2048 // 2 + 1,
+		# "hop_length"		: 275,  # 12.5ms - in line with Tacotron 2 paper
+		# "win_length" 	: 1100, # 50ms - same reason as above
+		# "fmin" 			: 40,
+		# "min_level_db" 	: -100,
+		# "ref_level_db" 	: 20,
+		# "mel_window_step" : 12.5,
+		# "partials_n_frames" : 400,
+	},
+	"model" : {
+		"sample_rate"	: 22050,
+		"hop_length"	: 275,  # 12.5ms - in line with Tacotron 2 paper
+		"rnn_dims" 		: 512,
+		"res_out_dims" 	: 128,
+		"feat_dims" 	: 80, # num_mels
+		"fc_dims" 		: 512,
+		"bits" 			: 9,
+		"upsample_factors" : (5, 5, 11),  # NB - this needs to correctly factorise hop_length. OBS previously called upsample scale in net code
+		"compute_dims" 	: 128,
+		"pad" 			: 2,  # this will pad the input so that the resnet can 'see' wider than input length
+		"res_blocks" 	: 10,
+		"mode" 			: 'MOL',  # either 'RAW' (softmax on raw bits) or 'MOL' (sample from mixture of logistics)
+	},
+	"generate" : {
+		"batched" 		: True,  # very fast (realtime+) single utterance batched generation
+		"target" 		: 11_000,  # target number of samples to be generated in each batch entry
+		"overlap" 		: 550,  # number of samples for crossfading between batches
+		"mu_law" 		: False, # whether to use mu_law
+	},
 
 }
 
