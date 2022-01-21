@@ -115,6 +115,7 @@ class WaveRNN(nn.Module):
         pad = WaveRNNParams["model"]["pad"],
         res_blocks = WaveRNNParams["model"]["res_blocks"],
         mode = WaveRNNParams["model"]["mode"],
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     ):
         super().__init__()
         # self.params.update({"aux_dims" : self.params.res_out_dims // 4})
@@ -146,6 +147,7 @@ class WaveRNN(nn.Module):
         self.mode = mode
         self.aux_dims = res_out_dims // 4
         self.n_classes = 2*bits if mode == "RAW" else 30
+        self.device = device if not isinstance(device, str) else torch.device(device)
 
         # List of rnns to call `flatten_parameters()` on
         self._to_flatten = []
@@ -153,16 +155,16 @@ class WaveRNN(nn.Module):
         
         # layers
         self.upsample = UpsampleNetwork(self.feat_dims, self.upsample_factors, self.compute_dims,
-                self.res_blocks, self.res_out_dims, self.pad)
-        self.I = nn.Linear(self.feat_dims + self.aux_dims + 1, self.rnn_dims)
+                self.res_blocks, self.res_out_dims, self.pad).to(device=self.device)
+        self.I = nn.Linear(self.feat_dims + self.aux_dims + 1, self.rnn_dims).to(device=self.device)
  
-        self.rnn1 = nn.GRU(self.rnn_dims, self.rnn_dims, batch_first=True)
-        self.rnn2 = nn.GRU(self.rnn_dims + self.aux_dims, self.rnn_dims, batch_first=True)
+        self.rnn1 = nn.GRU(self.rnn_dims, self.rnn_dims, batch_first=True).to(device=self.device)
+        self.rnn2 = nn.GRU(self.rnn_dims + self.aux_dims, self.rnn_dims, batch_first=True).to(device=self.device)
         self._to_flatten += [self.rnn1, self.rnn2]
 
-        self.fc1 = nn.Linear(self.rnn_dims + self.aux_dims, self.fc_dims)
-        self.fc2 = nn.Linear(self.fc_dims + self.aux_dims, self.fc_dims)
-        self.fc3 = nn.Linear(self.fc_dims, self.n_classes)
+        self.fc1 = nn.Linear(self.rnn_dims + self.aux_dims, self.fc_dims).to(device=self.device)
+        self.fc2 = nn.Linear(self.fc_dims + self.aux_dims, self.fc_dims).to(device=self.device)
+        self.fc3 = nn.Linear(self.fc_dims, self.n_classes).to(device=self.device)
 
         self.register_buffer('step', torch.zeros(1, dtype=torch.long))
         self.num_params()
@@ -469,7 +471,7 @@ class WaveRNN(nn.Module):
         # except:
         #     self.load_state_dict(torch.load(weights_fpath, map_location=device))
         checkpoint = torch.load(model_path, map_location = device)
-        self.load_state_dict(checkpoint["model_state"])
+        self.load_state_dict(checkpoint)
 
         print("Loaded vocoder \"%s\"" % (model_path))
 

@@ -59,9 +59,9 @@ class AutoEncoder(nn.Module):
         self.logging = {}
 
         # self.params = AutoEncoderParams["model"].update(params)
-        self.encoder = Encoder(dim_neck, dim_emb, freq)
-        self.decoder = Decoder(dim_neck, dim_emb, dim_pre)
-        self.postnet = Postnet()
+        self.encoder = Encoder(dim_neck, dim_emb, freq).to(device=self.device)
+        self.decoder = Decoder(dim_neck, dim_emb, dim_pre).to(device=self.device)
+        self.postnet = Postnet().to(device=self.device)
         
 
     def forward(self, x, c_org, c_trg):
@@ -145,7 +145,7 @@ class AutoEncoder(nn.Module):
         return mel_outputs, mel_outputs_postnet, content_codes
 
 
-    def load(self, model_name, model_dir = AutoEncoderParams["learn"]["model_dir"], device = None):
+    def load(self, model_name, model_dir = AutoEncoderParams["model_dir"], device = None):
         self.device = device if device is not None else self.device
         # try:
         #     checkpoint = torch.load(self.params.model_dir.strip("/") + "/" + weights_fpath, map_location = self.device)
@@ -156,8 +156,8 @@ class AutoEncoder(nn.Module):
         if self.verbose:
             print("Loaded auto encoder \"%s\" trained to step %d" % (model_path, checkpoint["step"]))
 
-    def save(self, model_name, model_dir = AutoEncoderParams["learn"]["model_dir"], wandb_run = None):
-        model_path = model_dir.strip("/") + "/" + model_name
+    def save(self, model_name, save_dir = AutoEncoderParams["learn"]["save_dir"], wandb_run = None):
+        model_path = save_dir.strip("/") + "/" + model_name
         torch.save({
             "step": self.logging.get("step"),
             "model_state": self.state_dict(),
@@ -209,7 +209,7 @@ class AutoEncoder(nn.Module):
         n_epochs, 
         log_freq = AutoEncoderParams["learn"]["log_freq"],
         save_freq = AutoEncoderParams["learn"]["save_freq"],
-        model_dir = AutoEncoderParams["learn"]["model_dir"],
+        save_dir = AutoEncoderParams["learn"]["save_dir"],
         model_name = AutoEncoderParams["learn"]["model_name"],
         example_freq = AutoEncoderParams["learn"]["example_freq"],
         # example_sources = ...
@@ -308,7 +308,7 @@ class AutoEncoder(nn.Module):
                     self._log(wandb_run, X, out_postnet)
 
                 if self.logging["step"] % save_freq == 0 or self.logging["step"] == N_iterations:
-                    self.save(model_name, model_dir, wandb_run)
+                    self.save(model_name, save_dir, wandb_run)
                     
                     
                       

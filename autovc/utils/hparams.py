@@ -2,13 +2,14 @@ from datetime import date
 from autovc.utils.lr_scheduler import NoamScheduler
 
 AutoEncoderParams = {
+	"model_dir"	: "models/AutoVC", # model dir to load from
 	"spectrogram" : {
 		"sr" : 22050,
 		"n_mels" : 80,
 		"n_fft" : 2048,
 		"hop_length" : 275,  # 12.5ms - in line with Tacotron 2 paper
 		"window_length" : 1100,  # 50ms - same reason as above
-		"f_min" : 40,
+		"fmin" : 40,
 		"mel_window_step" : 12.5,
 		"partial_utterance_n_frames" : 400, # corresponding to around 5s
 	},
@@ -21,8 +22,8 @@ AutoEncoderParams = {
     "learn" : {
         "log_freq" : 8,
         "save_freq" : 1024,
-		"model_dir"	: "models/AutoVC",
 		"model_name" : "model_" + date.today().strftime("%Y%m%d") +".pt",
+		"save_dir"	: "models/AutoVC", # model dir to save to
 		"example_freq" : None,
         "ema_decay" : 0.9999,
         "optimizer" : {
@@ -34,8 +35,6 @@ AutoEncoderParams = {
             "lr_scheduler" : NoamScheduler,
 		    "n_warmup_steps" : 64,
         },
-        
-
     },
     "data_loader" : {
             "batch_size" : 2,
@@ -44,10 +43,7 @@ AutoEncoderParams = {
 }
 
 SpeakerEncoderParams = {
-    # "audio" : {
-    #     "sr" : 16000,
-    #     "num_mels" : 40,
-    # },
+	"model_dir"	: "models/SpeakerEncoder", # model dir to load from
 	"spectrogram" : {
 		"sr" : 16000,
 		"n_mels" : 40,
@@ -65,8 +61,8 @@ SpeakerEncoderParams = {
     "learn" : {
         "log_freq" : 1,
         "save_freq" : 1024,
-		"model_dir"	: "models/SpeakerEncoder",
 		"model_name" : "model_" + date.today().strftime("%Y%m%d") +".pt",
+		"save_dir"	: "models/SpeakerEncoder", # model dir to save to
 		"example_freq" : None,
         "ema_decay" : 0.9999,
         "optimizer" : {
@@ -87,19 +83,7 @@ SpeakerEncoderParams = {
 }
 
 WaveRNNParams = {
-	"model_dir"	: "models/SpeakerEncoder",
-	"audio" : {
-		# "sample_rate"	: 22050,
-		# "n_fft" 			: 2048,
-		# "fft_bins" 		: 2048 // 2 + 1,
-		# "hop_length"		: 275,  # 12.5ms - in line with Tacotron 2 paper
-		# "win_length" 	: 1100, # 50ms - same reason as above
-		# "fmin" 			: 40,
-		# "min_level_db" 	: -100,
-		# "ref_level_db" 	: 20,
-		# "mel_window_step" : 12.5,
-		# "partials_n_frames" : 400,
-	},
+	"model_dir"	: "models/WaveRNN",
 	"model" : {
 		"sample_rate"	: 22050,
 		"hop_length"	: 275,  # 12.5ms - in line with Tacotron 2 paper
@@ -124,8 +108,16 @@ WaveRNNParams = {
 }
 
 
-wandb_params = {
-    
+WandbParams = {
+	# "sync_tensorboard":True, 
+	"reinit":True,
+	"entity" : "deep_voice_inc",
+	# "name" : self.run_name,
+	"project" : "GettingStarted", # wandb project name, each project correpsonds to an experiment
+	# "dir" : "logs/" + "GetStarted", # dir to store the run in
+	# "group" : self.agent_name, # uses the name of the agent class
+	"save_code" : True,
+	"mode" : "online",
 }
 
 

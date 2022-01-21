@@ -1,17 +1,20 @@
-from genericpath import exists
+from logging import setLogRecordFactory
+from re import S
 import wandb
+from wandb.sdk.wandb_run import Run
+# from autovc.utils.audio import audio_to_melspectrogram, preprocess_wav, remove_noise
 from autovc.utils import retrieve_file_paths
 import soundfile as sf
 import torch
 import numpy as np
-from autovc.utils.dataloader import AutoEncoderDataset, SpeakerEncoderDataset
+# from autovc.utils.hparams import VoiceConverterParams
+from autovc.utils.dataloader import TrainDataLoader, SpeakerEncoderDataLoader
 from autovc.models import load_models
 import time
 import os
 from itertools import product
-from autovc.utils.hparams import *
+from autovc.utils.hparams import AutoEncoderParams, SpeakerEncoderParams, WaveRNNParams, VoiceConverterParams
 from autovc.audio import Audio, spectrogram
-import torch
 
 
 class VoiceConverter:
@@ -22,14 +25,10 @@ class VoiceConverter:
     """
     
     def __init__(self,
-        auto_encoder = "AutoVC_seed40_200k.pt", 
-        auto_encoder_params = {},
-        speaker_encoder = "SpeakerEncoder.pt", 
-        speaker_encoder_params = {},
-        vocoder = "WaveRNN_Pretrained.pyt", 
-        vocoder_params = {},
-        wandb_params = {},
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu"),
+        auto_encoder = None, 
+        
+        speaker_encoder = None, 
+        vocoder = None, 
         verbose = True,
     ):
         """
@@ -58,27 +57,33 @@ class VoiceConverter:
             which device code should be run on, defaults to "cuda" if available else "cpu"
         """
        
-        # set values
+        # default wandb behaviour
         self.wandb_run = None
-        self.verbose = verbose
+        wandb_defaults = {
+            # "sync_tensorboard":True, 
+            "reinit":True,
+            "entity" : "deep_voice_inc",
+            # "name" : self.run_name,
+            "project" : "GettingStarted", # wandb project name, each project correpsonds to an experiment
+            # "dir" : "logs/" + "GetStarted", # dir to store the run in
+            # "group" : self.agent_name, # uses the name of the agent class
+            "save_code":True,
+            "mode" : "online",
+        }
+        wandb_defaults.update(kwargs.pop("wandb_params", {}))
 
-        # update params and add to config
-        AutoEncoderParams.update(auto_encoder_params)
-        SpeakerEncoderParams.update(speaker_encoder_params)
-        WaveRNNParams.update(vocoder_params)
-        WandbParams.update(wandb_params)
-        
+        # setup config with params
+        self.verbose = verbose
         self.config = {
-            "model_names" : {"auto_encoder" : auto_encoder, "speaker_encoder" : speaker_encoder, "vocoder" : vocoder},
-            "auto_encoder" : AutoEncoderParams,
-            "speaker_encoder" : SpeakerEncoderParams,
-            "vocoder" : WaveRNNParams,
-            "wandb" : WandbParams,
-            "device" : torch.device(device) if isinstance(device, str) else device,
+            "AE_params" : AutoEncoderParams().update(kwargs.pop("auto_encoder_params", {})).get_collection(),
+            "SE_params" : SpeakerEncoderParams().update(kwargs.pop("speaker_encoder_params", {})).get_collection(),
+            "vocoder_params" : WaveRNNParams().update(kwargs.pop("vocoder_params", {})).get_collection(),
+            "wandb_params" : wandb_defaults,
+            **VoiceConverterParams().update(kwargs, auto_encoder, speaker_encoder, vocoder).get_collection(),
         }
 
         # initialise models
-        self.__init_models()
+        self._init_models()
         
         
 
@@ -271,25 +276,21 @@ class VoiceConverter:
         return wavs, sample_rates
 
     
-    def setup_wandb(self, **params):
-        """Creates a wandb run. **params are givven to wandb.init()"""
+    def _init_wandb(self, **params):
         # skip if setup has already been done
         if self.wandb_run is not None:
             return None
 
         # overwrite defaults with parsed arguments
         self.config["wandb_params"].update(params)
-        self.config["wandb_params"].update({"dir" : "logs/" + self.config["wandb_params"].get("project")}) # create log dir
+        self.config["wandb_params"].update({"dir" : "logs/" + self.config["wandb_params"].get("project")})
 
         # create directory for logs if first run in project
-        # if not os.path.exists(self.config["wandb_params"].get("dir", "logs")+"/wandb"): 
-        #     os.makedirs(self.config["wandb_params"].get("dir", "logs")+"/wandb") 
-        os.makedirs(self.config["wandb"]["dir"], exist_ok=True)
+        if not os.path.exists(self.config["wandb_params"].get("dir", "logs")+"/wandb"): 
+            os.makedirs(self.config["wandb_params"].get("dir", "logs")+"/wandb") 
 
         # init wandb       
-        self.wandb_run = wandb.init(**self.config["wandb"], config = self.config)
-
-        # setup wandb config
+        self.wandb_run = wandb.init(**self.config["wandb_params"], config = self.config)
         self.config = self.wandb_run.config
 
     
@@ -301,113 +302,88 @@ class VoiceConverter:
             self.wandb_run.finish()
         wandb.finish()
 
-    def __init_models(self):
+    def _init_models(self):
+        type_to_dir = {"auto_encoder" : "AutoVC", "speaker_encoder" : "SpeakerEncoder", "vocoder" : "WaveRNN"}
         type_to_artifact = {"auto_encoder" : "AutoEncoder", "speaker_encoder" : "SpeakerEncoder"}
-        # model_types, model_names = self.config["model_names"].items()
-        model_types, model_names, model_dirs, params  = [], [], [], []
-        for model_type, model_name in self.config["model_names"].items():
-            # find parameter values
-            model_params = self.config.get(f"{model_type}")
-            model_dir = model_params["model_dir"]
+        model_paths= [self.config.get("AE_model"), self.config.get("SE_model"), self.config.get("vocoder_model")]
+        model_types = list(type_to_dir.keys())
 
-            # append to lists
-            params.append(model_params["model"])
-            model_dirs.append(model_dir)
-            model_types.append(model_type)
-
-
-            # check if given model name and dir are valid or look in wandb otherwise
-            model_path = model_dir.strip("/") + "/" + model_name
-            if not os.path.isfile(model_path):
-                if self.config["wandb_params"]["mode"] in ["disabled", "offline"]:
-                    raise ValueError(f"Model {model_path} was not found locally and it was not possible to look in wandb, as the wandb mode was not set to 'online'")
-                
-                # start looking in wandb
-                print(f"Looking for model {model_path} in wandb...")
-                self.setup_wandb()
-                artifact = self.wandb_run.use_artifact(model_path, type=type_to_artifact[model_type])
-
-                # check if model already exists
-                model_name = os.path.basename(artifact.file())
-                model_path = model_dir.strip("/") +"/" + model_name
+        for i in range(len(model_paths)):
+            if not os.path.isfile(model_paths[i]):
+                if self.config["wandb_params"].get("mode") in ["disabled", "offline"]:
+                    raise ValueError(f"Model {model_paths[i]} was not found locally and it was not possible to look in wandb, as the wandb mode was not set to 'online'")
+                print(f"Looking for model {model_paths[i]} in wandb...")
+                self._init_wandb()
+                artifact = self.wandb_run.use_artifact(model_paths[i], type=type_to_artifact[model_types[i]])
+                model_path = "models/" + type_to_dir[model_types[i]]+"/"+os.path.basename(artifact.file())
                 if os.path.isfile(model_path):
                     raise ValueError(f"The model '{model_path}' already exists, please use this path instead or delete the file if you want to use the model from wandb")
-
-                # download model
-                artifact.download(model_dir)
-                
-            # append model name
-            model_names.append(model_name)
+    
+                artifact.download("models/" + type_to_dir[model_types[i]])
+                model_paths[i] = model_path
         
         self.AE, self.SE, self.vocoder = load_models(
             model_types= model_types,
-            model_names = model_names,
-            model_dirs = model_dirs,
-            params = params,
-            device= self.config["device"]
+            model_paths= model_paths,
+            params = [self.config["AE_params"], self.config["SE_params"], self.config["vocoder_params"]],
+            device = self.config.get("device", None),
         )
-
-
 
     def setup_audio_processing_pipeline(self):
         pass
 
 
 if __name__ == "__main__":
-
-    vc = VoiceConverter()
-
-
-    # from autovc.utils.argparser import parse_vc_args
+    from autovc.utils.argparser import parse_vc_args
     # args = "-mode train -model_type auto_encoder -wandb_params mode=online -n_epochs 1 -data_path data/samples -data_path_excluded data/samples/chooped7.wav -auto_encoder deep_voice_inc/SpeakerEncoder/model_20220113.pt:v4"
     # args = "-mode convert -sources data/samples/hilde_301.wav -targets data/samples/chooped7.wav -convert_params pipes={output:[normalize_volume,remove_noise],source:[normalize_volume]} -auto_encoder models/AutoVC/AutoVC_SMK.pt"# -auto_encoder deep_voice_inc/AutoEncoder/model_20220114.pt:v0"
     # args = "-mode train -model_type auto_encoder -wandb_params mode=online project=SpeakerEncoder2 -data_path data/test_data -n_epochs 16 -speaker_encoder SpeakerEncoder3.pt -auto_encoder_params batch_size=32 chop=True speakers=True save_freq=64 freq=80 "
     # args = "-mode train -model_type speaker_encoder -wandb_params mode=online project=SpeakerEncoder2 -data_path data/test_data -n_epochs 128 -speaker_encoder_params SE_model=models/SpeakerEncoder/SpeakerEncoder.pt"
     # args = "-mode convert -sources data/samples/mette_183.wav -targets data/samples/chooped7.wav"
-    # args = None # make sure this is used when not testing
-    # args = vars(parse_vc_args(args))
+    args = None # make sure this is used when not testing
+    args = vars(parse_vc_args(args))
 
-    # vc = VoiceConverter(
-    #     auto_encoder=args.pop("auto_encoder", None),
-    #     speaker_encoder= args.pop("speaker_encoder", None),
-    #     vocoder= args.pop("vocoder", None),
-    #     device = args.pop("device", None),
-    #     verbose=args.pop("verbose", None),
-    #     auto_encoder_params = args.pop("auto_encoder_params", {}),
-    #     speaker_encoder_params = args.pop("speaker_encoder_params", {}),
-    #     vocoder_params = args.pop("vocoder_params", {}),
-    #     wandb_params = args.pop("wandb_params", {})
-    # )
+    vc = VoiceConverter(
+        auto_encoder=args.pop("auto_encoder", None),
+        speaker_encoder= args.pop("speaker_encoder", None),
+        vocoder= args.pop("vocoder", None),
+        device = args.pop("device", None),
+        verbose=args.pop("verbose", None),
+        auto_encoder_params = args.pop("auto_encoder_params", {}),
+        speaker_encoder_params = args.pop("speaker_encoder_params", {}),
+        vocoder_params = args.pop("vocoder_params", {}),
+        wandb_params = args.pop("wandb_params", {})
+    )
 
-    # # get mode
-    # mode = args.pop("mode")
+    # get mode
+    mode = args.pop("mode")
 
-    # if mode == "train":
-    #     assert all([args.__contains__(key) for key in ["model_type", "n_epochs"]])
-    #     convert_examples = all([args.__contains__(key) for key in ["conversions_sources", "conversions_targets"]])
-    #     # train
-    #     vc.train(
-    #         **args
-    #         # model_type = args.model_type, 
-    #         # n_epochs = args.n_epochs, 
-    #         # data_path=args.data_path,
-    #         # conversion_examples= None if not convert_examples else [args.conversion_sources, args.conversion_targets]
-    #     )
-    # elif mode == "convert":
-    #     assert all([args.__contains__(key) for key in ["sources", "targets"]])
-    #     convert_params = args.pop("convert_params", {})
-    #     vc.convert_multiple(
-    #         **args, **convert_params
-    #         # sources = args.conversion_sources, 
-    #         # targets = args.conversion_targets,
-    #         # save_folder = args.results_dir,
-    #         # bidirectional = args.bidirectional,
-    #         # method = args.conversion_data_alignment
+    if mode == "train":
+        assert all([args.__contains__(key) for key in ["model_type", "n_epochs"]])
+        convert_examples = all([args.__contains__(key) for key in ["conversions_sources", "conversions_targets"]])
+        # train
+        vc.train(
+            **args
+            # model_type = args.model_type, 
+            # n_epochs = args.n_epochs, 
+            # data_path=args.data_path,
+            # conversion_examples= None if not convert_examples else [args.conversion_sources, args.conversion_targets]
+        )
+    elif mode == "convert":
+        assert all([args.__contains__(key) for key in ["sources", "targets"]])
+        convert_params = args.pop("convert_params", {})
+        vc.convert_multiple(
+            **args, **convert_params
+            # sources = args.conversion_sources, 
+            # targets = args.conversion_targets,
+            # save_folder = args.results_dir,
+            # bidirectional = args.bidirectional,
+            # method = args.conversion_data_alignment
 
-    #     )
+        )
 
     
-    # vc.close()
+    vc.close()
 
 
 

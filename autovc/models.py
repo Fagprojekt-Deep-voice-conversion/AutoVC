@@ -1,13 +1,12 @@
-from pathlib import Path
 from autovc.speaker_encoder import SpeakerEncoder
 from autovc.auto_encoder import AutoEncoder
 from autovc.wavernn.model import WaveRNN
 import torch
-
+from autovc.utils.hparams import WaveRNNParams, AutoEncoderParams, SpeakerEncoderParams
 
 _device = "cuda" if torch.cuda.is_available() else "cpu"
 
-def load_model(model_type: str, model_path: Path, device=None, **model_params):
+def load_model(model_type: str, model_name, model_dir = None, device=None, **model_params):
     """
     Loads a  model
     
@@ -24,16 +23,19 @@ def load_model(model_type: str, model_path: Path, device=None, **model_params):
 
     if model_type == "auto_encoder":
         model = AutoEncoder(device = device, **model_params)
+        model_dir = AutoEncoderParams["model_dir"] if model_dir is None else model_dir
     elif model_type == "speaker_encoder":
         model = SpeakerEncoder(device = device, **model_params)
+        model_dir = SpeakerEncoderParams["model_dir"] if model_dir is None else model_dir
     elif model_type == "vocoder":
-        model = WaveRNN(device = device, **model_params)
+        model = WaveRNN(device = device, **model_params) 
+        model_dir = WaveRNNParams["model_dir"] if model_dir is None else model_dir
 
-    model.load(weights_fpath=model_path, device = device)
+    model.load(model_name=model_name, model_dir=model_dir, device = device)
     
     return model
 
-def load_models(model_types, model_paths, params = None, device = None):
+def load_models(model_types, model_names, model_dirs = [None]*3, params = None, device = None):
     """
     return multiples models
 
@@ -43,9 +45,10 @@ def load_models(model_types, model_paths, params = None, device = None):
     """
     params = [{}]*len(model_types) if params == None else params
     models = []
-    for model_type, model_path, params in [*zip(model_types, model_paths, params)]:
-        if device is not None: params['device'] = device
-        models.append(load_model(model_type, model_path, **params))
+    for model_type, model_name, model_dir, param in [*zip(model_types, model_names, model_dirs, params)]:
+        if device is not None: 
+            param['device'] = device
+        models.append(load_model(model_type, model_name, model_dir, **param))
         # models.append(load_model(model_type, model_path, device))
 
     return models

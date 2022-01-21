@@ -107,20 +107,20 @@ class SpeakerEncoder(nn.Module):
 
     #     print("Loaded speaker encoder \"%s\" trained to step %d" % (weights_fpath, checkpoint["step"]))
 
-    def load(self, model_name, model_dir = SpeakerEncoderParams["learn"]["model_dir"], device = None):
+    def load(self, model_name, model_dir = SpeakerEncoderParams["model_dir"], device = None):
         self.device = device if device is not None else self.device
         # try:
         #     checkpoint = torch.load(self.params.model_dir.strip("/") + "/" + weights_fpath, map_location = self.device)
         # except:
         model_path = model_dir.strip("/") + "/" + model_name
         checkpoint = torch.load(model_path, map_location = self.device)
-        self.load_state_dict(checkpoint["model_state"])
+        self.load_state_dict(checkpoint["model_state"], strict = False)
         self.speakers.update(checkpoint.get('speakers', {}))
 
         if self.verbose:
             print("Loaded auto encoder \"%s\" trained to step %d" % (model_path, checkpoint["step"]))
 
-    def save(self, step, model_name, model_dir = SpeakerEncoderParams["learn"]["model_dir"], wandb_run = None):
+    def save(self, model_name, model_dir = SpeakerEncoderParams["learn"]["save_dir"], wandb_run = None):
         # save_name = self.params.model_dir.strip("/") + "/" + self.params.model_name
         model_path = model_dir.strip("/") + "/" + model_name
         torch.save({
@@ -322,7 +322,7 @@ class SpeakerEncoder(nn.Module):
         n_epochs, 
         log_freq = SpeakerEncoderParams["learn"]["log_freq"],
         save_freq = SpeakerEncoderParams["learn"]["save_freq"],
-        model_dir = SpeakerEncoderParams["learn"]["model_dir"],
+        save_dir = SpeakerEncoderParams["learn"]["save_dir"],
         model_name = SpeakerEncoderParams["learn"]["model_name"],
         wandb_run = None, 
         **opt_params
