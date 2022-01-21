@@ -56,6 +56,7 @@ class AutoEncoder(nn.Module):
     
         self.verbose = verbose
         self.device = device if not isinstance(device, str) else torch.device(device)
+        self.logging = {}
 
         # self.params = AutoEncoderParams["model"].update(params)
         self.encoder = Encoder(dim_neck, dim_emb, freq)
@@ -155,6 +156,19 @@ class AutoEncoder(nn.Module):
         if self.verbose:
             print("Loaded auto encoder \"%s\" trained to step %d" % (model_path, checkpoint["step"]))
 
+    def save(self, model_name, model_dir = AutoEncoderParams["learn"]["model_dir"], wandb_run = None):
+        model_path = model_dir.strip("/") + "/" + model_name
+        torch.save({
+            "step": self.logging.get("step"),
+            "model_state": self.state_dict(),
+            "optimizer_state": self.optimiser.state_dict(),
+        }, model_path)
+
+        if wandb_run is not None:
+            artifact = wandb.Artifact(model_name, "AutoEncoder")
+            artifact.add_file(model_path)
+            wandb_run.log_artifact(artifact)
+
         
     def _loss(self, X, c_org, out_decoder, out_postnet, content_codes,  mu = 1, lambd = 1):
         """
@@ -193,7 +207,6 @@ class AutoEncoder(nn.Module):
     def learn(self, 
         trainloader, 
         n_epochs, 
-        
         log_freq = AutoEncoderParams["learn"]["log_freq"],
         save_freq = AutoEncoderParams["learn"]["save_freq"],
         model_dir = AutoEncoderParams["learn"]["model_dir"],
@@ -203,7 +216,7 @@ class AutoEncoder(nn.Module):
         ema_decay = AutoEncoderParams["learn"]["ema_decay"],
         wandb_run = None, 
         **opt_params
-        ):
+    ):
         """
         Method for training the auto encoder
 
@@ -221,8 +234,21 @@ class AutoEncoder(nn.Module):
         model_name
         model_dir
         wandb_run
-        **opt_params
+        **opt_params:
+            kwargs are given to the optimizer
+            If 'lr_scheduler' and 'n_warmup_steps' are specified, these are used to construct a learning rate scheduler.
         """
+
+        # initialisation
+        self.logging["step"] = 0
+        self.logging["running_loss"] = 0
+        self.logging["log_steps"] = 0
+        self.logging["total_time"] = 0
+        N_iterations = n_epochs*len(trainloader)
+        self.train()
+        avg_params = self.flatten_params()
+        if wandb_run is not None:
+            wandb_run.watch(self, log_freq = log_freq)
 
         # prepare optimiser
         opt_params = AutoEncoderParams["learn"]["optimizer"].update(opt_params)
@@ -235,20 +261,13 @@ class AutoEncoder(nn.Module):
         if lr_scheduler is not None:
             self.lr_scheduler = lr_scheduler(self.optimiser, dim_model = AutoEncoderParams["audio"]["num_mels"], **lr_sch_params)
 
-        # initialisation
-        step = 0
-        running_loss, log_steps = 0, 0
-        N_iterations = n_epochs*len(trainloader)
-        self.train()
-        avg_params = self.flatten_params()
-        if wandb_run is not None:
-            wandb_run.watch(self, log_freq = self.params.log_freq)
+        
 
         # begin training
         if self.verbose:
             print(f"Training Auto Encoder on {torch.cuda.get_device_name() + ' (cuda)' if 'cuda' in self.device else 'cpu'}...")
-            progbar(step, N_iterations)
-        total_time = 0
+            progbar(self.logging["step"], N_iterations)
+        
         for epoch in range(n_epochs):
             step_start_time = time.time()
             for X, c_org in trainloader:
@@ -269,42 +288,42 @@ class AutoEncoder(nn.Module):
 
                 # Save exponentially smoothed parameters - can be used to avoid too large changes of parameters
                 avg_params = ema_decay * avg_params + (1-ema_decay) * self.flatten_params()
-                step += 1
+                
 
-                # if (self.verbose) and ((step+1) % progbar_interval == 0):
+                # update log params
+                self.logging["step"] += 1
+                self.logging["running_loss"] += loss
+                self.logging["log_steps"] += 1
+
+                # print information
                 if self.verbose:
-                    total_time += (time.time()-step_start_time)
-                    progbar(step, N_iterations, {"sec/step": np.round(total_time/step)})
+                    self.logging["total_time"] += (time.time()-step_start_time)
+                    progbar(self.logging["step"], N_iterations, {"sec/step": np.round(self.logging["total_time"]/self.logging["step"])})
 
                 
-                # update log params
-                running_loss += loss
-                log_steps += 1
+                
 
                 # save model and log to wandb - To save the exponentially smothed params use self.load_flattenend_params first.
-                if (step % log_freq == 0 or step == N_iterations) and wandb_run is not None:
-                    wandb_run.log({
-                        "loss" : running_loss/log_steps
-                    }, step = step)
-                    wandb_run.log({
-                         'Conversion': self.plot_conversion(X[0], out_postnet[0])
-                        })
-                    plt.close()
-                    running_loss, log_steps = 0, 0 # reset log 
-                if step % save_freq == 0 or step == N_iterations:
-                    model_path = model_dir.strip("/") + "/" + model_name
-                    torch.save({
-                        "step": step + 1,
-                        "model_state": self.state_dict(),
-                        "optimizer_state": self.optimiser.state_dict(),
-                    }, model_path)
+                if (self.logging["step"] % log_freq == 0 or self.logging["step"] == N_iterations) and wandb_run is not None:
+                    self._log(wandb_run, X, out_postnet)
 
-                    if wandb_run is not None:
-                        artifact = wandb.Artifact(model_name, "AutoEncoder")
-                        artifact.add_file(model_path)
-                        wandb_run.log_artifact(artifact)
+                if self.logging["step"] % save_freq == 0 or self.logging["step"] == N_iterations:
+                    self.save(model_name, model_dir, wandb_run)
+                    
+                    
                       
         if self.verbose: close_progbar()
+
+    def _log(self, wandb_run, X, out_postnet):
+        wandb_run.log({
+            "loss" : self.logging["running_loss"]/self.logging["log_steps"]
+        }, step = self.logging["step"])
+        wandb_run.log({
+                'Conversion': self.plot_conversion(X[0], out_postnet[0])
+            })
+        plt.close()
+        self.logging["running_loss"] = 0
+        self.logging["log_steps"] = 0 
 
     def flatten_params(self):
         '''
