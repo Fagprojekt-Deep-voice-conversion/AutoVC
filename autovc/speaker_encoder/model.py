@@ -8,7 +8,7 @@ import numpy as np
 import torch
 from autovc.audio.spectrogram import mel_spec_speaker_encoder
 # from autovc.utils.hparams import SpeakerEncoderParams as hparams
-from autovc.utils.hparams_new import SpeakerEncoderParams
+from autovc.utils.hparams import SpeakerEncoderParams
 import librosa
 from autovc.utils import progbar, close_progbar, retrieve_file_paths
 import time, wandb

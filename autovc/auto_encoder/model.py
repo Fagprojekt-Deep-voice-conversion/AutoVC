@@ -15,7 +15,7 @@ from autovc.auto_encoder.decoder import Decoder
 from autovc.auto_encoder.postnet import Postnet
 # from autovc.utils.audio import get_mel_frames
 # from autovc.utils.hparams import AutoEncoderParams as hparams
-from autovc.utils.hparams_new import AutoEncoderParams
+from autovc.utils.hparams import AutoEncoderParams
 from autovc.utils import progbar, close_progbar
 import time
 import numpy as np
