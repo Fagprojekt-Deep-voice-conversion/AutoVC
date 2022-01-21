@@ -17,18 +17,17 @@ import noisereduce as nr
 import math
 
 from autovc.utils import retrieve_file_paths
-from autovc.utils.hparams import SpeakerEncoderParams
 
 INT_16_MAX = (2 ** 15) - 1
-se_params = SpeakerEncoderParams()
 
 
 def create_silence_mask(
     wav, 
     sr, 
-    vad_window_length = se_params.vad_window_length, 
-    vad_moving_average_width = se_params.vad_moving_average_width, 
-    vad_max_silence_length = se_params.vad_max_silence_length):
+    vad_window_length = 20, 
+    vad_moving_average_width = 8, 
+    vad_max_silence_length = 2
+):
     """
     Creates a mask where silence frames are set to False. VAD is short for voice activation detection.
 
@@ -36,6 +35,8 @@ def create_silence_mask(
 
     Parameters
     ----------
+    Default values are based on Speaker Encoder params and might have to be adjusted for other use cases.
+
     wav:
         A numpy array with audio content
     sr:
