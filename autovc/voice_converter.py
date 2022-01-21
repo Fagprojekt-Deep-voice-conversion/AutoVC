@@ -82,7 +82,7 @@ class VoiceConverter:
         
         
 
-    def convert(self, source, target,  sr = 22050, out_name = None, save_dir = None, **kwargs):
+    def convert(self, source, target,  sr = 22050, save_name = None, save_dir = None, **kwargs):
         """
         Gives the features of the target to the content of the source
 
@@ -95,38 +95,42 @@ class VoiceConverter:
             if proper training has been done, it can also be a string with the name of the person
         sr:
             The sample rate to use for the audio
-        outname:
-            filename for converted sound
+        save_name:
+            Filename for converted sound. 
+            If False, no file is saved
         save_dir:
             the folder/directory to store the converted file in, if this is 'wandb' the converted audio will be logged to this run
             all conversions not stored in WANDB will be saved in `results/` folder
-        # pipes:
-        #     Dictionary with pipelines for preprocessing audio, keys must be one of ['target', 'source', 'output'] 
-        #     E.g. {"source" : ["normalize_volume", "remove_noise"], "target" : ["normalize_volume", "remove_noise"], "output" : ["remove_noise"] 
-        # pipe_args:
-        #     Dictionary of dictionaries where outer key matches the pipe type and inner key matches string given in pipe and values are arguments to give to the function. 
-        #     E.g. if "normalize_volume" is given in target pipe, pipe_args = {"target" : {"normalize_volume" : "target_dBFS" = -30}} can be given to select the normalisation volume
+
+        Return
+        ------
+        audio_out:
+            An Audio object (see 'autovc/audio/__init__.py') with the converted voice
         """
 
-        print("Beginning conversion...")
+        print(f"Beginning conversion of {source} to {target}...")
 
         # source_wav, target_wav = preprocess_wav(source), preprocess_wav(target)
 
         # source data
         audio_src = Audio(source, sr)
+        # TODO - preprocess
         c_source = self.SE.embed_utterance(audio_src.wav).unsqueeze(0)
         
         # target data
-        if not target in self.SE.speakers.keys():
-            audio_trg = Audio(target, sr)
-            c_target = self.SE.embed_utterance(audio_trg.wav).unsqueeze(0)
-        else:
+        if target in self.SE.speakers.keys():
             c_target = self.SE.speakers[target].unsqueeze(0)
+        else:
+            audio_trg = Audio(target, sr)
+            # TODO - preprocess
+            c_target = self.SE.embed_utterance(audio_trg.wav).unsqueeze(0)
+            
 
              
         # create spectrogram 
         mel_spec = spectrogram.mel_spec_auto_encoder(audio_src.wav, **kwargs)
 
+        # generate waveform
         if kwargs.get("cut", False):
             mel_batch = torch.stack(mel_spec) # stack list of mel slices
             post_out = self.AE.batch_forward(mel_batch, c_source, c_target, overlap = kwargs.get("overlap", 0.5)) # overlap set to compute_partial_slices default, as they must be equal
@@ -136,35 +140,40 @@ class VoiceConverter:
             waveform = self.vocoder.generate(post_out)
 
 
-        # ensure a np array is returned
-        waveform = np.asarray(waveform)
-        audio_out = Audio(waveform, sr = sr, sr_org = self.config["vocoder_params"].get("sample_rate"))
+        # create audio output
+        audio_out = Audio(np.asarray(waveform), sr = sr, sr_org = self.config["vocoder_params"].get("sample_rate"))
+        # TODO - outprocess
         # audio_out.preprocess("convert_out", *pipes.get("output", []), **pipe_args.get("output", {}))
+
+        # return none if save_name is False and a file should not be saved
+        if save_name == False:
+            return audio_out
 
 
         # Generate .wav file frowm waveform
-        if out_name is None:
+        if save_name is None:
             src_speaker = os.path.splitext(os.path.basename(source))[0]
             trg_speaker = os.path.splitext(os.path.basename(target))[0]
-            out_name = f"{src_speaker}_to_{trg_speaker}.wav"
+            save_name = f"{src_speaker}_to_{trg_speaker}.wav"
         
         # if out_dir == self.wandb_run and self.wandb_run is not None:
         if save_dir == "wandb":
             # TODO log as table
-            assert self.wandb_run is not None, "A wandb run has to be setup with _init_wandb() to save conversion in wandb"
-            self.wandb_run.log({out_name.replace(".wav", "") : wandb.Audio(audio_out.wav, caption = out_name, sample_rate = audio_out.sr)})
+            assert self.wandb_run is not None, "A wandb run has to be setup with setup_wandb() to save conversion in wandb"
+            self.wandb_run.log({save_name.replace(".wav", "") : wandb.Audio(audio_out.wav, caption = save_name, sample_rate = audio_out.sr)})
         else:
             if save_dir is not None:
-                out_dir = save_dir if save_dir.startswith("results") else "results/" + save_dir 
-                out_name = out_dir.strip("/") + "/" + out_name
-                os.makedirs(out_dir, exist_ok=True) # create folder
+                save_dir = save_dir if save_dir.startswith("results") else "results/" + save_dir 
+                save_name = save_dir.strip("/") + "/" + save_name
+                os.makedirs(save_dir, exist_ok=True) # create folder
             else:
                 os.makedirs("results", exist_ok=True) # create folder
-                out_name = out_name if out_name.startswith("results") else "results/" + out_name 
+                save_name = save_name if save_name.startswith("results") else "results/" + save_name 
     
-            sf.write(out_name, audio_out.wav, samplerate =audio_out.sr)
+            sf.write(save_name, audio_out.wav, samplerate =audio_out.sr)
+            print(f"Converted voice has been saved to {save_name}")
     
-        return audio_out.wav, audio_out.sr
+        return audio_out
 
     def train(self, model_type = "auto_encoder", n_epochs = 2, conversion_examples = None, data_path = 'data/samples', **train_params):
         """
@@ -282,8 +291,6 @@ class VoiceConverter:
         self.config["wandb_params"].update({"dir" : "logs/" + self.config["wandb_params"].get("project")}) # create log dir
 
         # create directory for logs if first run in project
-        # if not os.path.exists(self.config["wandb_params"].get("dir", "logs")+"/wandb"): 
-        #     os.makedirs(self.config["wandb_params"].get("dir", "logs")+"/wandb") 
         os.makedirs(self.config["wandb"]["dir"], exist_ok=True)
 
         # init wandb       
@@ -335,7 +342,7 @@ class VoiceConverter:
 
                 # download model
                 artifact.download(model_dir)
-                
+
             # append model name
             model_names.append(model_name)
         
