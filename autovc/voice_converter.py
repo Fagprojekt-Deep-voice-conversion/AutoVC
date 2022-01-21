@@ -201,7 +201,7 @@ class VoiceConverter:
             dataset = TrainDataLoader(**params.get_collection("dataset"), speaker_encoder = self.SE)
             # dataset = TrainDataLoader(speaker_encoder = self.SE, chop = True, data_path = 'data/test_data')
             dataloader = dataset.get_dataloader(**params.get_collection("dataloader"))
-            self.AE.learn(dataloader, wandb_run = self.wandb_run, **params.get_collection())
+            self.AE.learn(dataloader, n_epochs = n_epochs, wandb_run = self.wandb_run)
         elif model_type == "speaker_encoder":
             datadir = {'hilde': ['data/test_data/hilde_7sek'], 'hague': ['data/test_data/HaegueYang_10sek']}
             dataset = SpeakerEncoderDataLoader(datadir, device = self.config.get("device", 'cuda'))

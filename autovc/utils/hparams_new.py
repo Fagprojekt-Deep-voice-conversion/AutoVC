@@ -1,5 +1,5 @@
 from datetime import date
-
+from autovc.utils.lr_scheduler import NoamScheduler
 
 AutoEncoderParams = {
     "audio" : {
@@ -18,23 +18,28 @@ AutoEncoderParams = {
 		"freq" 							: 32,
 		"kernel_size" 					: 3,
     },
-    "train" : {
-        "batch_size" 					: 2,
-		"clip_thresh" 					: -1,
-		"save_freq"						: 1024,
-		"log_freq"						: 8,
+    "learn" : {
+        "log_freq"						: 8,
+        "save_freq"						: 1024,
 		"model_dir"						: "models/AutoVC",
-		"model_name"						: "model_" + date.today().strftime("%Y%m%d") +".pt",
+		"model_name"					: "model_" + date.today().strftime("%Y%m%d") +".pt",
 		"example_freq"					: None,
+        "ema_decay" : 0.9999,
         "optimizer" : {
             "betas" : (0.9, 0.999),
             "eps" : 1e-8,
             "amsgrad" : False,
             "lr" : 1e-3,
-            "weight_decay" : 0.0
+            "weight_decay" : 0.0,
+            "lr_scheduler" : NoamScheduler,
+		    "n_warmup_steps" : 64,
         },
-        "ema_decay" : 0.9999
+        
+
     },
+    "data_loader" : {
+            "batch_size" 					: 2,
+        },
 
 }
 
@@ -51,3 +56,13 @@ wandb_params = {
     
 }
 
+
+class Namespace:
+    def __init__(self, **kwargs):
+        self.__dict__.update(kwargs)
+
+if __name__ == "__main__":
+    
+    print(Namespace(**AutoEncoderParams).train.optimizer)
+
+    
