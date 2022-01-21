@@ -7,7 +7,8 @@ from torch import nn
 import numpy as np
 import torch
 from autovc.audio.spectrogram import mel_spec_speaker_encoder
-from autovc.utils.hparams import SpeakerEncoderParams as hparams
+# from autovc.utils.hparams import SpeakerEncoderParams as hparams
+from autovc.utils.hparams_new import SpeakerEncoderParams
 import librosa
 from autovc.utils import progbar, close_progbar, retrieve_file_paths
 import time, wandb
@@ -25,33 +26,35 @@ class SpeakerEncoder(nn.Module):
     Not consistenet with AutoVC but the best i could find...
     Trained on GE2E loss for 1.5 M step
     """
-    def __init__(self, verbose = True, **params):
+    def __init__(self, 
+        input_size = SpeakerEncoderParams["model"]["input_size"],
+        hidden_size = SpeakerEncoderParams["model"]["hidden_size"],
+        embedding_size = SpeakerEncoderParams["model"]["embedding_size"],
+        num_layers = SpeakerEncoderParams["model"]["num_layers"],
+        batch_first = SpeakerEncoderParams["model"]["batch_first"],
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu"),
+        verbose = True, 
+        ):
         super().__init__()
-        self.params = hparams().update(params)
+
         self.verbose = verbose
-        # Network defition
-        self.lstm = nn.LSTM(input_size  = self.params.mel_n_channels, #kwargs.get('mel_n_channels', hp.mel_n_channels),
-                            hidden_size = self.params.model_hidden_size,#kwargs.get('model_hidden_size', hp.model_hidden_size),
-                            num_layers  = self.params.model_num_layers,#kwargs.get('model_num_layers', hp.model_num_layers),
-                            batch_first = self.params.batch_first#True
-                            ).to(self.params.device)
-
-        self.linear = nn.Linear(in_features  = self.params.model_hidden_size,#kwargs.get('model_hidden_size', hp.model_hidden_size),
-                                out_features = self.params.model_embedding_size#kwargs.get('model_embedding_size', hp.model_embedding_size),
-                                ).to(self.params.device)
-
-        self.relu = torch.nn.ReLU().to(self.params.device)
-        
-        # Cosine similarity scaling (with fixed initial parameter values)
-        self.similarity_weight = nn.Parameter(torch.tensor([10.])).to(self.params.device)
-        self.similarity_bias = nn.Parameter(torch.tensor([-5.])).to(self.params.device)
-
-        # Loss
-        self.loss_fn = nn.CrossEntropyLoss().to(self.params.device)
-
-        self.optimiser = torch.optim.Adam(self.parameters(), **self.params.get_collection("Adam"))
-        self.lr_scheduler = self.params.lr_scheduler(self.optimiser, **self.params.get_collection("lr_scheduler"))
+        self.device = device if not isinstance(device, str) else torch.device(device)
         self.speakers = {}
+        self.logging = {}
+
+        # Network defition
+        self.lstm = nn.LSTM(input_size  = input_size,
+                            hidden_size = hidden_size,
+                            num_layers  = num_layers,
+                            batch_first = batch_first
+                            ).to(self.device)
+
+        self.linear = nn.Linear(in_features  = hidden_size,
+                                out_features = embedding_size
+                                ).to(self.device)
+
+        self.relu = torch.nn.ReLU().to(self.device)
+        
         
     def do_gradient_ops(self):
         # Gradient scale
@@ -86,23 +89,52 @@ class SpeakerEncoder(nn.Module):
     
 
     
-    def load(self, weights_fpath, device = None):
-        """
-        Loads the model in memory. If this function is not explicitely called, it will be run on the 
-        first call to embed_frames() with the default weights file.
+    # def load(self, weights_fpath, device = None):
+    #     """
+    #     Loads the model in memory. If this function is not explicitely called, it will be run on the 
+    #     first call to embed_frames() with the default weights file.
         
-        :param weights_fpath: the path to saved model weights.
-        """
-        device = device if device is not None else self.params.device
-        try:
-            checkpoint = torch.load(self.params.model_dir.strip("/") + "/" + weights_fpath, map_location = device)
-        except:
-            checkpoint = torch.load(weights_fpath, map_location = device)
-        self.load_state_dict(checkpoint["model_state"], strict = False)
+    #     :param weights_fpath: the path to saved model weights.
+    #     """
+    #     device = device if device is not None else self.params.device
+    #     try:
+    #         checkpoint = torch.load(self.params.model_dir.strip("/") + "/" + weights_fpath, map_location = device)
+    #     except:
+    #         checkpoint = torch.load(weights_fpath, map_location = device)
+    #     self.load_state_dict(checkpoint["model_state"], strict = False)
 
+    #     self.speakers.update(checkpoint.get('speakers', {}))
+
+    #     print("Loaded speaker encoder \"%s\" trained to step %d" % (weights_fpath, checkpoint["step"]))
+
+    def load(self, model_name, model_dir = SpeakerEncoderParams["learn"]["model_dir"], device = None):
+        self.device = device if device is not None else self.device
+        # try:
+        #     checkpoint = torch.load(self.params.model_dir.strip("/") + "/" + weights_fpath, map_location = self.device)
+        # except:
+        model_path = model_dir.strip("/") + "/" + model_name
+        checkpoint = torch.load(model_path, map_location = self.device)
+        self.load_state_dict(checkpoint["model_state"])
         self.speakers.update(checkpoint.get('speakers', {}))
 
-        print("Loaded speaker encoder \"%s\" trained to step %d" % (weights_fpath, checkpoint["step"]))
+        if self.verbose:
+            print("Loaded auto encoder \"%s\" trained to step %d" % (model_path, checkpoint["step"]))
+
+    def save(self, step, model_name, model_dir = SpeakerEncoderParams["learn"]["model_dir"], wandb_run = None):
+        # save_name = self.params.model_dir.strip("/") + "/" + self.params.model_name
+        model_path = model_dir.strip("/") + "/" + model_name
+        torch.save({
+            "step": self.logging.get("step"),
+            "model_state": self.state_dict(),
+            "optimizer_state": self.optimiser.state_dict(),
+            "speakers": self.speakers
+        }, model_path)
+
+        if wandb_run is not None:
+            artifact = wandb.Artifact(model_name, "SpeakerEncoder")
+            artifact.add_file(model_path)
+            wandb_run.log_artifact(artifact)
+
 
     # @stat
     # def load_model(weights_fpath: Path, device=None):
@@ -139,10 +171,9 @@ class SpeakerEncoder(nn.Module):
         :return: the embeddings as a numpy array of float32 of shape (batch_size, model_embedding_size)
         """
 
-        frames = torch.from_numpy(frames_batch).to(self.params.device)
+        frames = torch.from_numpy(frames_batch).to(self.device)
         embed = self.forward(frames).detach().cpu()
         return embed
-
 
     
     def embed_utterance(self, wav, using_partials=True, return_partials=False, **kwargs):
@@ -201,7 +232,7 @@ class SpeakerEncoder(nn.Module):
             return embed, partial_embeds, wave_slices
         return embed
 
-    def similarity_matrix(self, embeds):
+    def _similarity_matrix(self, embeds):
         '''
         Computes the similarity matrix according the section 2.1 of GE2E.
 
@@ -245,7 +276,7 @@ class SpeakerEncoder(nn.Module):
         sim_matrix = sim_matrix * self.similarity_weight + self.similarity_bias
         return sim_matrix
     
-    def loss(self, embeds):
+    def _loss(self, embeds):
         '''
         Computes the softmax loss according the section 2.1 of GE2E.
         
@@ -256,11 +287,11 @@ class SpeakerEncoder(nn.Module):
         speakers_per_batch, utterances_per_speaker = embeds.shape[:2]
         
         # Loss
-        sim_matrix = self.similarity_matrix(embeds)
+        sim_matrix = self._similarity_matrix(embeds)
         sim_matrix = sim_matrix.reshape((speakers_per_batch * utterances_per_speaker, 
                                          speakers_per_batch))
         ground_truth = np.repeat(np.arange(speakers_per_batch), utterances_per_speaker)
-        target = torch.from_numpy(ground_truth).long().to(self.params.device)
+        target = torch.from_numpy(ground_truth).long().to(self.device)
         loss = self.loss_fn(sim_matrix, target)
         
         # EER (not backpropagated)
@@ -285,78 +316,98 @@ class SpeakerEncoder(nn.Module):
 
    
 
-    def learn(self, trainloader, n_epochs = 10, wandb_run = None,  **params):
+    def learn(
+        self,
+        trainloader, 
+        n_epochs, 
+        log_freq = SpeakerEncoderParams["learn"]["log_freq"],
+        save_freq = SpeakerEncoderParams["learn"]["save_freq"],
+        model_dir = SpeakerEncoderParams["learn"]["model_dir"],
+        model_name = SpeakerEncoderParams["learn"]["model_name"],
+        wandb_run = None, 
+        **opt_params
+    ):
+
         # initialisation
         self.train()
-        step = 0
-        running_loss, log_steps = 0, 0
+        self.logging["step"] = 0
+        self.logging["running_loss"] = 0
+        self.logging["log_steps"] = 0
+        self.logging["total_time"] = 0
         N_iterations = n_epochs*len(trainloader)
-        # progbar_interval = 1
-        self.params = hparams().update(params)
-        # progbar_interval = params.pop("progbar", 1)
         if wandb_run is not None:
-            wandb_run.watch(self, log_freq = self.params.log_freq)
+            wandb_run.watch(self, log_freq = log_freq)
 
+        # Loss function
+        self.loss_fn = nn.CrossEntropyLoss().to(self.device)
+
+        # Cosine similarity scaling (with fixed initial parameter values)
+        self.similarity_weight = nn.Parameter(torch.tensor([10.])).to(self.device)
+        self.similarity_bias = nn.Parameter(torch.tensor([-5.])).to(self.device)
+
+        # prepare optimiser
+        opt_params = SpeakerEncoderParams["learn"]["optimizer"].update(opt_params)
+        lr_scheduler = opt_params.pop("lr_scheduler")
+        lr_sch_params = {"n_warmup_steps" : opt_params.pop("n_warmup_steps")}
+        self.optimiser = torch.optim.Adam(self.parameters(), **opt_params)
+
+        if lr_scheduler is not None:
+            self.lr_scheduler = lr_scheduler(self.optimiser, dim_model = self.linear.out_features, **lr_sch_params)
+
+
+        
         # begin training
         if self.verbose:
             # print(f"Training Speaker Encoder on {torch.cuda.get_device_name() + ' (cuda)' if 'cuda' in self.params.device else 'cpu'}...")
-            progbar(step, N_iterations)
-        total_time = 0
+            progbar(self.logging["step"], N_iterations)
+        
+        
         for epoch in range(n_epochs):
-            step_start_time = time.time()
+            self.logging["step_start_time"] = time.time()
             for batch in trainloader:
                 embeddings = self.batch_forward(batch)
 
-                loss = self.loss(embeddings)
+                loss = self._loss(embeddings)
 
                 # Compute gradients, clip and take a step
                 self.optimiser.zero_grad()
                 loss.backward()
                 # torch.nn.utils.clip_grad_norm_(self.parameters(), max_norm = 1) # Clip gradients (avoid exploiding gradients)
 
-                if self.lr_scheduler is not None: self.lr_scheduler._update_learning_rate()
+                if self.lr_scheduler is not None: 
+                    self.lr_scheduler._update_learning_rate()
                 self.optimiser.step()
 
                 # update log params
-                step += 1
-                running_loss += loss
-                log_steps += 1
+                self.logging["step"] += 1
+                self.logging["running_loss"] += loss
+                self.logging["log_steps"] += 1
 
                 # print information
-                # if (self.verbose) and ((step+1) % progbar_interval == 0):
                 if self.verbose:
-                    total_time += (time.time()-step_start_time)
-                    progbar(step, N_iterations, {"sec/step": np.round(total_time/step)})
+                    self.logging["total_time"] += (time.time()-self.logging["step_start_time"])
+                    progbar(self.logging["step"], N_iterations, {"sec/step": np.round(self.logging["total_time"]/self.logging["step"])})
 
                 # save model and log to wandb
-                if (step % self.params.log_freq == 0 or step == N_iterations) and wandb_run is not None:
-                    wandb_run.log({
-                        "loss" : running_loss/log_steps
-                    }, step = step)
-                    wandb_run.log({
-                         'TSNE': self.visualise_embedding(embeddings)
-                        })
-                    running_loss, log_steps = 0, 0 # reset log 
+                if (self.logging["step"] % log_freq == 0 or self.logging["step"] == N_iterations) and wandb_run is not None:
+                    self._log(wandb_run, embeddings=embeddings)
 
-                           
-
-                if step % self.params.save_freq == 0 or step == N_iterations:
-                    save_name = self.params.model_dir.strip("/") + "/" + self.params.model_name
-                    # torch.save({
-                    #     "step": step + 1,
-                    #     "model_state": self.state_dict(),
-                    #     "optimizer_state": self.optimiser.state_dict(),
-                    #     "speakers": self.speakers
-                    # }, save_name)
-                    self.save(save_name, step = step)
-                    if wandb_run is not None:
-                        artifact = wandb.Artifact(self.params.model_name, "SpeakerEncoder")
-                        artifact.add_file(save_name)
-                        wandb_run.log_artifact(artifact)
-                        
-
+                if self.logging["step"] % save_freq == 0 or self.logging["step"] == N_iterations:
+                    self.save(model_name, model_dir, wandb_run)
 
         close_progbar()
+
+    def _log(self, wandb_run, embeddings):
+        wandb_run.log({
+            "loss" : self.logging["running_loss"]/self.logging["log_steps"]
+        }, step = self.logging["step"])
+        wandb_run.log({
+                'TSNE': self.visualise_embedding(embeddings)
+            })
+        
+        # reset logging 
+        self.logging["running_loss"] = 0
+        self.logging["log_steps"] = 0
 
 
     def visualise_embedding(self, embeddings):
@@ -395,12 +446,6 @@ class SpeakerEncoder(nn.Module):
 
         self.speakers[speaker] = mean_embedding.squeeze()
 
-    def save(self, save_name, step = 0):
-        # save_name = self.params.model_dir.strip("/") + "/" + self.params.model_name
-        torch.save({
-            "step": step + 1,
-            "model_state": self.state_dict(),
-            "optimizer_state": self.optimiser.state_dict(),
-            "speakers": self.speakers
-        }, save_name)
-        
+if __name__ == "__main__":
+    SE = SpeakerEncoder()
+    print(SE.linear.out_features)
