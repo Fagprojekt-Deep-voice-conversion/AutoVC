@@ -2,15 +2,25 @@ from datetime import date
 from autovc.utils.lr_scheduler import NoamScheduler
 
 AutoEncoderParams = {
-    "audio" : {
-        "sr" : 16000,
-        "num_mels" : 80,
-        "fmin" : 90,
-        "fft_size" : 1024,
-        "win_length" : 1024,
-        "hop_size" : 256,
-        "min_level_db" : -100,
-    },
+    # "audio" : {
+    #     "sr" : 16000,
+    #     "num_mels" : 80,
+    #     "fmin" : 90,
+    #     "fft_size" : 1024,
+    #     "win_length" : 1024,
+    #     "hop_size" : 256,
+    #     "min_level_db" : -100,
+    # },
+	"spectrogram" : {
+		"sr" : 22050,
+		"n_mels" : 80,
+		"n_fft" : 2048,
+		"hop_length" : 275,  # 12.5ms - in line with Tacotron 2 paper
+		"window_length" : 1100,  # 50ms - same reason as above
+		"f_min" : 40,
+		"mel_window_step" : 12.5,
+		"partial_utterance_n_frames" : 400, # corresponding to around 5s
+	},
     "model" : {
         "dim_neck" : 32,
 		"dim_emb" : 256,
@@ -47,6 +57,13 @@ SpeakerEncoderParams = {
     #     "sr" : 16000,
     #     "num_mels" : 40,
     # },
+	"spectrogram" : {
+		"sr" : 16000,
+		"n_mels" : 40,
+		"mel_window_step" : 10,
+		"mel_window_length" : 25,
+		"partial_utterance_n_frames" : 160, 
+	},
     "model" : {
         "input_size" : 40, # same as number of mels
         "hidden_size" : 256,

@@ -4,14 +4,14 @@ Some useful tools for spectrograms.
 
 import librosa
 import numpy as np
-from autovc.utils.hparams import SpeakerEncoderParams, WaveRNNParams
+from autovc.utils.hparams import SpeakerEncoderParams, AutoEncoderParams
 import numpy as np
 import torch
 
-se_params = SpeakerEncoderParams()
-vocoder_params = WaveRNNParams()
+# se_params = SpeakerEncoderParams()
+# vocoder_params = WaveRNNParams()
 
-def normalize_spec(spectrogram, min_level_db = vocoder_params.min_level_db):
+def normalize_spec(spectrogram, min_level_db = -100):
     """
     Normalizes a spectrogram.
 
@@ -21,6 +21,7 @@ def normalize_spec(spectrogram, min_level_db = vocoder_params.min_level_db):
         A numpy array containg spectrogram data
     min_level_db:
         The minimum db level to normalize after
+        Default value chosen from old WaveRNN params
 
     Return
     ------
@@ -30,7 +31,7 @@ def normalize_spec(spectrogram, min_level_db = vocoder_params.min_level_db):
     spectrogram = np.clip((spectrogram - min_level_db) / -min_level_db, 0, 1)
     return spectrogram
 
-def denormalize_spec(spectrogram, min_level_db = vocoder_params.min_level_db):
+def denormalize_spec(spectrogram, min_level_db = -100):
     """
     Denormalizes a spectrogram.
 
@@ -40,6 +41,7 @@ def denormalize_spec(spectrogram, min_level_db = vocoder_params.min_level_db):
         A numpy array containg spectrogram data
     min_level_db:
         The minimum db level to denormalize after
+        Default value chosen from old WaveRNN params
     
     Return
     ------
@@ -59,13 +61,13 @@ def db_to_amp(power):
 
 def mel_spec_auto_encoder(
         wav, 
-        sr = vocoder_params.sample_rate,
-        n_mels = vocoder_params.feat_dims, 
-        n_fft = vocoder_params.n_fft, 
-        hop_length = vocoder_params.hop_length, 
-        window_length = vocoder_params.win_length, 
-        fmin = vocoder_params.fmin, 
+        sr = AutoEncoderParams["spectrogram"]["sr"],
         cut = False, 
+        n_mels = AutoEncoderParams["spectrogram"]["n_mels"], 
+        n_fft = AutoEncoderParams["spectrogram"]["n_fft"], 
+        hop_length = AutoEncoderParams["spectrogram"]["hop_length"], 
+        window_length = AutoEncoderParams["spectrogram"]["window_length"], 
+        fmin = AutoEncoderParams["spectrogram"]["fmin"], 
         **kwargs):
     
     """
@@ -78,6 +80,8 @@ def mel_spec_auto_encoder(
         A numpy array with audio content
     sr:
         The sampling rate of the audio content
+    cut:
+        If true `compute_partial_slices()` is used to cut the mel spectrogram in slices
     n_mels:
         Number of mels to use. See librosa for more info.
         Should match the Auto Encoders feat_dims.
@@ -89,8 +93,6 @@ def mel_spec_auto_encoder(
         Each frame of audio is windowed by window of length win_length and then padded with zeros to match n_fft.
     fmin:
         The minimum frequency. See librosa.filters.mel for details.
-    cut:
-        If true `compute_partial_slices()` is used to cut the mel spectrogram in slices
     **kwargs:
         kwargs such as 'partial_utterance_n_frames', 'min_pad_coverage' and 'overlap' are passed to `compute_partial_slices()`
 
@@ -104,8 +106,8 @@ def mel_spec_auto_encoder(
     if cut:
         wave_slices, mel_slices = compute_partial_slices(len(wav),
                                                      sr                 = sr,
-                                                     mel_window_step    = kwargs.pop("mel_window_step", vocoder_params.mel_window_step), 
-                                                     partial_utterance_n_frames = kwargs.pop("partial_utterance_n_frames", vocoder_params.partials_n_frames), 
+                                                     mel_window_step    = kwargs.pop("mel_window_step", AutoEncoderParams["spectrogram"]["mel_window_step"]), 
+                                                     partial_utterance_n_frames = kwargs.pop("partial_utterance_n_frames", AutoEncoderParams["spectrogram"]["partial_utterance_n_frames"]), 
                                                      **kwargs)
          # Pad last audio frame
         max_wave_length = wave_slices[-1].stop
@@ -141,10 +143,10 @@ def mel_spec_auto_encoder(
 
 def mel_spec_speaker_encoder(
     wav, 
-    sr = se_params.sampling_rate,
-    n_mels = se_params.mel_n_channels, 
-    window_length = se_params.mel_window_length, 
-    window_step = se_params.mel_window_step, 
+    sr = SpeakerEncoderParams["spectrogram"]["sr"],
+    n_mels = SpeakerEncoderParams["spectrogram"]["n_mels"], 
+    mel_window_length = SpeakerEncoderParams["spectrogram"]["mel_window_length"], 
+    mel_window_step = SpeakerEncoderParams["spectrogram"]["mel_window_step"], 
     cut = False, 
     return_slices = False,
     **kwargs):
@@ -159,9 +161,9 @@ def mel_spec_speaker_encoder(
         The sampling rate of the audio content
     n_mels:
         Number of mels to use. See librosa for more info.
-    window_length:
+    mel_window_length:
         In ms. Each frame of audio is windowed by window of length win_length and then padded with zeros to match n_fft.
-    window_step:
+    mel_window_step:
         In ms. Used to calculate hop length
     cut:
         If true `compute_partial_slices()` is used to cut the mel spectrogram in slices
@@ -192,8 +194,8 @@ def mel_spec_speaker_encoder(
     # compute mel spec
     mel_spec = librosa.feature.melspectrogram(
         wav, sr,
-        n_fft=int(sr * window_length / 1000),
-        hop_length=int(sr * window_step / 1000),
+        n_fft=int(sr * mel_window_length / 1000),
+        hop_length=int(sr * mel_window_step / 1000),
         n_mels=n_mels
     )
 
@@ -243,10 +245,10 @@ def mel_spectrogram(wav, model, **kwargs):
 
     return mel_spec
 
-def compute_partial_slices(n_samples, sr, partial_utterance_n_frames = se_params.partials_n_frames,
+def compute_partial_slices(n_samples, sr, partial_utterance_n_frames = 160,
                            min_pad_coverage = 0.75,
                            overlap = 0.5,
-                           mel_window_step = se_params.mel_window_step):
+                           mel_window_step = 10):
     """
     Computes where to split an utterance waveform and its corresponding mel spectrogram to obtain 
     partial utterances of <partial_utterance_n_frames> each. Both the waveform and the mel 
@@ -264,6 +266,7 @@ def compute_partial_slices(n_samples, sr, partial_utterance_n_frames = se_params
     partial_utterance_n_frames: 
         The number of mel spectrogram frames in each partial utterance (x*10 ms)
         For 1 second samples use partial_utterance_n_frames = 1000/mel_window_step
+        Default value chosen from old Speaker Encoder params
     min_pad_coverage: 
         When reaching the last partial utterance, it may or may not have 
         enough frames. If at least <min_pad_coverage> of <partial_utterance_n_frames> are present, 
@@ -274,6 +277,7 @@ def compute_partial_slices(n_samples, sr, partial_utterance_n_frames = se_params
         By how much the partial utterance should overlap. If set to 0, the partial utterances are entirely disjoint. 
     mel_window_step:
         How large each frame should be (in ms).
+        Default value chosen from old Speaker Encoder params
     Return
     ------
     wav_slices:
