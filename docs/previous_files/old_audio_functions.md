@@ -1,6 +1,13 @@
-# List of old audio functions
+# Old audio functions
+
+- [List of old audio functions](#list-of-old-audio-functions)
+- [Old function definitions](#old-function-definitions)
+    - [audio.py](#audiopy)
+    - [speaker_encoder.utils.py](#speaker_encoderutilspy)
 
 Only files in the autovc folder are included
+
+## List of old audio functions
 
 | Function          | Origin script         | Used in       | Short description         | Category      | 
 |-------------------|-----------------------|---------------|---------------------------|---------------|

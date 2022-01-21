@@ -1,3 +1,18 @@
+# Previous Hyper parameters
+
+This file documents how the hyper parameters was previously setup and holds a lot of values that are now unused but could be relevant.
+
+
+- [Class definitions](#class-definitions)
+- [Auto Encoder params](#auto-encoder-params)
+- [Vocoder params](#vocoder-params)
+- [Speaker Encoder params](#speaker-encoder-params)
+- [Voice Converter params](#voice-converter-params)
+
+
+
+## Class definitions
+```python
 """
 File for storing all hyperparameters and kwargs.
 Params are stored as a dictionary, so that they can easily be passed to the functions and classes that needs them. 
@@ -18,10 +33,6 @@ class ClassProperty(object):
         self.func = func
     def __get__(self, inst, cls):
         return self.func(cls)
-
-# class ParamCollection(Namespace):
-# 	def update(self, d: dict):
-# 		self.__dict__.update(d)
 
 class ParamCollection:
 	def __init__(self) -> None:
@@ -51,14 +62,10 @@ class ParamCollection:
 	
 	def __repr__(self) -> str:
 		return self.__dict__.__repr__()
+```
 
-# class AudioParams(ParamCollection):
-# 	"""
-# 	Class for audio params shared for all models
-# 	"""
-# 	def __init__(self) -> None:
-# 		super().__init__()
-
+## Auto Encoder params
+```python
 class AutoEncoderParams(ParamCollection):
 	# Vocoder
 	# name 							= "wavenet_vocoder"
@@ -146,12 +153,10 @@ class AutoEncoderParams(ParamCollection):
 		self.add_collection("lr_scheduler", ["dim_model", "n_warmup_steps"])
 		self.add_collection("dataset", ["data_path", "data_path_excluded", "cut", "speakers"])
 		self.add_collection("dataloader", ["batch_size", "shuffle", "num_workers", ])
-	
+```
 
-
-
-############### WAVE RNN ###############
-
+## Vocoder params
+```python	
 class WaveRNNParams(ParamCollection):
 	def __init__(self):
 		super().__init__()
@@ -217,12 +222,10 @@ class WaveRNNParams(ParamCollection):
 			self.__dict__["seq_len"] = self.seq_len_prop
 
 		return self
-	
-	
+```
 
-
-############### SPEAKER ENCODER ###############
-
+## Speaker Encoder params
+```python
 class SpeakerEncoderParams(ParamCollection):
 	def __init__(self) -> None:
 		super().__init__()
@@ -274,34 +277,10 @@ class SpeakerEncoderParams(ParamCollection):
 		
 		self.add_collection("lr_scheduler", ["dim_model", "n_warmup_steps"])
 		self.add_collection("Adam", ["betas", "eps", "amsgrad", "lr", "weight_decay"])
+```
 
-		# add collections
-		# self.add_collection("LSTM", [])
-
-
-# class WandbParams(ParamCollection):
-# 	# wand_defaults = {
-#     #         # "sync_tensorboard":True, 
-#     #         "reinit":True,
-#     #         "entity" : "deep_voice_inc",
-#     #         # "name" : self.run_name,
-#     #         "project" : "GetStarted", # wandb project name, each project correpsonds to an experiment
-#     #         "dir" : "logs/" + "GetStarted", # dir to store the run in
-#     #         # "group" : self.agent_name, # uses the name of the agent class
-#     #         "save_code":True,
-#     #         "mode" : "online",
-#     #         "config" : self.config,
-#     #     }
-
-# 	def __init__(self) -> None:
-# 		super().__init__()
-
-# 		self.reinit = True
-# 		self.entity = 'deep_voice_inc'
-# 		project = "test"
-
-
-############## VOICE CONVERTER ###############
+## Voice Converter params
+```python
 class VoiceConverterParams(ParamCollection):
 	def __init__(self) -> None:
 		super().__init__()
@@ -321,50 +300,4 @@ class VoiceConverterParams(ParamCollection):
 		})
 		return self 
 
-# class VoiceConverterParams:#(ParamCollection):
-# 	def __init__(self) -> None:
-# 		super().__init__()
-# 		self.AE = AutoEncoderParams()
-# 		self.SE = SpeakerEncoderParams()
-# 		self.vocoder = WaveRNNParams()
-
-# 		# self.default_models = {
-# 		# 	"auto_encoder": 'models/AutoVC/autovc_SMK.pt',
-# 		# 	"speaker_encoder": ,
-# 		# 	"vocoder":
-# 		# }
-	
-# 	def update(self, AE_params = {}, SE_params = {}, vocoder_params = {}, **kwargs):
-# 		self.AE.update(AE_params)
-# 		self.SE.update(SE_params)
-# 		self.vocoder.update(vocoder_params)
-# 		self.__dict__.update(kwargs)
-
-# 		return self
-
-
-
-if __name__ == "__main__":
-	# p = WaveRNNParams.synthesize
-	# p.update({"sample_rate" : 2})
-	# print(p.__dict__)
-
-	# def update_params(params, new_params):
-	# 	for key, val in new_params:
-	# 		params().__set
-
-	# p = WaveRNNParams()
-	p = VoiceConverterParams()
-	# p.__setattr__("sample_rate", 2)
-	# p.update({"sample_rate" : 2})
-	# p.sample_rate = 2
-	# p.__setattr__("sample_rate", 2)
-
-	p.update({"sample_rate" : 2, "n_fft" : 30, "batched" : False})
-	# print(p.__dict__)
-	# print(p.get_collection("synthesize"))
-	# print(p.sample_rate)
-	# print(p.model)
-	# print(p.test)
-
-	print(p)
+```
