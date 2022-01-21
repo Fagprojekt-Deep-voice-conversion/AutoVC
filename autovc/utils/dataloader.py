@@ -2,52 +2,67 @@ import torch
 from torch.utils.data import DataLoader, Dataset
 from torch.nn.functional import pad
 from autovc.utils import retrieve_file_paths, close_progbar, progbar
-from autovc.utils.hparams import WaveRNNParams, SpeakerEncoderParams
+from autovc.utils.hparams import WaveRNNParams, SpeakerEncoderParams, AutoEncoderParams
 from autovc import audio
 
-vocoder_params = WaveRNNParams()
-se_params = SpeakerEncoderParams()
 
-class TrainDataLoader(Dataset):
+
+class AutoEncoderDataset(Dataset):
     '''
-    A Data Loader class for training AutoVC.
+    A Dataset wrapper class for training AutoVC.
     Takes a path to a folder with data (.wav files) and makes a generator object (data loader) 
     which batches spectorgrams of utterances and the corresponding speaker identiy embeddings.
-    
-    If spectograms in batch are of unequal size the smaller are padded with zeros to match the size of the largest.
     '''
 
-    def __init__(self, speaker_encoder, data_path = None, data_path_excluded= [], speakers = False, **kwargs):
+    def __init__(self, 
+        speaker_encoder, 
+        data_path, 
+        data_path_excluded= [], 
+        speakers = False, 
+        sr = AutoEncoderParams["spectrogram"]["sr"],
+        **kwargs
+    ):
         """
-        Initilialises the data loader
-        """
-        super(TrainDataLoader, self).__init__()
+        Initilialises the dataset class.
 
-        # Load wav files. Create spectograms and embeddings
-        # if wav_files is not None:
-        #     self.wav_files = wav_files
-        # elif data_path is not None:
+        Parameters
+        ----------
+        speaker_encoder:
+            An initialised speaker encoder to create speaker embeddings with
+        data_path:
+            Path to the data. See `utils.retrieve_file_paths()` for input format.
+        data_path_excluded:
+            Paths to exclude from the data. Same as excluded in  `utils.retrieve_file_paths()`.
+        speakers:
+            ... update how this is used
+        sr:
+            Sample rate to load the data with
+        **kwargs:
+            kwargs are passed to `audio.spectrogram.mel_spec_auto_encoder()`.
+            The cut parameter defaults to True.
+        """
+        super(AutoEncoderDataset, self).__init__()
+
+        # Load wav files
         self.wav_files = retrieve_file_paths(data_path, excluded=data_path_excluded)
-        # else:
-        #     raise ArgumentError(f"Either data_path or wav_files must be different from None")
-                
+
+        # initial values        
         self.mel_spectograms, self.embeddings, N = [], [], len(self.wav_files)
-        # cut = kwargs.pop("cut", False)
+
+        # pop cut kwarg
         cut = kwargs.pop("cut", True)
 
+        # create data set
         print("Creating mel spectrograms and embeddings...")
         progbar(0, N)
         for i, wav in enumerate(self.wav_files):
-            data = audio.Audio(wav, sr = vocoder_params.sample_rate)
+            data = audio.Audio(wav, sr = sr)
 
             # TODO - preprocess
             # data.preprocess()
 
             # get mel spectrogram
-            mel_frames = audio.spectrogram.mel_spectrogram(data.wav, model = "auto_encoder", sr = data.sr, cut = cut, **kwargs)
-            
-            # get embeddings
-            # embeds     = speaker_encoder.embed_utterance(data.wav)
+            mel_frames = audio.spectrogram.mel_spec_auto_encoder(data.wav, sr = data.sr, cut = cut, **kwargs)
 
             # Get embeddings of speech
             if not speakers:
@@ -56,6 +71,7 @@ class TrainDataLoader(Dataset):
                 name = 'hilde' if 'hilde' in wav else 'HaegueYang'
                 embeds = speaker_encoder.speakers[name]
             
+            # append to data set
             if cut:
                 self.mel_spectograms.extend(mel_frames)
                 self.embeddings.extend([embeds.clone() for _ in range(len(mel_frames))])
@@ -63,36 +79,6 @@ class TrainDataLoader(Dataset):
                 self.mel_spectograms.append(mel_frames)
                 self.embeddings.append(embeds)
 
-
-            # make nice sounds
-
-            # if chop:
-            #     # Chops the mel spectograms in size of 'partial_n_utterances
-
-
-            #     # wav = preprocess_wav(wav)
-
-                
-            #     mel_frames = get_mel_frames(wav,
-            #                                 audio_to_melspectrogram,
-            #                                 order = 'MF',
-            #                                 sr = vocoder_params.sample_rate, 
-            #                                 mel_window_step = vocoder_params.mel_window_step, 
-            #                                 partial_utterance_n_frames = 250  )
-            #     # Get embeddings of speech
-            #     embeds     = speaker_encoder.embed_utterance(wav)
-
-            #     # Add to dataset - embeddings are cloned to match the number of mel frames
-            #     self.mel_spectograms.extend(mel_frames)
-            #     self.embeddings.extend([embeds.clone() for _ in range(len(mel_frames))])
-            # else:
-            #     # Compute mel spectogram and speaker embeddings
-            #     mel_frames = torch.from_numpy(audio_to_melspectrogram(wav))
-            #     embeds     = speaker_encoder.embed_utterance(wav)
-
-            #     # Add to dataset
-            #     self.mel_spectograms.append(mel_frames)
-            #     self.embeddings.append(embeds)
             progbar(i+1, N)
         close_progbar()
 
@@ -105,7 +91,8 @@ class TrainDataLoader(Dataset):
 
     def collate_fn(self, batch):
         '''
-        Pad with zeros if spectrograms are of unequal sizes.
+        Allow unequal length wavs to be batched together
+        If spectograms in batch are of unequal size the smaller are padded with zeros to match the size of the largest.
         '''
         spectrograms, embeddings = zip(*batch)
         max_length = max([spectogram.size(-1) for spectogram in spectrograms]) 
@@ -113,51 +100,88 @@ class TrainDataLoader(Dataset):
 
         return torch.stack(padded_spectrograms), torch.stack(embeddings)
 
-    def get_dataloader(self, batch_size=1, shuffle=False,  num_workers=0, pin_memory=False):
-        return DataLoader(
+    def get_dataloader(self, batch_size=1, shuffle=False, **kwargs):
+        """
+        Creates a data loader from the data set
+
+        Parameters
+        ----------
+        batch_size:
+            Batch size to use
+        shuffle:
+            bool telling whether or not to shuffle the data
+        **kwargs:
+            kwargs are given to `torch.DataLoader()` (see [documentation](https://pytorch.org/docs/stable/data.html#torch.utils.data.DataLoader))
+        """
+        
+        data_loader = DataLoader(
             self,  
-            batch_size=batch_size, 
-            num_workers= num_workers, 
+            batch_size=batch_size,  
             shuffle=shuffle,
-            collate_fn = self.collate_fn
+            collate_fn = self.collate_fn,
+            **kwargs
         )
+        return data_loader
 
 
-class SpeakerEncoderDataLoader(Dataset):
-    def __init__(self, data_dict, cut = True, device = 'cpu', **kwargs):
-        super(SpeakerEncoderDataLoader, self).__init__()
+class SpeakerEncoderDataset(Dataset):
+    def __init__(self, 
+        data_dict, 
+        sr = SpeakerEncoderParams["spectrogram"]["sr"],
+        device = 'cpu', 
+        **kwargs
+    ):
+        """
+        Initilialises the dataset class.
+
+        Parameters
+        ----------
+        data_dict:
+            dictionary with speaker name as key and data directory or list of data as key.
+        sr:
+            Sample rate to load the data with
+        device:
+            Torch device to store data in.
+        **kwargs:
+            kwargs are passed to `audio.spectrogram.mel_spec_speaker_encoder()`.
+            The cut parameter defaults to True.
+        """
+        super(SpeakerEncoderDataset, self).__init__()
+
+        # set values
         self.device = device
+        cut = kwargs.pop("cut", True)
+        
+
         # Find wav files in dictionary of data        
         wav_files = [sum([retrieve_file_paths(data_dir_path) for data_dir_path in speaker_data_dir], []) for speaker_data_dir in data_dict.values()]
 
-        # Compute mel spectograms
-        speakers = len(data_dict.keys())
+        # initial values
         N = sum([len(d) for d in wav_files])
+        speakers = len(data_dict.keys())
         self.datasets = [[] for _ in wav_files]
-        t = 0
+
+        # create data set
         print("Creating mel spectograms ...")
-        progbar(t, N)
+        progbar(0, N)
         for i in range(speakers):
             for wav in wav_files[i]:
-                data = audio.Audio(wav, sr = kwargs.pop("sr", se_params.sample_rate))
+                data = audio.Audio(wav, sr = sr)
                 
                 # TODO - preprocess
                 # data.preprocess()
 
-                frames_batch = audio.spectrogram.mel_spectrogram(data.wav, model = "speaker_encoder", sr = data.sr, cut = cut, **kwargs)
-
-
-                # wav = preprocess_wav(wav)
-                # Compute where to split the utterance into partials and pad if necessary
-                # frames_batch = get_mel_frames(wav, wav_to_mel_spectrogram )
+                # get mel spectrograms
+                frames_batch = audio.spectrogram.mel_spec_speaker_encoder(data.wav, sr = data.sr, cut = cut, **kwargs)
                 
+                # append to data set
                 if cut:
                     self.datasets[i].extend(frames_batch)
                 else:
                     self.datasets[i].append(frames_batch)
                 
-                t += 1
-                progbar(t, N)
+                
+                progbar(i+1, N)
         
         print(f"The datasets are of lengths: {[len(d) for d in self.datasets]}")
 
@@ -168,15 +192,28 @@ class SpeakerEncoderDataLoader(Dataset):
         return max(len(d) for d in self.datasets)
 
     def collate_fn(self, batch):
-
         return torch.stack(tuple(torch.stack(b) for b in list(zip(*batch)) )).to(self.device)
 
-    def get_dataloader(self, batch_size=2, shuffle=False,  num_workers=0, pin_memory=False, **kwargs):
-        return DataLoader(
+    def get_dataloader(self, batch_size=1, shuffle=False, **kwargs):
+        """
+        Creates a data loader from the data set
+
+        Parameters
+        ----------
+        batch_size:
+            Batch size to use
+        shuffle:
+            bool telling whether or not to shuffle the data
+        **kwargs:
+            kwargs are given to `torch.DataLoader()` (see [documentation](https://pytorch.org/docs/stable/data.html#torch.utils.data.DataLoader))
+        """
+        
+        data_loader = DataLoader(
             self,  
-            batch_size      = batch_size, 
-            num_workers     = num_workers, 
-            shuffle         = shuffle,
-            collate_fn      = self.collate_fn
+            batch_size=batch_size,  
+            shuffle=shuffle,
+            collate_fn = self.collate_fn,
+            **kwargs
         )
+        return data_loader
 

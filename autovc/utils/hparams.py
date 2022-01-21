@@ -2,15 +2,6 @@ from datetime import date
 from autovc.utils.lr_scheduler import NoamScheduler
 
 AutoEncoderParams = {
-    # "audio" : {
-    #     "sr" : 16000,
-    #     "num_mels" : 80,
-    #     "fmin" : 90,
-    #     "fft_size" : 1024,
-    #     "win_length" : 1024,
-    #     "hop_size" : 256,
-    #     "min_level_db" : -100,
-    # },
 	"spectrogram" : {
 		"sr" : 22050,
 		"n_mels" : 80,
