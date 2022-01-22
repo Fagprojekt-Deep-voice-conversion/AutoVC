@@ -103,10 +103,10 @@ class WaveRNN(nn.Module):
     are examples of parameters to be passed, a full list can be seen in `autovc/utils/hparams.py`
     """
     def __init__(self, 
-        sample_rate = WaveRNNParams["model"]["sample_rate"],
+        # sr = WaveRNNParams["model"]["sr"],
         hop_length = WaveRNNParams["model"]["hop_length"],
-        rnn_dims = WaveRNNParams["model"]["sample_rate"],
-        res_out_dims = WaveRNNParams["model"]["sample_rate"],
+        rnn_dims = WaveRNNParams["model"]["rnn_dims"],
+        res_out_dims = WaveRNNParams["model"]["res_out_dims"],
         feat_dims = WaveRNNParams["model"]["feat_dims"],
         fc_dims = WaveRNNParams["model"]["fc_dims"],
         bits = WaveRNNParams["model"]["bits"],
@@ -133,7 +133,7 @@ class WaveRNN(nn.Module):
         assert mode in ["RAW", "MOL"]
 
         # set values
-        self.sample_rate = sample_rate
+        # self.sr = sr
         self.hop_length = hop_length
         self.rnn_dims = rnn_dims
         self.res_out_dims = res_out_dims

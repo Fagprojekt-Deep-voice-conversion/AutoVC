@@ -58,10 +58,9 @@ class AutoEncoder(nn.Module):
         self.device = device if not isinstance(device, str) else torch.device(device)
         self.logging = {}
 
-        # self.params = AutoEncoderParams["model"].update(params)
-        self.encoder = Encoder(dim_neck, dim_emb, freq).to(device=self.device)
-        self.decoder = Decoder(dim_neck, dim_emb, dim_pre).to(device=self.device)
-        self.postnet = Postnet().to(device=self.device)
+        self.encoder = Encoder(dim_neck, dim_emb, freq)#.to(device=self.device)
+        self.decoder = Decoder(dim_neck, dim_emb, dim_pre)#.to(device=self.device)
+        self.postnet = Postnet()#.to(device=self.device)
         
 
     def forward(self, x, c_org, c_trg):

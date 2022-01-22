@@ -85,7 +85,7 @@ SpeakerEncoderParams = {
 WaveRNNParams = {
 	"model_dir"	: "models/WaveRNN",
 	"model" : {
-		"sample_rate"	: 22050,
+		# "sr"	: 22050,
 		"hop_length"	: 275,  # 12.5ms - in line with Tacotron 2 paper
 		"rnn_dims" 		: 512,
 		"res_out_dims" 	: 128,

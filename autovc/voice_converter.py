@@ -108,7 +108,7 @@ class VoiceConverter:
             An Audio object (see 'autovc/audio/__init__.py') with the converted voice
         """
 
-        print(f"Beginning conversion of {source} to {target}...")
+        print(f"Beginning conversion of '{source}' to '{target}'...")
 
         # source_wav, target_wav = preprocess_wav(source), preprocess_wav(target)
 
@@ -141,7 +141,7 @@ class VoiceConverter:
 
 
         # create audio output
-        audio_out = Audio(np.asarray(waveform), sr = sr, sr_org = self.config["vocoder_params"].get("sample_rate"))
+        audio_out = Audio(np.asarray(waveform), sr = sr, sr_org = 22050) # where in the vocoder is this sample rate set? 
         # TODO - outprocess
         # audio_out.preprocess("convert_out", *pipes.get("output", []), **pipe_args.get("output", {}))
 
@@ -171,11 +171,11 @@ class VoiceConverter:
                 save_name = save_name if save_name.startswith("results") else "results/" + save_name 
     
             sf.write(save_name, audio_out.wav, samplerate =audio_out.sr)
-            print(f"Converted voice has been saved to {save_name}")
+            print(f"Converted voice has been saved to '{save_name}'")
     
         return audio_out
 
-    def train(self, model_type = "auto_encoder", n_epochs = 2, conversion_examples = None, data_path = 'data/samples', **train_params):
+    def train(self, model_type = "auto_encoder", n_epochs = 2, conversion_examples = None, data_path = 'data/samples', learn_kwargs = {}, data_loader_kwargs = {}):
         """
         Trains a model
 
@@ -184,6 +184,8 @@ class VoiceConverter:
         model_type:
             which model type to train, can be one of ['auto_encoder', 'speaker_encoder']
         conversion_examples:
+
+        # make list of possible kwargs divided in learn, data loader, data set, if no overlaps do like preprocess and use annotations
 
         """
         # asssert valid model type
@@ -202,7 +204,7 @@ class VoiceConverter:
         if model_type == "auto_encoder":
             # print("Training device: ", self.AE.params.device)
             params = AutoEncoderParams().update(self.config[model_params])
-            dataset = TrainDataLoader(**params.get_collection("dataset"), speaker_encoder = self.SE)
+            # dataset = TrainDataLoader(**params.get_collection("dataset"), speaker_encoder = self.SE)
             # dataset = TrainDataLoader(speaker_encoder = self.SE, chop = True, data_path = 'data/test_data')
             dataloader = dataset.get_dataloader(**params.get_collection("dataloader"))
             self.AE.learn(dataloader, n_epochs = n_epochs, wandb_run = self.wandb_run)
@@ -436,7 +438,7 @@ if __name__ == "__main__":
                 # "data/samples/chooped7.wav"], "data/samples/chooped7.wav"])
 
     # vc.setup_wandb_run()
-    # vc.convert("data/samples/mette_183.wav", "data/samples/chooped7.wav")
+    vc.convert("data/samples/mette_183.wav", "data/samples/chooped7.wav")
 
     # vc.convert_multiple(
     #     ["data/samples/hillary_116.wav", "data/samples/mette_183.wav"], 
@@ -452,4 +454,4 @@ if __name__ == "__main__":
     # vc.train(data = "data/samples", n_epochs = 1)
 
 
-    # vc.close()
+    vc.close()
