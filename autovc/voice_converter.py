@@ -364,7 +364,7 @@ class VoiceConverter:
 
 if __name__ == "__main__":
 
-    vc = VoiceConverter()
+    vc = VoiceConverter(auto_encoder="AutoVC_SMK.pt")
 
 
     # from autovc.utils.argparser import parse_vc_args
