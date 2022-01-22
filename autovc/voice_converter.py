@@ -1,6 +1,7 @@
 from genericpath import exists
+from torchaudio import datasets
 import wandb
-from autovc.utils import retrieve_file_paths
+from autovc.utils import retrieve_file_paths, pformat
 import soundfile as sf
 import torch
 import numpy as np
@@ -175,7 +176,22 @@ class VoiceConverter:
     
         return audio_out
 
-    def train(self, model_type = "auto_encoder", n_epochs = 2, conversion_examples = None, data_path = 'data/samples', learn_kwargs = {}, data_loader_kwargs = {}):
+    # def _train_auto_encoder(self, n_epochs = 2, **kwargs):
+    #     # sort kwarg
+    #     for key, value in kwargs.items():
+    #         if key in list(set(AutoEncoderDataset.__annotations__["args"]).union(set(AutoEncoderDataset.__annotations__["kwargs"]))):
+    #             self.config["speaker_encoder"]["dataset"].update({key:value})
+
+
+    # def _train_speaker_encoder(self):
+    #     pass
+
+    def train(self, 
+        model_type = "auto_encoder", 
+        source_examples = "data/samples/hilde_1.wav", 
+        target_examples = "data/samples/HaegueYang_5.wav", 
+        **kwargs
+    ):
         """
         Trains a model
 
@@ -188,53 +204,92 @@ class VoiceConverter:
         # make list of possible kwargs divided in learn, data loader, data set, if no overlaps do like preprocess and use annotations
 
         """
-        # asssert valid model type
+        # asssertions, errors and warnings
         if model_type not in ["auto_encoder", "speaker_encoder"]:
             raise ValueError(f"'{model_type}' is not a supported model_type")
+        
+        convert_examples = source_examples and target_examples
+        if not convert_examples:
+            print(pformat.YELLOW, "WARN: No conversion examples will be provided as both source_examples and target_examples must be different from None/False", pformat.END)
 
-        # update config with train params
-        model_params = "AE_params" if model_type == "auto_encoder" else "SE_params"
-        self.config[model_params].update({**train_params, "n_epochs" : n_epochs, "data_path" : data_path})
+        # get dataset and learn function of model
+        if model_type == "auto_encoder":
+            Dataset = AutoEncoderDataset
+            learn = self.AE.learn
+            
+        else:
+            Dataset = SpeakerEncoderDataset
+            learn = self.SE.learn
+
+        # update config
+        for key, value in kwargs.items():
+            if key in list(set(Dataset.__annotations__["args"]).union(set(Dataset.__annotations__["kwargs"]))):
+                self.config[model_type]["dataset"].update({key : value})
+            elif key in list(set(Dataset.get_dataloader.__annotations__["args"]).union(set(Dataset.get_dataloader.__annotations__["kwargs"]))):
+                self.config[model_type]["dataloader"].update({key : value})
+            elif key in list(set(learn.__annotations__["args"])):
+                self.config[model_type]["learn"].update({key : value})
+            elif key in list(set(learn.__annotations__["kwargs"])):
+                self.config[model_type]["optimizer"].update({key : value})
+            else:
+                raise ValueError(f"'{key}' is not a valid key word argument")
 
         # create a wandb run
-        self._init_wandb()
+        self.setup_wandb()
+        self.config[model_type]["dataset"].update({"speaker_encoder": self.SE} if model_type == "auto_encoder" else {}) # add se to params manually as wandb config converts to string
 
-        start_time = time.time()
-        # print(f"Starting to train {model_type}...")
-        if model_type == "auto_encoder":
-            # print("Training device: ", self.AE.params.device)
-            params = AutoEncoderParams().update(self.config[model_params])
-            # dataset = TrainDataLoader(**params.get_collection("dataset"), speaker_encoder = self.SE)
-            # dataset = TrainDataLoader(speaker_encoder = self.SE, chop = True, data_path = 'data/test_data')
-            dataloader = dataset.get_dataloader(**params.get_collection("dataloader"))
-            self.AE.learn(dataloader, n_epochs = n_epochs, wandb_run = self.wandb_run)
-        elif model_type == "speaker_encoder":
-            datadir = {'hilde': ['data/test_data/hilde_7sek'], 'hague': ['data/test_data/HaegueYang_10sek']}
-            dataset = SpeakerEncoderDataLoader(datadir, device = self.config.get("device", 'cuda'))
-            dataloader = dataset.get_dataloader(batch_size = 1024)
-            self.SE.learn(dataloader, n_epochs = 128, wandb_run = self.wandb_run,  log_freq = 16, save_freq = 32)
-            # raise NotImplementedError()
+        # train
+        if self.verbose:
+            start_time = time.time()
+            print(f"Starting to train {model_type}...")
+        dataset = Dataset(**self.config[model_type]["dataset"])
+        dataloader = dataset.get_dataloader(**self.config[model_type]["dataloader"])
+        learn(dataloader, **self.config[model_type]["learn"], **self.config[model_type]["optimizer"])
+
+        if self.verbose:
+            print(f"Training finished in {time.time() - start_time}")
+
+        # if model_type == "auto_encoder":
+        #     # print("Training device: ", self.AE.params.device)
+        #     params = AutoEncoderParams().update(self.config[model_params])
+        #     # dataset = TrainDataLoader(**params.get_collection("dataset"), speaker_encoder = self.SE)
+        #     # dataset = TrainDataLoader(speaker_encoder = self.SE, chop = True, data_path = 'data/test_data')
+        #     dataloader = dataset.get_dataloader(**params.get_collection("dataloader"))
+        #     self.AE.learn(dataloader, n_epochs = n_epochs, wandb_run = self.wandb_run)
+        # elif model_type == "speaker_encoder":
+        #     datadir = {'hilde': ['data/test_data/hilde_7sek'], 'hague': ['data/test_data/HaegueYang_10sek']}
+        #     dataset = SpeakerEncoderDataLoader(datadir, device = self.config.get("device", 'cuda'))
+        #     dataloader = dataset.get_dataloader(batch_size = 1024)
+        #     self.SE.learn(dataloader, n_epochs = 128, wandb_run = self.wandb_run,  log_freq = 16, save_freq = 32)
+        #     # raise NotImplementedError()
             
         
-        print(f"Training finished in {time.time() - start_time}")
+        # print(f"Training finished in {time.time() - start_time}")
 
         # conversion example
-        if conversion_examples is None:
-            self.convert(
-                # "data/samples/mette_183.wav", 
-                # "data/samples/chooped7.wav",
-                "data/samples/hilde_1.wav", 
-                "data/samples/HaegueYang_5.wav",
-                out_dir = "wandb" if not self.wandb_run.mode == "disabled" else ".",
-                # out_folder=os.path.join(self.wandb_run.dir, "conversions")
-            )
-            # self.wandb_run.log({"example" : wandb.Audio(wav, caption = "test", sample_rate = sr)})
-        elif conversion_examples:
+        if convert_examples:
             self.convert_multiple(
-                conversion_examples[0], 
-                conversion_examples[1], 
-                out_dir = "wandb" if not self.wandb_run.mode == "disabled" else ".",
+                sources = source_examples,
+                targets = target_examples,
+                save_dir = "wandb" if not self.wandb_run.mode == "disabled" else "training_examples",
             )
+
+        # if conversion_examples is None:
+        #     self.convert(
+        #         # "data/samples/mette_183.wav", 
+        #         # "data/samples/chooped7.wav",
+        #         "data/samples/hilde_1.wav", 
+        #         "data/samples/HaegueYang_5.wav",
+        #         save_dir = "wandb" if not self.wandb_run.mode == "disabled" else ".",
+        #         # out_folder=os.path.join(self.wandb_run.dir, "conversions")
+        #     )
+        #     # self.wandb_run.log({"example" : wandb.Audio(wav, caption = "test", sample_rate = sr)})
+        # elif conversion_examples:
+        #     self.convert_multiple(
+        #         conversion_examples[0], 
+        #         conversion_examples[1], 
+        #         save_dir = "wandb" if not self.wandb_run.mode == "disabled" else ".",
+        #     )
 
 
 
@@ -256,30 +311,39 @@ class VoiceConverter:
             params to give to VoiceConverter.convert
         """
 
+        # prepare sources
         sources = retrieve_file_paths(sources)
-        if len(targets) > 1 or  os.path.isdir(targets[0]):
-            # targets = targets[0]
-        # else:
-            targets = retrieve_file_paths(targets)
-        wavs, sample_rates = [], []
+        
+        # prepare targets
+        targets_args = [targets] if isinstance(targets, str) else targets
+        targets = []
+        # targets = [retrieve_file_paths(target) if target not in self.SE.speakers.keys else target for target in targets]
+        for target in targets_args:
+            if target in self.SE.speakers.keys():
+                assert not bidirectional, "Cannot convert in both ways if a mean speaker embedding is to be used, as this cannot be the source of a conversion."
+                targets.append(target)
+            else:
+                targets.extend(retrieve_file_paths(target))
 
+        # create empty list for converted audio objects
+        audio_objects = []
+
+        # retrieve combinations of sources and targets
         if match_method == "align":
             assert len(sources) == len(targets)
             matches = [*zip(sources, targets)]
         elif match_method == "all_combinations":
             matches = product(sources, targets)
 
+        # make conversions
         for source, target in matches:
-            wav, sr = self.convert(source, target, **convert_params)
-            wavs.append(wav)
-            sample_rates.append(sr)
+            audio_objects.append(self.convert(source, target, **convert_params))
         
+        # convert targets to sources if bidirectional is True
         if bidirectional:
-            wav, sr = self.convert_multiple(target, sources, match_method, **convert_params)
-            wavs.extend(wav)
-            sample_rates.extend(sr)
+            audio_objects.extend(self.convert_multiple(target, sources, match_method, **convert_params))
 
-        return wavs, sample_rates
+        return audio_objects
 
     
     def setup_wandb(self, **params):
@@ -289,8 +353,8 @@ class VoiceConverter:
             return None
 
         # overwrite defaults with parsed arguments
-        self.config["wandb_params"].update(params)
-        self.config["wandb_params"].update({"dir" : "logs/" + self.config["wandb_params"].get("project")}) # create log dir
+        self.config["wandb"].update(params)
+        self.config["wandb"].update({"dir" : "logs/" + self.config["wandb"].get("project")}) # create log dir
 
         # create directory for logs if first run in project
         os.makedirs(self.config["wandb"]["dir"], exist_ok=True)
@@ -328,7 +392,7 @@ class VoiceConverter:
             # check if given model name and dir are valid or look in wandb otherwise
             model_path = model_dir.strip("/") + "/" + model_name
             if not os.path.isfile(model_path):
-                if self.config["wandb_params"]["mode"] in ["disabled", "offline"]:
+                if self.config["wandb"]["mode"] in ["disabled", "offline"]:
                     raise ValueError(f"Model {model_path} was not found locally and it was not possible to look in wandb, as the wandb mode was not set to 'online'")
                 
                 # start looking in wandb
@@ -438,20 +502,21 @@ if __name__ == "__main__":
                 # "data/samples/chooped7.wav"], "data/samples/chooped7.wav"])
 
     # vc.setup_wandb_run()
-    vc.convert("data/samples/mette_183.wav", "data/samples/chooped7.wav")
+    # vc.convert("data/samples/mette_183.wav", "data/samples/chooped7.wav")
 
-    # vc.convert_multiple(
-    #     ["data/samples/hillary_116.wav", "data/samples/mette_183.wav"], 
-    #     ["data/samples/mette_183.wav", "data/samples/hillary_116.wav"],
-    #     method = "all_combinations",
-    #     save_folder = "test"    
-    # )
+    vc.convert_multiple(
+        ["data/samples/hillary_116.wav", "data/samples/mette_183.wav"], 
+        ["data/samples/mette_183.wav", "data/samples/hillary_116.wav"],
+        method = "all_combinations",
+        save_dir = "test"    
+    )
 
     # vc.train(data = "data/SMK_train/newest_trial", n_epochs = 1)
     # vc.setup_wandb_run(name = "SMK")
     # vc.train(data = "data/SMK_train/20211104", n_epochs = 1)
     # vc.train(data = "data/SMK_train", n_epochs = 1)
-    # vc.train(data = "data/samples", n_epochs = 1)
+    vc.train(data_path = "data/samples", n_epochs = 1)
+    vc.convert("data/samples/mette_183.wav", "data/samples/chooped7.wav")
 
 
     vc.close()

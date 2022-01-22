@@ -1,9 +1,11 @@
 import torch
 from torch.utils.data import DataLoader, Dataset
 from torch.nn.functional import pad
+from autovc.audio.spectrogram import mel_spec_auto_encoder, mel_spec_speaker_encoder
 from autovc.utils import retrieve_file_paths, close_progbar, progbar
 from autovc.utils.hparams import SpeakerEncoderParams, AutoEncoderParams
 from autovc import audio
+import inspect
 
 
 
@@ -217,3 +219,23 @@ class SpeakerEncoderDataset(Dataset):
         )
         return data_loader
 
+# add function annotations
+AutoEncoderDataset.__annotations__ = {
+    "args" : inspect.getfullargspec(AutoEncoderDataset.__init__).args,
+    "kwargs" : inspect.getfullargspec(mel_spec_auto_encoder).args
+}
+
+AutoEncoderDataset.get_dataloader.__annotations__ = {
+    "args" : inspect.getfullargspec(AutoEncoderDataset.get_dataloader).args,
+    "kwargs" : inspect.getfullargspec(DataLoader.__init__).args
+}
+
+SpeakerEncoderDataset.__annotations__ = {
+    "args" : inspect.getfullargspec(SpeakerEncoderDataset.__init__).args,
+    "kwargs" : inspect.getfullargspec(mel_spec_speaker_encoder).args
+}
+
+SpeakerEncoderDataset.get_dataloader.__annotations__ = {
+    "args" : inspect.getfullargspec(SpeakerEncoderDataset.get_dataloader).args,
+    "kwargs" : inspect.getfullargspec(DataLoader.__init__).args
+}

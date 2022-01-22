@@ -15,6 +15,8 @@ import time, wandb
 import matplotlib.pyplot as plt
 from sklearn.manifold import TSNE
 import tqdm
+import inspect
+from autovc.utils import lr_scheduler as lr_schedulers
 
 class SpeakerEncoder(nn.Module):
     """
@@ -319,7 +321,7 @@ class SpeakerEncoder(nn.Module):
     def learn(
         self,
         trainloader, 
-        n_epochs, 
+        n_epochs = SpeakerEncoderParams["learn"]["n_epochs"],
         log_freq = SpeakerEncoderParams["learn"]["log_freq"],
         save_freq = SpeakerEncoderParams["learn"]["save_freq"],
         save_dir = SpeakerEncoderParams["learn"]["save_dir"],
@@ -346,10 +348,12 @@ class SpeakerEncoder(nn.Module):
         self.similarity_bias = nn.Parameter(torch.tensor([-5.])).to(self.device)
 
         # prepare optimiser
-        opt_params = SpeakerEncoderParams["learn"]["optimizer"].update(opt_params)
-        lr_scheduler = opt_params.pop("lr_scheduler")
-        lr_sch_params = {"n_warmup_steps" : opt_params.pop("n_warmup_steps")}
-        self.optimiser = torch.optim.Adam(self.parameters(), **opt_params)
+        SpeakerEncoderParams["optimizer"].update(opt_params)
+        lr_scheduler = SpeakerEncoderParams["optimizer"].pop("lr_scheduler")
+        if isinstance(lr_scheduler, str):
+            lr_scheduler = lr_schedulers.__dict__.get(lr_scheduler)
+        lr_sch_params = {"n_warmup_steps" : SpeakerEncoderParams["optimizer"].pop("n_warmup_steps")}
+        self.optimiser = torch.optim.Adam(self.parameters(), **SpeakerEncoderParams["optimizer"])
 
         if lr_scheduler is not None:
             self.lr_scheduler = lr_scheduler(self.optimiser, dim_model = self.linear.out_features, **lr_sch_params)
@@ -393,7 +397,7 @@ class SpeakerEncoder(nn.Module):
                     self._log(wandb_run, embeddings=embeddings)
 
                 if self.logging["step"] % save_freq == 0 or self.logging["step"] == N_iterations:
-                    self.save(model_name, model_dir, wandb_run)
+                    self.save(model_name, save_dir, wandb_run)
 
         close_progbar()
 
@@ -445,6 +449,13 @@ class SpeakerEncoder(nn.Module):
         mean_embedding = embeddings.mean(axis = 0, keepdim = True)
 
         self.speakers[speaker] = mean_embedding.squeeze()
+
+# add function annotations
+SpeakerEncoder.learn.__annotations__ = {
+    "args" : inspect.getfullargspec(SpeakerEncoder.learn).args,
+    "kwargs" : inspect.getfullargspec(torch.optim.Adam).args
+}
+
 
 if __name__ == "__main__":
     SE = SpeakerEncoder()

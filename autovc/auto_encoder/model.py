@@ -8,7 +8,7 @@ Everything is shown in figure 3 in the Paper - please have this by hand when rea
 import torch
 import torch.nn as nn
 import wandb
-
+import inspect
 from autovc.auto_encoder.net_layers import *
 from autovc.auto_encoder.encoder import Encoder
 from autovc.auto_encoder.decoder import Decoder
@@ -20,6 +20,7 @@ from autovc.utils import progbar, close_progbar
 import time
 import numpy as np
 from torch.nn.functional import pad
+from autovc.utils import lr_scheduler as lr_schedulers
 import matplotlib.pyplot as plt
 
 
@@ -205,7 +206,7 @@ class AutoEncoder(nn.Module):
 
     def learn(self, 
         trainloader, 
-        n_epochs, 
+        n_epochs = AutoEncoderParams["learn"]["n_epochs"],
         log_freq = AutoEncoderParams["learn"]["log_freq"],
         save_freq = AutoEncoderParams["learn"]["save_freq"],
         save_dir = AutoEncoderParams["learn"]["save_dir"],
@@ -250,21 +251,23 @@ class AutoEncoder(nn.Module):
             wandb_run.watch(self, log_freq = log_freq)
 
         # prepare optimiser
-        opt_params = AutoEncoderParams["learn"]["optimizer"].update(opt_params)
-        lr_scheduler = opt_params.pop("lr_scheduler")
-        lr_sch_params = {"n_warmup_steps" : opt_params.pop("n_warmup_steps")}
+        AutoEncoderParams["optimizer"].update(opt_params)
+        lr_scheduler = AutoEncoderParams["optimizer"].pop("lr_scheduler")
+        if isinstance(lr_scheduler, str):
+            lr_scheduler = lr_schedulers.__dict__.get(lr_scheduler)
+        lr_sch_params = {"n_warmup_steps" : AutoEncoderParams["optimizer"].pop("n_warmup_steps")}
 
         self.criterion1 = nn.MSELoss()
         self.criterion2 = nn.L1Loss()
-        self.optimiser = torch.optim.Adam(self.parameters(), **opt_params)
+        self.optimiser = torch.optim.Adam(self.parameters(), **AutoEncoderParams["optimizer"])
         if lr_scheduler is not None:
-            self.lr_scheduler = lr_scheduler(self.optimiser, dim_model = AutoEncoderParams["audio"]["num_mels"], **lr_sch_params)
+            self.lr_scheduler = lr_scheduler(self.optimiser, dim_model = self.decoder.linear_projection.linear_layer.out_features, **lr_sch_params)
 
         
 
         # begin training
         if self.verbose:
-            print(f"Training Auto Encoder on {torch.cuda.get_device_name() + ' (cuda)' if 'cuda' in self.device else 'cpu'}...")
+            print(f"Training Auto Encoder on {torch.cuda.get_device_name() + ' (cuda)' if 'cuda' in self.device.type else 'cpu'}...")
             progbar(self.logging["step"], N_iterations)
         
         for epoch in range(n_epochs):
@@ -396,6 +399,12 @@ class AutoEncoder(nn.Module):
 
 
         return fig
+
+# add function annotations
+AutoEncoder.learn.__annotations__ = {
+    "args" : inspect.getfullargspec(AutoEncoder.learn).args,
+    "kwargs" : inspect.getfullargspec(torch.optim.Adam).args
+}
 
 
 if __name__ == "__main__":

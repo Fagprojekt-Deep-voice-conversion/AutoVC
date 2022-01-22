@@ -1,5 +1,5 @@
 from datetime import date
-from autovc.utils.lr_scheduler import NoamScheduler
+# from autovc.utils.lr_scheduler import NoamScheduler
 
 AutoEncoderParams = {
 	"model_dir"	: "models/AutoVC", # model dir to load from
@@ -19,26 +19,32 @@ AutoEncoderParams = {
 		"dim_pre" : 512,
 		"freq" : 32,
     },
-    "learn" : {
-        "log_freq" : 8,
-        "save_freq" : 1024,
+    # "train" : {
+	"learn" : {
+		"n_epochs" : 1,
+		"log_freq" : 8,
+		"save_freq" : 1024,
 		"model_name" : "model_" + date.today().strftime("%Y%m%d") +".pt",
 		"save_dir"	: "models/AutoVC", # model dir to save to
 		"example_freq" : None,
-        "ema_decay" : 0.9999,
-        "optimizer" : {
-            "betas" : (0.9, 0.999),
-            "eps" : 1e-8,
-            "amsgrad" : False,
-            "lr" : 1e-3,
-            "weight_decay" : 0.0,
-            "lr_scheduler" : NoamScheduler,
-		    "n_warmup_steps" : 64,
-        },
-    },
-    "data_loader" : {
-            "batch_size" : 2,
-        },
+		"ema_decay" : 0.9999,
+	},
+	"optimizer" : {
+		"betas" : (0.9, 0.999),
+		"eps" : 1e-8,
+		"amsgrad" : False,
+		"lr" : 1e-3,
+		"weight_decay" : 0.0,
+		"lr_scheduler" : "NoamScheduler",
+		"n_warmup_steps" : 64,
+	},
+	"dataset" : {
+	},
+	"dataloader" : {
+			"batch_size" : 2,
+	},
+    # },
+	
 
 }
 
@@ -59,24 +65,31 @@ SpeakerEncoderParams = {
 		"batch_first" : True,
     },
     "learn" : {
+		"n_epochs" : 1,
         "log_freq" : 1,
         "save_freq" : 1024,
 		"model_name" : "model_" + date.today().strftime("%Y%m%d") +".pt",
 		"save_dir"	: "models/SpeakerEncoder", # model dir to save to
 		"example_freq" : None,
         "ema_decay" : 0.9999,
-        "optimizer" : {
-            "betas" : (0.9, 0.999),
-            "eps" : 1e-8,
-            "amsgrad" : False,
-            "lr" : 1e-3,
-            "weight_decay" : 0.0,
-            "lr_scheduler" : NoamScheduler,
-		    "n_warmup_steps" : 64,
-        },
+	},
+	"optimizer" : {
+		"betas" : (0.9, 0.999),
+		"eps" : 1e-8,
+		"amsgrad" : False,
+		"lr" : 1e-3,
+		"weight_decay" : 0.0,
+		"lr_scheduler" : "NoamScheduler",
+		"n_warmup_steps" : 64,
+	},
+	"dataset" : {
+    },
+    "dataloader" : {
+            "batch_size" : 1,
+    },
         
 
-    },
+    
     # "data_loader" : {
     #         "batch_size" : 2,
     #     },
