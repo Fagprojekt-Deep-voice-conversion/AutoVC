@@ -176,16 +176,6 @@ class VoiceConverter:
     
         return audio_out
 
-    # def _train_auto_encoder(self, n_epochs = 2, **kwargs):
-    #     # sort kwarg
-    #     for key, value in kwargs.items():
-    #         if key in list(set(AutoEncoderDataset.__annotations__["args"]).union(set(AutoEncoderDataset.__annotations__["kwargs"]))):
-    #             self.config["speaker_encoder"]["dataset"].update({key:value})
-
-
-    # def _train_speaker_encoder(self):
-    #     pass
-
     def train(self, 
         model_type = "auto_encoder", 
         source_examples = "data/samples/hilde_1.wav", 
@@ -223,13 +213,13 @@ class VoiceConverter:
 
         # update config
         for key, value in kwargs.items():
-            if key in list(set(Dataset.__annotations__["args"]).union(set(Dataset.__annotations__["kwargs"]))):
+            if key in Dataset.__allowed_args__ + Dataset.__allowed_kw__:
                 self.config[model_type]["dataset"].update({key : value})
-            elif key in list(set(Dataset.get_dataloader.__annotations__["args"]).union(set(Dataset.get_dataloader.__annotations__["kwargs"]))):
+            elif key in Dataset.get_dataloader.__allowed_args__ + Dataset.get_dataloader.__allowed_kw__:
                 self.config[model_type]["dataloader"].update({key : value})
-            elif key in list(set(learn.__annotations__["args"])):
+            elif key in learn.__allowed_args__:
                 self.config[model_type]["learn"].update({key : value})
-            elif key in list(set(learn.__annotations__["kwargs"])):
+            elif key in learn.__allowed_kw__:
                 self.config[model_type]["optimizer"].update({key : value})
             else:
                 raise ValueError(f"'{key}' is not a valid key word argument")

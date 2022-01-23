@@ -39,6 +39,7 @@ class SpeakerEncoder(nn.Module):
         ):
         super().__init__()
 
+        
         self.verbose = verbose
         self.device = device if not isinstance(device, str) else torch.device(device)
         self.speakers = {}
@@ -450,11 +451,8 @@ class SpeakerEncoder(nn.Module):
 
         self.speakers[speaker] = mean_embedding.squeeze()
 
-# add function annotations
-SpeakerEncoder.learn.__annotations__ = {
-    "args" : inspect.getfullargspec(SpeakerEncoder.learn).args,
-    "kwargs" : inspect.getfullargspec(torch.optim.Adam).args
-}
+SpeakerEncoder.learn.__allowed_args__ = inspect.getfullargspec(SpeakerEncoder.learn).args
+SpeakerEncoder.learn.__allowed_kw__ = inspect.getfullargspec(torch.optim.Adam).args
 
 
 if __name__ == "__main__":

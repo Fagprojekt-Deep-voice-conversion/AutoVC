@@ -61,17 +61,16 @@ class StringToNone(argparse.Action):
 
 
 def parse_vc_args(args = None):
-    """
-    Parse params for Voice Converter init function
-    """
-
     parser = argparse.ArgumentParser(description="Client for parsing arguments to the voice converter", argument_default=argparse.SUPPRESS)  
     
-
-    # add arguments
     parser.add_argument("-mode", choices=["train", "convert"], required=True)
-    parser.add_argument("-device", action=StringToNone)
+    parser.add_argument("-device", action=StringToNone)#, default=None)
     parser.add_argument("--verbose", action="store_true", default=False)
+
+    # conversion data
+    parser.add_argument("-sources", nargs='*', type = str, help = "path to source files")
+    parser.add_argument("-targets", nargs='*', type = str, help = "path to target files")
+    
 
     # models
     parser.add_argument("-auto_encoder", action=StringToNone)#, default=None)
@@ -84,48 +83,38 @@ def parse_vc_args(args = None):
     parser.add_argument("-vocoder_params", nargs='*', action=ParseKwargs, help = "Vocoder parameters")#, default = {})
     parser.add_argument("-wandb_params", nargs='*', action=ParseKwargs, help = "WANDB parameters")#, default = {})
 
-    # return parser
-    if args is None:
-        # args = parser.parse_args()
-        known_args, unknown_args = parser.parse_known_args()
-    else:
-        # args = parser.parse_args(args.split())
-        known_args, unknown_args = parser.parse_known_args(args.split())
+    # parser.add_argument("-auto_encoder_params", nargs='*', action=ParseListKwargs, help = "Auto Encoder parameters", dest = "params")
+    # parser.add_argument("-speaker_encoder_params", nargs='*', action=ParseListKwargs, help = "Speaker Encoder parameters", dest = "params")
+    # parser.add_argument("-vocoder_params", nargs='*', action=ParseListKwargs, help = "Vocoder parameters", dest = "params")
+    # parser.add_argument("-wandb_params", nargs='*', action=ParseListKwargs, help = "WANDB parameters", dest = "params")
 
-    return known_args, unknown_args
+    # training
+    parser.add_argument("-model_type", type = str)
+    parser.add_argument("-n_epochs", type = int)
+    parser.add_argument("-data_path", nargs='*', type = str)
 
-def parse_convert_args(args = None):
-    """
-    Parse params for Voice Converter convert (multiple) function
-    """
+    # convert
+    parser.add_argument("-results_dir", action=StringToNone, help = "directory to store converted audio in")#default = None,)
+    parser.add_argument("-bidirectional", type = bool, help = "whether to also convert the targets to the sources") #default = False,
+    parser.add_argument("-match_method", type = str, help = "how to match each source to a target (same as 'method' in VoiceConverter.convert)")
+    parser.add_argument("-convert_params", nargs='*', action=ParseKwargs)
 
-    parser = argparse.ArgumentParser(description="Client for parsing arguments to the voice converter", argument_default=argparse.SUPPRESS)  
+    # data
+    parser.add_argument("-data_path_excluded", nargs='*', type = str)
     
-
-    # convert multiple params
-    parser.add_argument("-sources", nargs='*', type = str, help = "path to source files")
-    parser.add_argument("-targets", nargs='*', type = str, help = "path to target files")
-    parser.add_argument("-match_method", type = str)
-    parser.add_argument("--bidirectional", action="store_true", default = False)
-
-    # mel_spec kwargs
-    
-
     # return parser
-    if args is None:
-        # args = parser.parse_args()
-        known_args, unknown_args = parser.parse_known_args()
-    else:
-        # args = parser.parse_args(args.split())
-        known_args, unknown_args = parser.parse_known_args(args.split())
 
-    return known_args, unknown_args
+    if args is None:
+        args = parser.parse_args()
+    else:
+        args = parser.parse_args(args.split())
+
+    return args
+
 
 if __name__ == "__main__":
     args = "-mode train -convert_params pipes={source:[normalize_volume],output:[normalize_volume,remove_noise]}"#"# -test False -test2 Ture"
-    # print(vars(parse_vc_args(args)))
-    args, _ = parse_vc_args(args)
-    print(args, " ".join(_))
+    print(vars(parse_vc_args(args)))
 
     # parser = parse_vc_args(args)
     # # print(parser.parse_args(args.split()))

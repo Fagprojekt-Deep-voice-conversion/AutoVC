@@ -292,21 +292,14 @@ def remove_noise(wav, sr, **kwargs):
 
 
 # add annotations to use for preprocessing
-trim_long_silences.__annotations__ = {
-    "args" : inspect.getfullargspec(trim_long_silences).args,
-    "kwargs" : inspect.getfullargspec(create_silence_mask).args
-}
+trim_long_silences.__allowed_args__ = inspect.getfullargspec(trim_long_silences).args
+trim_long_silences.__allowed_kw__ = inspect.getfullargspec(create_silence_mask).args
 
-normalize_volume.__annotations__ = {
-    "args" : inspect.getfullargspec(normalize_volume).args,
-    "kwargs" : []
-}
+normalize_volume.__allowed_args__ = inspect.getfullargspec(normalize_volume).args
+normalize_volume.__allowed_kw__ = []
 
-remove_noise.__annotations__ = {
-    "args" : inspect.getfullargspec(remove_noise).args,
-    "kwargs" : inspect.getfullargspec(nr.reduce_noise).args
-}
-
+remove_noise.__allowed_args__ = inspect.getfullargspec(remove_noise).args
+remove_noise.__allowed_kw__ = inspect.getfullargspec(nr.reduce_noise).args
 
 if __name__ == "__main__":
     wav, sr = librosa.load("data/HY/HY1.wav", sr = 32000)

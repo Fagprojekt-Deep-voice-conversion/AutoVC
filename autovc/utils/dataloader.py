@@ -1,7 +1,7 @@
 import torch
 from torch.utils.data import DataLoader, Dataset
 from torch.nn.functional import pad
-from autovc.audio.spectrogram import mel_spec_auto_encoder, mel_spec_speaker_encoder
+from autovc.audio.spectrogram import mel_spec_auto_encoder, mel_spec_speaker_encoder, compute_partial_slices
 from autovc.utils import retrieve_file_paths, close_progbar, progbar
 from autovc.utils.hparams import SpeakerEncoderParams, AutoEncoderParams
 from autovc import audio
@@ -220,22 +220,14 @@ class SpeakerEncoderDataset(Dataset):
         return data_loader
 
 # add function annotations
-AutoEncoderDataset.__annotations__ = {
-    "args" : inspect.getfullargspec(AutoEncoderDataset.__init__).args,
-    "kwargs" : inspect.getfullargspec(mel_spec_auto_encoder).args
-}
+AutoEncoderDataset.__allowed_args__ = inspect.getfullargspec(AutoEncoderDataset.__init__).args
+AutoEncoderDataset.__allowed_kw__ = inspect.getfullargspec(mel_spec_auto_encoder).args + inspect.getfullargspec(compute_partial_slices).args
 
-AutoEncoderDataset.get_dataloader.__annotations__ = {
-    "args" : inspect.getfullargspec(AutoEncoderDataset.get_dataloader).args,
-    "kwargs" : inspect.getfullargspec(DataLoader.__init__).args
-}
+AutoEncoderDataset.get_dataloader.__allowed_args__ = inspect.getfullargspec(AutoEncoderDataset.get_dataloader.__init__).args
+AutoEncoderDataset.get_dataloader.__allowed_kw__ = inspect.getfullargspec(DataLoader.__init__).args
 
-SpeakerEncoderDataset.__annotations__ = {
-    "args" : inspect.getfullargspec(SpeakerEncoderDataset.__init__).args,
-    "kwargs" : inspect.getfullargspec(mel_spec_speaker_encoder).args
-}
+SpeakerEncoderDataset.__allowed_args__ = inspect.getfullargspec(SpeakerEncoderDataset.__init__).args
+SpeakerEncoderDataset.__allowed_kw__ = inspect.getfullargspec(mel_spec_speaker_encoder).args + inspect.getfullargspec(compute_partial_slices).args
 
-SpeakerEncoderDataset.get_dataloader.__annotations__ = {
-    "args" : inspect.getfullargspec(SpeakerEncoderDataset.get_dataloader).args,
-    "kwargs" : inspect.getfullargspec(DataLoader.__init__).args
-}
+SpeakerEncoderDataset.get_dataloader.__allowed_args__ = inspect.getfullargspec(SpeakerEncoderDataset.get_dataloader.__init__).args
+SpeakerEncoderDataset.get_dataloader.__allowed_kw__ = inspect.getfullargspec(DataLoader.__init__).args

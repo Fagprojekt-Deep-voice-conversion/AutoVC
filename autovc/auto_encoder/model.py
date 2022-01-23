@@ -62,6 +62,7 @@ class AutoEncoder(nn.Module):
         self.encoder = Encoder(dim_neck, dim_emb, freq)#.to(device=self.device)
         self.decoder = Decoder(dim_neck, dim_emb, dim_pre)#.to(device=self.device)
         self.postnet = Postnet()#.to(device=self.device)
+
         
 
     def forward(self, x, c_org, c_trg):
@@ -400,16 +401,15 @@ class AutoEncoder(nn.Module):
 
         return fig
 
-# add function annotations
-AutoEncoder.learn.__annotations__ = {
-    "args" : inspect.getfullargspec(AutoEncoder.learn).args,
-    "kwargs" : inspect.getfullargspec(torch.optim.Adam).args
-}
+AutoEncoder.learn.__allowed_args__ = inspect.getfullargspec(AutoEncoder.learn).args
+AutoEncoder.learn.__allowed_kw__ = inspect.getfullargspec(torch.optim.Adam).args
 
 
 if __name__ == "__main__":
-    AE = AutoEncoder()
-    print(AE.postnet.parameters)
+    # AE = AutoEncoder()
+    # print(AE.postnet.parameters)
+    print(AutoEncoder.learn.__allowed_kw__)
+
 
         
         
