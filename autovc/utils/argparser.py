@@ -101,25 +101,52 @@ def parse_convert_args(args = None):
 
     parser = argparse.ArgumentParser(description="Client for parsing arguments to the voice converter", argument_default=argparse.SUPPRESS)  
     
-
     # convert multiple params
-    parser.add_argument("-sources", nargs='*', type = str, help = "path to source files")
-    parser.add_argument("-targets", nargs='*', type = str, help = "path to target files")
-    parser.add_argument("-match_method", type = str)
-    parser.add_argument("--bidirectional", action="store_true", default = False)
+    parser.add_argument("-sources", nargs='*', type = str, help = "path to source files", required=True)
+    parser.add_argument("-targets", nargs='*', type = str, help = "path to target files", required=True)
+    # parser.add_argument("-match_method", type = str)
+    # parser.add_argument("-bidirectional", type = bool)
 
-    # mel_spec kwargs
-    
+    # kwargs
+    parser.add_argument("-kwargs", nargs='*', action=ParseKwargs, help = "Other parameters to give to convert")
 
     # return parser
     if args is None:
-        # args = parser.parse_args()
-        known_args, unknown_args = parser.parse_known_args()
+        args = parser.parse_args()
+        # known_args, unknown_args = parser.parse_known_args()
     else:
-        # args = parser.parse_args(args.split())
-        known_args, unknown_args = parser.parse_known_args(args.split())
+        args = parser.parse_args(args.split())
+        # known_args, unknown_args = parser.parse_known_args(args.split())
 
-    return known_args, unknown_args
+    # return known_args, unknown_args
+    return args
+
+def parse_train_args(args = None):
+    """
+    Parse params for Voice Converter train function
+    """
+
+    parser = argparse.ArgumentParser(description="Client for parsing arguments to the voice converter", argument_default=argparse.SUPPRESS)  
+    
+    # convert multiple params
+    parser.add_argument("-data_path", nargs = '*', type = str, help = "path to train data", required=True)
+    parser.add_argument("-model_type", choices = ["auto_encoder", "speaker_encoder"], type = str, help = "type of model to train")
+    parser.add_argument("-source_examples", nargs='*', type = str, help = "path to source example files")
+    parser.add_argument("-target_examples", nargs='*', type = str, help = "path to target example files")
+
+    # kwargs
+    parser.add_argument("-kwargs", nargs='*', action=ParseKwargs, help = "Other parameters to give to train")
+
+    # return parser
+    if args is None:
+        args = parser.parse_args()
+        # known_args, unknown_args = parser.parse_known_args()
+    else:
+        args = parser.parse_args(args.split())
+        # known_args, unknown_args = parser.parse_known_args(args.split())
+
+    # return known_args, unknown_args
+    return args
 
 if __name__ == "__main__":
     args = "-mode train -convert_params pipes={source:[normalize_volume],output:[normalize_volume,remove_noise]}"#"# -test False -test2 Ture"

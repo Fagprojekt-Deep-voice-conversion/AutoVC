@@ -19,7 +19,6 @@ AutoEncoderParams = {
 		"dim_pre" : 512,
 		"freq" : 32,
     },
-    # "train" : {
 	"learn" : {
 		"n_epochs" : 1,
 		"log_freq" : 8,
@@ -39,11 +38,12 @@ AutoEncoderParams = {
 		"n_warmup_steps" : 64,
 	},
 	"dataset" : {
-	},
+		"preprocess" : ["normalize_volume"],
+		"preprocess_args" : {"target_dBFS" : -30}
+    },
 	"dataloader" : {
 			"batch_size" : 2,
 	},
-    # },
 	
 
 }
@@ -83,16 +83,12 @@ SpeakerEncoderParams = {
 		"n_warmup_steps" : 64,
 	},
 	"dataset" : {
+		"preprocess" : ["normalize_volume"],
+		"preprocess_args" : {"target_dBFS" : -30}
     },
     "dataloader" : {
             "batch_size" : 1,
     },
-        
-
-    
-    # "data_loader" : {
-    #         "batch_size" : 2,
-    #     },
 }
 
 WaveRNNParams = {
@@ -126,7 +122,7 @@ WandbParams = {
 	"reinit":True,
 	"entity" : "deep_voice_inc",
 	# "name" : self.run_name,
-	"project" : "GettingStarted", # wandb project name, each project correpsonds to an experiment
+	"project" : "DefaultProject", # wandb project name, each project correpsonds to an experiment
 	# "dir" : "logs/" + "GetStarted", # dir to store the run in
 	# "group" : self.agent_name, # uses the name of the agent class
 	"save_code" : True,

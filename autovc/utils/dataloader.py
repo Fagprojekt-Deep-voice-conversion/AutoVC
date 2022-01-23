@@ -22,6 +22,8 @@ class AutoEncoderDataset(Dataset):
         data_path_excluded= [], 
         speakers = False, 
         sr = AutoEncoderParams["spectrogram"]["sr"],
+        preprocess = SpeakerEncoderParams["dataset"]["preprocess"],
+        preprocess_args = SpeakerEncoderParams["dataset"]["preprocess_args"],
         **kwargs
     ):
         """
@@ -61,7 +63,7 @@ class AutoEncoderDataset(Dataset):
             data = audio.Audio(wav, sr = sr)
 
             # TODO - preprocess
-            # data.preprocess()
+            data.preprocess(*preprocess, **preprocess_args)
 
             # get mel spectrogram
             mel_frames = audio.spectrogram.mel_spec_auto_encoder(data.wav, sr = data.sr, cut = cut, **kwargs)
@@ -131,6 +133,8 @@ class SpeakerEncoderDataset(Dataset):
         data_dict, 
         sr = SpeakerEncoderParams["spectrogram"]["sr"],
         device = 'cpu', 
+        preprocess = SpeakerEncoderParams["dataset"]["preprocess"],
+        preprocess_args = SpeakerEncoderParams["dataset"]["preprocess_args"],
         **kwargs
     ):
         """
@@ -171,7 +175,7 @@ class SpeakerEncoderDataset(Dataset):
                 data = audio.Audio(wav, sr = sr)
                 
                 # TODO - preprocess
-                # data.preprocess()
+                data.preprocess(*preprocess, **preprocess_args)
 
                 # get mel spectrograms
                 frames_batch = audio.spectrogram.mel_spec_speaker_encoder(data.wav, sr = data.sr, cut = cut, **kwargs)

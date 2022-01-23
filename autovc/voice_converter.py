@@ -83,7 +83,18 @@ class VoiceConverter:
         
         
 
-    def convert(self, source, target,  sr = 22050, save_name = None, save_dir = None, **kwargs):
+    def convert(self, 
+        source, 
+        target,  
+        sr = 22050, 
+        save_name = None, 
+        save_dir = None, 
+        preprocess = ["normalize_volume"],
+        preprocess_args = {},
+        outprocess = ["normalize_volume", "remove_noise"],
+        outprocess_args = {},
+        **kwargs
+    ):
         """
         Gives the features of the target to the content of the source
 
@@ -116,6 +127,7 @@ class VoiceConverter:
         # source data
         audio_src = Audio(source, sr)
         # TODO - preprocess
+        audio_src.preprocess(*preprocess, **preprocess_args)
         c_source = self.SE.embed_utterance(audio_src.wav).unsqueeze(0)
         
         # target data
@@ -124,6 +136,7 @@ class VoiceConverter:
         else:
             audio_trg = Audio(target, sr)
             # TODO - preprocess
+            audio_trg.preprocess(*preprocess, **preprocess_args)
             c_target = self.SE.embed_utterance(audio_trg.wav).unsqueeze(0)
             
 
@@ -144,7 +157,7 @@ class VoiceConverter:
         # create audio output
         audio_out = Audio(np.asarray(waveform), sr = sr, sr_org = 22050) # where in the vocoder is this sample rate set? 
         # TODO - outprocess
-        # audio_out.preprocess("convert_out", *pipes.get("output", []), **pipe_args.get("output", {}))
+        audio_out.preprocess(*outprocess, **outprocess_args)
 
         # return none if save_name is False and a file should not be saved
         if save_name == False:
@@ -177,6 +190,7 @@ class VoiceConverter:
         return audio_out
 
     def train(self, 
+        data_path,
         model_type = "auto_encoder", 
         source_examples = "data/samples/hilde_1.wav", 
         target_examples = "data/samples/HaegueYang_5.wav", 
@@ -212,6 +226,7 @@ class VoiceConverter:
             learn = self.SE.learn
 
         # update config
+        self.config[model_type]["dataset"].update({"data_path" : data_path})
         for key, value in kwargs.items():
             if key in Dataset.__allowed_args__ + Dataset.__allowed_kw__:
                 self.config[model_type]["dataset"].update({key : value})
@@ -262,6 +277,8 @@ class VoiceConverter:
                 sources = source_examples,
                 targets = target_examples,
                 save_dir = "wandb" if not self.wandb_run.mode == "disabled" else "training_examples",
+                preprocess = [], # no preprocessing of example conversions
+                out_process = [],
             )
 
         # if conversion_examples is None:
