@@ -92,9 +92,8 @@ class Audio:
                 raise ModuleNotFoundError(f"The function {fun} was not found in audio.tools")
 
             # find kwargs to pass to func
-            allowed_keys = list(set(func.__annotations__["args"]).union(set(func.__annotations__["kwargs"])))
-            func_kwargs = {key:value for key, value in kwargs.items() if key in allowed_keys}
-            func_kwargs.update({"sr" : self.sr} if "sr" in allowed_keys else {})
+            func_kwargs = {key:value for key, value in kwargs.items() if key in func.__allowed_kw__ + func.__allowed_args__}
+            func_kwargs.update({"sr" : self.sr} if "sr" in func.__allowed_kw__ + func.__allowed_args__ else {})
     
             # apply function to wav
             self.wav = func(wav = self.wav, **func_kwargs)

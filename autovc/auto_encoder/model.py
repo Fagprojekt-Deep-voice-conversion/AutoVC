@@ -8,17 +8,19 @@ Everything is shown in figure 3 in the Paper - please have this by hand when rea
 import torch
 import torch.nn as nn
 import wandb
-
+import inspect
 from autovc.auto_encoder.net_layers import *
 from autovc.auto_encoder.encoder import Encoder
 from autovc.auto_encoder.decoder import Decoder
 from autovc.auto_encoder.postnet import Postnet
 # from autovc.utils.audio import get_mel_frames
-from autovc.utils.hparams import AutoEncoderParams as hparams
+# from autovc.utils.hparams import AutoEncoderParams as hparams
+from autovc.utils.hparams import AutoEncoderParams
 from autovc.utils import progbar, close_progbar
 import time
 import numpy as np
 from torch.nn.functional import pad
+from autovc.utils import lr_scheduler as lr_schedulers
 import matplotlib.pyplot as plt
 
 
@@ -26,40 +28,64 @@ class AutoEncoder(nn.Module):
     """
     Generator network. The entire thing pieced together (figure 3a and 3c)
     """
-    def __init__(self, verbose = True, **params):
+    def __init__(self, 
+        dim_neck = AutoEncoderParams["model"]["dim_neck"],
+        dim_emb = AutoEncoderParams["model"]["dim_emb"],
+        dim_pre = AutoEncoderParams["model"]["dim_pre"],
+        freq = AutoEncoderParams["model"]["freq"],
+        verbose = True, 
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        ):
         """
-        params:
-        verbose: whether to print information in terminal
-        dim_neck: dimension of bottleneck (set to 32 in the paper)
-        dim_emb: dimension of speaker embedding (set to 256 in the paper)
-        dim_pre: dimension of the input to the decoder (output of first LSTM layer) (set to 512 in the paper)
-        full list of params can be found in `autovc/utils/hparams.py`
+        Parameters
+        ----------
+                dim_neck: 
+            Dimension of bottleneck (set to 32 in the paper)
+        dim_emb: 
+            Dimension of speaker embedding (set to 256 in the paper)
+        dim_pre: 
+            Dimension of the input to the decoder (output of first LSTM layer) (set to 512 in the paper)
+        freq: 
+            Sampling frequency for downsampling - set to 32 in the paper
+        verbose: 
+            Whether to output information in terminal
+        device:
+            A torch device to store the model on
+            If string, the value is passed to torch.device
         """
         super(AutoEncoder, self).__init__()
     
         self.verbose = verbose
-        self.params = hparams().update(params)
-        self.encoder = Encoder(**self.params.get_collection("Encoder"))
-        self.decoder = Decoder(**self.params.get_collection("Decoder"))
-        self.postnet = Postnet()
+        self.device = device if not isinstance(device, str) else torch.device(device)
+        self.logging = {}
 
-        self.criterion1 = nn.MSELoss()
-        self.criterion2 = nn.L1Loss()
-        self.optimiser = torch.optim.Adam(self.parameters(), **self.params.get_collection("Adam"))
-        self.lr_scheduler = self.params.lr_scheduler(self.optimiser, **self.params.get_collection("lr_scheduler"))
+        self.encoder = Encoder(dim_neck, dim_emb, freq)#.to(device=self.device)
+        self.decoder = Decoder(dim_neck, dim_emb, dim_pre)#.to(device=self.device)
+        self.postnet = Postnet()#.to(device=self.device)
+
         
 
     def forward(self, x, c_org, c_trg):
         """
-        params:
-        x: spectrogram batch dim: (batch_size, time_frames, n_mels (80) )
-        c_org: Speaker embedding of source dim (batch size, 256)
-        c_trg: Speaker embedding of target (batch size, 256)
+        Parameters
+        ----------
+        x: 
+            Spectrogram batch
+            dim: (batch_size, time_frames, n_mels (80) )
+        c_org: 
+            Speaker embedding of source 
+            dim: (batch size, 256)
+        c_trg: Speaker embedding of target 
+            dim: (batch size, 256)
 
-        return:
-        mel_outputs: the converted output
-        mel_outputs_postnet: the refined (by postnet) out put
-        content_codes: the content vector - the content encoder output
+        Return
+        ------
+        mel_outputs: 
+            The converted output
+        mel_outputs_postnet: 
+            The refined (by postnet) out put
+        content_codes: 
+            The content vector - the content encoder output
         """
 
         """ Pass x and c_org through encoder and obtain downsampled C1 -> and C1 <- as in figure 3"""
@@ -86,11 +112,11 @@ class AutoEncoder(nn.Module):
             - Forward: (0-31 = 31, 32-63 = 63, 64-100 = 95)
             - Backward: (0-31 = 0, 32-63 = 32, 64-95 = 64, 96-100 = 96)
         """
-        codes_forward_upsampled = torch.cat([c.unsqueeze(-1).expand(-1,-1, self.params.freq) for c in codes_forward], dim = -1)
+        codes_forward_upsampled = torch.cat([c.unsqueeze(-1).expand(-1,-1, self.encoder.freq) for c in codes_forward], dim = -1)
         last_part = codes_forward[-1].unsqueeze(-1).expand(-1,-1, x.size(-1) - codes_forward_upsampled.size(-1))
         codes_forward_upsampled = torch.cat([codes_forward_upsampled, last_part], dim = -1)
 
-        codes_backward_upsampled = torch.cat([c.unsqueeze(-1).expand(-1,-1, self.params.freq) for c in codes_backward], dim = -1)[:,:,:x.size(-1)]
+        codes_backward_upsampled = torch.cat([c.unsqueeze(-1).expand(-1,-1, self.encoder.freq) for c in codes_backward], dim = -1)[:,:,:x.size(-1)]
 
 
         """ Concatenates upsampled content codes with target embedding. Dim = (batch_size, 320, input time frames) """
@@ -109,7 +135,7 @@ class AutoEncoder(nn.Module):
         Prepares final output
         mel_outputs: decoder outputs
         mel_outputs_postnet: decoder outputs + postnet outputs
-        contetn_codes: the codes from the content encoder
+        content_codes: the codes from the content encoder
         """
         mel_outputs = mel_outputs
         mel_outputs_postnet = mel_outputs_postnet
@@ -120,18 +146,32 @@ class AutoEncoder(nn.Module):
         return mel_outputs, mel_outputs_postnet, content_codes
 
 
-    def load(self, weights_fpath, device = None):
-        device = device if device is not None else self.params.device
-        try:
-            checkpoint = torch.load(self.params.model_dir.strip("/") + "/" + weights_fpath, map_location = device)
-        except:
-            checkpoint = torch.load(weights_fpath, map_location = device)
+    def load(self, model_name, model_dir = AutoEncoderParams["model_dir"], device = None):
+        self.device = device if device is not None else self.device
+        # try:
+        #     checkpoint = torch.load(self.params.model_dir.strip("/") + "/" + weights_fpath, map_location = self.device)
+        # except:
+        model_path = model_dir.strip("/") + "/" + model_name
+        checkpoint = torch.load(model_path, map_location = self.device)
         self.load_state_dict(checkpoint["model_state"])
         if self.verbose:
-            print("Loaded auto encoder \"%s\" trained to step %d" % (weights_fpath, checkpoint["step"]))
+            print("Loaded auto encoder \"%s\" trained to step %d" % (model_path, checkpoint["step"]))
+
+    def save(self, model_name, save_dir = AutoEncoderParams["learn"]["save_dir"], wandb_run = None):
+        model_path = save_dir.strip("/") + "/" + model_name
+        torch.save({
+            "step": self.logging.get("step"),
+            "model_state": self.state_dict(),
+            "optimizer_state": self.optimiser.state_dict(),
+        }, model_path)
+
+        if wandb_run is not None:
+            artifact = wandb.Artifact(model_name, "AutoEncoder")
+            artifact.add_file(model_path)
+            wandb_run.log_artifact(artifact)
 
         
-    def loss(self, X, c_org, out_decoder, out_postnet, content_codes,  mu = 1, lambd = 1):
+    def _loss(self, X, c_org, out_decoder, out_postnet, content_codes,  mu = 1, lambd = 1):
         """
         Loss function as proposed in AutoVC
         L = Reconstruction Error + mu * Prenet reconstruction Error + lambda * content Reconstruction error
@@ -165,7 +205,19 @@ class AutoEncoder(nn.Module):
         return reconstruction_loss1 + mu * reconstruction_loss2 + lambd * content_loss
 
 
-    def learn(self, trainloader, n_epochs, wandb_run = None,  **params):
+    def learn(self, 
+        trainloader, 
+        n_epochs = AutoEncoderParams["learn"]["n_epochs"],
+        log_freq = AutoEncoderParams["learn"]["log_freq"],
+        save_freq = AutoEncoderParams["learn"]["save_freq"],
+        save_dir = AutoEncoderParams["learn"]["save_dir"],
+        model_name = AutoEncoderParams["learn"]["model_name"],
+        example_freq = AutoEncoderParams["learn"]["example_freq"],
+        # example_sources = ...
+        ema_decay = AutoEncoderParams["learn"]["ema_decay"],
+        wandb_run = None, 
+        **opt_params
+    ):
         """
         Method for training the auto encoder
 
@@ -177,26 +229,48 @@ class AutoEncoder(nn.Module):
             a data loader containing the training data
         n_epochs:
             how many epochs to train the model for
-        
-        
+        ema_decay
+        log_freq
+        save_freq
+        model_name
+        model_dir
+        wandb_run
+        **opt_params:
+            kwargs are given to the optimizer
+            If 'lr_scheduler' and 'n_warmup_steps' are specified, these are used to construct a learning rate scheduler.
         """
 
         # initialisation
-        step = 0
-        running_loss, log_steps = 0, 0
+        self.logging["step"] = 0
+        self.logging["running_loss"] = 0
+        self.logging["log_steps"] = 0
+        self.logging["total_time"] = 0
         N_iterations = n_epochs*len(trainloader)
-        # progbar_interval = params.pop("progbar", 1)
-        self.params = hparams().update(params)
         self.train()
         avg_params = self.flatten_params()
         if wandb_run is not None:
-            wandb_run.watch(self, log_freq = self.params.log_freq)
+            wandb_run.watch(self, log_freq = log_freq)
+
+        # prepare optimiser
+        AutoEncoderParams["optimizer"].update(opt_params)
+        lr_scheduler = AutoEncoderParams["optimizer"].pop("lr_scheduler")
+        if isinstance(lr_scheduler, str):
+            lr_scheduler = lr_schedulers.__dict__.get(lr_scheduler)
+        lr_sch_params = {"n_warmup_steps" : AutoEncoderParams["optimizer"].pop("n_warmup_steps")}
+
+        self.criterion1 = nn.MSELoss()
+        self.criterion2 = nn.L1Loss()
+        self.optimiser = torch.optim.Adam(self.parameters(), **AutoEncoderParams["optimizer"])
+        if lr_scheduler is not None:
+            self.lr_scheduler = lr_scheduler(self.optimiser, dim_model = self.decoder.linear_projection.linear_layer.out_features, **lr_sch_params)
+
+        
 
         # begin training
         if self.verbose:
-            print(f"Training Auto Encoder on {torch.cuda.get_device_name() + ' (cuda)' if 'cuda' in self.params.device else 'cpu'}...")
-            progbar(step, N_iterations)
-        total_time = 0
+            print(f"Training Auto Encoder on {torch.cuda.get_device_name() + ' (cuda)' if 'cuda' in self.device.type else 'cpu'}...")
+            progbar(self.logging["step"], N_iterations)
+        
         for epoch in range(n_epochs):
             step_start_time = time.time()
             for X, c_org in trainloader:
@@ -204,60 +278,55 @@ class AutoEncoder(nn.Module):
                 out_decoder, out_postnet, content_codes = self(X, c_org, c_org)
 
                 # Computes the AutoVC reconstruction loss
-                loss = self.loss(X = X, c_org = c_org, out_decoder = out_decoder, out_postnet = out_postnet, content_codes = content_codes)
+                loss = self._loss(X = X, c_org = c_org, out_decoder = out_decoder, out_postnet = out_postnet, content_codes = content_codes)
                 
                 # Compute gradients, clip and take a step
                 self.optimiser.zero_grad()
                 loss.backward()
                 torch.nn.utils.clip_grad_norm_(self.parameters(), max_norm = 1) # Clip gradients (avoid exploiding gradients)
 
-                if self.lr_scheduler is not None: self.lr_scheduler._update_learning_rate()
+                if self.lr_scheduler is not None: 
+                    self.lr_scheduler._update_learning_rate()
                 self.optimiser.step()
 
                 # Save exponentially smoothed parameters - can be used to avoid too large changes of parameters
-                avg_params = self.params.ema_decay * avg_params + (1-self.params.ema_decay) * self.flatten_params()
-                step += 1
-
-                # if (self.verbose) and ((step+1) % progbar_interval == 0):
-                if self.verbose:
-                    total_time += (time.time()-step_start_time)
-                    progbar(step, N_iterations, {"sec/step": np.round(total_time/step)})
-
-                '''
-                Add save model stuff and log loss with W&B below.
-                To save the exponentially smothed params use self.load_flattenend_params first.
+                avg_params = ema_decay * avg_params + (1-ema_decay) * self.flatten_params()
                 
-                '''
+
                 # update log params
-                running_loss += loss
-                log_steps += 1
+                self.logging["step"] += 1
+                self.logging["running_loss"] += loss
+                self.logging["log_steps"] += 1
 
-                # save model and log to wandb
-                if (step % self.params.log_freq == 0 or step == N_iterations) and wandb_run is not None:
-                    wandb_run.log({
-                        "loss" : running_loss/log_steps
-                    }, step = step)
-                    wandb_run.log({
-                         'Conversion': self.plot_conversion(X[0], out_postnet[0])
-                        })
-                    plt.close()
-                    running_loss, log_steps = 0, 0 # reset log 
-                if step % self.params.save_freq == 0 or step == N_iterations:
-                    save_name = self.params.model_dir.strip("/") + "/" + self.params.model_name
-                    torch.save({
-                        "step": step + 1,
-                        "model_state": self.state_dict(),
-                        "optimizer_state": self.optimiser.state_dict(),
-                    }, save_name)
+                # print information
+                if self.verbose:
+                    self.logging["total_time"] += (time.time()-step_start_time)
+                    progbar(self.logging["step"], N_iterations, {"sec/step": np.round(self.logging["total_time"]/self.logging["step"])})
 
-                    if wandb_run is not None:
-                        artifact = wandb.Artifact(self.params.model_name, "AutoEncoder")
-                        artifact.add_file(save_name)
-                        wandb_run.log_artifact(artifact)
-                        
+                
+                
 
+                # save model and log to wandb - To save the exponentially smothed params use self.load_flattenend_params first.
+                if (self.logging["step"] % log_freq == 0 or self.logging["step"] == N_iterations) and wandb_run is not None:
+                    self._log(wandb_run, X, out_postnet)
 
-        close_progbar()
+                if self.logging["step"] % save_freq == 0 or self.logging["step"] == N_iterations:
+                    self.save(model_name, save_dir, wandb_run)
+                    
+                    
+                      
+        if self.verbose: close_progbar()
+
+    def _log(self, wandb_run, X, out_postnet):
+        wandb_run.log({
+            "loss" : self.logging["running_loss"]/self.logging["log_steps"]
+        }, step = self.logging["step"])
+        wandb_run.log({
+                'Conversion': self.plot_conversion(X[0], out_postnet[0])
+            })
+        plt.close()
+        self.logging["running_loss"] = 0
+        self.logging["log_steps"] = 0 
 
     def flatten_params(self):
         '''
@@ -331,6 +400,16 @@ class AutoEncoder(nn.Module):
 
 
         return fig
+
+AutoEncoder.learn.__allowed_args__ = inspect.getfullargspec(AutoEncoder.learn).args
+AutoEncoder.learn.__allowed_kw__ = inspect.getfullargspec(torch.optim.Adam).args
+
+
+if __name__ == "__main__":
+    # AE = AutoEncoder()
+    # print(AE.postnet.parameters)
+    print(AutoEncoder.learn.__allowed_kw__)
+
 
         
         

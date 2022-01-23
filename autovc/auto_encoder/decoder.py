@@ -22,10 +22,14 @@ class Decoder(nn.Module):
     """
     def __init__(self, dim_neck, dim_emb, dim_pre):
         """
-        params:
-        dim_neck: the bottleneck dimension (set to 32 in the paper)
-        dim_emb: speaker embedding dimension (set to 256 in the paper)
-        dim_pre: out dimension of the pre LSTM layer (set to 512 in paper)
+        Parameters
+        ----------
+        dim_neck: 
+            The bottleneck dimension (set to 32 in the paper)
+        dim_emb: 
+            Speaker embedding dimension (set to 256 in the paper)
+        dim_pre: 
+            Out dimension of the pre LSTM layer (set to 512 in paper)
         """
         super(Decoder, self).__init__()
 

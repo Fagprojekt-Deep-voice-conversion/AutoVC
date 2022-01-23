@@ -21,10 +21,14 @@ class Encoder(nn.Module):
     """
     def __init__(self, dim_neck, dim_emb, freq):
         """
-        params:
-        dim_neck: Dimension of the bottleneck - set to 32 in the paper
-        dim_emb: Dimension of the speaker embedding - set to 256 in the paper
-        freq: sampling frequency for downsampling - set to 32 in the paper
+        Parameters
+        ----------
+        dim_neck: 
+            Dimension of the bottleneck - set to 32 in the paper
+        dim_emb: 
+            Dimension of the speaker embedding - set to 256 in the paper
+        freq: 
+            Sampling frequency for downsampling - set to 32 in the paper
         """
         super(Encoder, self).__init__()
         self.dim_neck = dim_neck
