@@ -23,11 +23,11 @@ class VoiceConverter:
     """
     
     def __init__(self,
-        auto_encoder = "AutoVC_seed40_200k.pt", 
+        auto_encoder = VoiceConverterParams["default_models"]["auto_encoder"], 
         auto_encoder_params = {},
-        speaker_encoder = "SpeakerEncoder.pt", 
+        speaker_encoder = VoiceConverterParams["default_models"]["speaker_encoder"], 
         speaker_encoder_params = {},
-        vocoder = "WaveRNN_Pretrained.pyt", 
+        vocoder = VoiceConverterParams["default_models"]["vocoder"], 
         vocoder_params = {},
         wandb_params = {},
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu"),
@@ -86,13 +86,13 @@ class VoiceConverter:
     def convert(self, 
         source, 
         target,  
-        sr = 22050, 
-        save_name = None, 
-        save_dir = None, 
-        preprocess = ["normalize_volume"],
-        preprocess_args = {},
-        outprocess = ["normalize_volume", "remove_noise"],
-        outprocess_args = {},
+        sr = VoiceConverterParams["convert"]["sr"], 
+        save_name = VoiceConverterParams["convert"]["save_name"], 
+        save_dir = VoiceConverterParams["convert"]["save_dir"], 
+        preprocess = VoiceConverterParams["convert"]["preprocess"],
+        preprocess_args = VoiceConverterParams["convert"]["preprocess_args"],
+        outprocess = VoiceConverterParams["convert"]["outprocess"],
+        outprocess_args = VoiceConverterParams["convert"]["outprocess_args"],
         **kwargs
     ):
         """
@@ -225,7 +225,14 @@ class VoiceConverter:
             learn = self.SE.learn
 
         # update config
-        self.config[model_type]["dataset"].update({"data_path" : data_path})
+        if model_type == "speaker_encoder" and not isinstance(data_path, dict):
+            try:
+                self.config[model_type]["dataset"].update({"data_path" : {key.strip():val.strip() for key, val in [arg.split("=") for arg in data_path]}})
+            except:
+                raise ValueError("data_path must be a dict or list of strings with 'name=' as prefix")
+        else:
+            self.config[model_type]["dataset"].update({"data_path" : data_path})
+        
         for key, value in kwargs.items():
             if key in Dataset.__allowed_args__ + Dataset.__allowed_kw__:
                 self.config[model_type]["dataset"].update({key : value})

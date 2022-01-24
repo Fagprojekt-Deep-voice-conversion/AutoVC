@@ -130,6 +130,23 @@ WandbParams = {
 }
 
 
+VoiceConverterParams = {
+	"default_models" : {
+		"auto_encoder" : "AutoVC_seed40_200k.pt",
+		"speaker_encoer" : "SpeakerEncoder.pt",
+		"vocoder" :  "WaveRNN_Pretrained.pyt",
+	},
+	"convert" : {
+		"sr" : 22050,
+		"save_name" : None,
+		"save_dir" : None,
+		"preprocess" : ["normalize_volume"],
+		"preprocess_args" : {},
+        "outprocess" : ["normalize_volume", "remove_noise"],
+        "outprocess_args" : {},
+	},
+}
+
 class Namespace:
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)

@@ -131,6 +131,7 @@ class AutoEncoderDataset(Dataset):
 class SpeakerEncoderDataset(Dataset):
     def __init__(self, 
         data_path, 
+        data_path_excluded = [],
         sr = SpeakerEncoderParams["spectrogram"]["sr"],
         device = 'cpu', 
         preprocess = SpeakerEncoderParams["dataset"]["preprocess"],
@@ -160,7 +161,7 @@ class SpeakerEncoderDataset(Dataset):
         
 
         # Find wav files in dictionary of data        
-        wav_files = [sum([retrieve_file_paths(data_dir_path) for data_dir_path in speaker_data_dir], []) for speaker_data_dir in data_dict.values()]
+        wav_files = [sum([retrieve_file_paths(data_dir_path, excluded=data_path_excluded) for data_dir_path in speaker_data_dir], []) for speaker_data_dir in data_path.values()]
 
         # initial values
         N = sum([len(d) for d in wav_files])
