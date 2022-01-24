@@ -130,7 +130,7 @@ class AutoEncoderDataset(Dataset):
 
 class SpeakerEncoderDataset(Dataset):
     def __init__(self, 
-        data_dict, 
+        data_path, 
         sr = SpeakerEncoderParams["spectrogram"]["sr"],
         device = 'cpu', 
         preprocess = SpeakerEncoderParams["dataset"]["preprocess"],
@@ -142,7 +142,7 @@ class SpeakerEncoderDataset(Dataset):
 
         Parameters
         ----------
-        data_dict:
+        data_path:
             dictionary with speaker name as key and data directory or list of data as key.
         sr:
             Sample rate to load the data with
@@ -164,7 +164,7 @@ class SpeakerEncoderDataset(Dataset):
 
         # initial values
         N = sum([len(d) for d in wav_files])
-        speakers = len(data_dict.keys())
+        speakers = len(data_path.keys())
         self.datasets = [[] for _ in wav_files]
 
         # create data set

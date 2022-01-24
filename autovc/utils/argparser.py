@@ -129,7 +129,7 @@ def parse_train_args(args = None):
     parser = argparse.ArgumentParser(description="Client for parsing arguments to the voice converter", argument_default=argparse.SUPPRESS)  
     
     # convert multiple params
-    parser.add_argument("-data_path", nargs = '*', type = str, help = "path to train data", required=True)
+    parser.add_argument("-data_path", nargs = '*', type = str, help = "path to train data, if model_type is speaker_encoder, paths can have name= in the beginning to indicate the speaker", required=True)
     parser.add_argument("-model_type", choices = ["auto_encoder", "speaker_encoder"], type = str, help = "type of model to train")
     parser.add_argument("-source_examples", nargs='*', type = str, help = "path to source example files")
     parser.add_argument("-target_examples", nargs='*', type = str, help = "path to target example files")
@@ -149,11 +149,13 @@ def parse_train_args(args = None):
     return args
 
 if __name__ == "__main__":
-    args = "-mode train -convert_params pipes={source:[normalize_volume],output:[normalize_volume,remove_noise]}"#"# -test False -test2 Ture"
+    args = "-mode train -data_path hilde=sgasb yang=sfsd hilde=dfsdg"#"# -test False -test2 Ture"
     # print(vars(parse_vc_args(args)))
     args, _ = parse_vc_args(args)
-    print(args, " ".join(_))
 
+    args = parse_train_args(" ".join(_))
+    # print({key : val for arg in vars(args)["data_path"] for key, val in arg.split("=")})
+    print({key:val for key, val in [arg.split("=") for arg in vars(args)["data_path"]]})
     # parser = parse_vc_args(args)
     # # print(parser.parse_args(args.split()))
     # print(parser.parse_known_args(args.split()))

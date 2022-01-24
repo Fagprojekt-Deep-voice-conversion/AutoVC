@@ -104,7 +104,7 @@ class VoiceConverter:
             soundfile with content to convert
         target:
             soundfile containing the voice of the person which features to use
-            if proper training has been done, it can also be a string with the name of the person
+            If the speaker encoder is trained for a specific person, a string with this key can be passed instead.
         sr:
             The sample rate to use for the audio
         save_name:
@@ -126,7 +126,6 @@ class VoiceConverter:
 
         # source data
         audio_src = Audio(source, sr)
-        # TODO - preprocess
         audio_src.preprocess(*preprocess, **preprocess_args)
         c_source = self.SE.embed_utterance(audio_src.wav).unsqueeze(0)
         
@@ -135,7 +134,6 @@ class VoiceConverter:
             c_target = self.SE.speakers[target].unsqueeze(0)
         else:
             audio_trg = Audio(target, sr)
-            # TODO - preprocess
             audio_trg.preprocess(*preprocess, **preprocess_args)
             c_target = self.SE.embed_utterance(audio_trg.wav).unsqueeze(0)
             
@@ -156,7 +154,6 @@ class VoiceConverter:
 
         # create audio output
         audio_out = Audio(np.asarray(waveform), sr = sr, sr_org = 22050) # where in the vocoder is this sample rate set? 
-        # TODO - outprocess
         audio_out.preprocess(*outprocess, **outprocess_args)
 
         # return none if save_name is False and a file should not be saved
@@ -220,6 +217,8 @@ class VoiceConverter:
         if model_type == "auto_encoder":
             Dataset = AutoEncoderDataset
             learn = self.AE.learn
+
+            self.config[model_type]["dataset"].update({"speaker_encoder": self.SE} if model_type == "auto_encoder" else {}) # add se to params manually as wandb config converts to string
             
         else:
             Dataset = SpeakerEncoderDataset
@@ -241,7 +240,7 @@ class VoiceConverter:
 
         # create a wandb run
         self.setup_wandb()
-        self.config[model_type]["dataset"].update({"speaker_encoder": self.SE} if model_type == "auto_encoder" else {}) # add se to params manually as wandb config converts to string
+        
 
         # train
         if self.verbose:
