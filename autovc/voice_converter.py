@@ -254,7 +254,7 @@ class VoiceConverter:
             print(f"Starting to train {model_type}...")
         dataset = Dataset(**self.config[model_type]["dataset"])
         dataloader = dataset.get_dataloader(**self.config[model_type]["dataloader"])
-        learn(dataloader, **self.config[model_type]["learn"], **self.config[model_type]["optimizer"])
+        learn(dataloader, wandb_run = self.wandb_run, **self.config[model_type]["learn"], **self.config[model_type]["optimizer"])
 
         if self.verbose:
             print(f"Training finished in {time.time() - start_time}")
