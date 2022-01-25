@@ -80,7 +80,9 @@ class VoiceConverter:
 
         # initialise models
         self.__init_models()
-        
+
+        # add known speakers to config
+        self.config["speaker_encoder"]["mean_speakers"] = {key : "learned_previously" for key in self.SE.speakers.keys()}        
         
 
     def convert(self, 
@@ -356,6 +358,23 @@ class VoiceConverter:
             audio_objects.extend(self.convert_multiple(target, sources, match_method, **convert_params))
 
         return audio_objects
+
+    def learn_speakers(self, mean_speaker_path, mean_speaker_path_excluded = []):
+        """
+        Learns mean speaker embeddings.
+        """
+        if isinstance(mean_speaker_path, dict):
+            self.config["speaker_encoder"].update({"mean_speakers" : {key:val for key, val in mean_speaker_path.items()}})
+        else:
+            try:
+                self.config["speaker_encoder"].update({"mean_speakers" : {key.strip():val.strip() for key, val in [arg.split("=") for arg in mean_speaker_path]}})
+            except:
+                raise ValueError("data_path must be a dict or list of strings with 'name=' as prefix")
+        
+        for speaker, speaker_path in  self.config["speaker_encoder"]["mean_speakers"].items():
+            if not speaker_path == "learned_previously":
+                self.SE.learn_speaker(speaker, speaker_path, mean_speaker_path_excluded)
+
 
     
     def setup_wandb(self, **params):

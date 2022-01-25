@@ -8,9 +8,19 @@ from autovc import VoiceConverter
 vc_args, other_args = parse_vc_args()
 vc_args = vars(vc_args)
 
+# get mode
 mode = vc_args.pop("mode")
+
+# get mena speaker embedding paths
+mean_speaker_path = vc_args.pop("mean_speaker_path", False)
+mean_speaker_path_excluded = vc_args.pop("mean_speaker_path_excluded", [])
+
+# make vc object
 vc = VoiceConverter(**vc_args)
 
+# learn mean speakers if necesary
+if mean_speaker_path:
+    vc.learn_speakers(mean_speaker_path, mean_speaker_path_excluded)
 
 if mode == "train":
     train_args = vars(parse_train_args(" ".join(other_args)))

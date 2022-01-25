@@ -20,7 +20,7 @@ class AutoEncoderDataset(Dataset):
         speaker_encoder, 
         data_path, 
         data_path_excluded= [], 
-        speakers = False, 
+        use_mean_speaker_embedding = False, 
         sr = AutoEncoderParams["spectrogram"]["sr"],
         preprocess = SpeakerEncoderParams["dataset"]["preprocess"],
         preprocess_args = SpeakerEncoderParams["dataset"]["preprocess_args"],
@@ -37,8 +37,10 @@ class AutoEncoderDataset(Dataset):
             Path to the data. See `utils.retrieve_file_paths()` for input format.
         data_path_excluded:
             Paths to exclude from the data. Same as excluded in  `utils.retrieve_file_paths()`.
-        speakers:
-            ... update how this is used
+        use_mean_speaker_embedding:
+            If true, the name of the wav file will be compared to the speaker names found in speaker_encoder.speakers.keys(), 
+            if the speaker name is found in the file name, the matching mean speaker embedding will be used.
+            To use this proparly, the speaker_encoder should learn the necesary mean speaker embedding before creating the data set.
         sr:
             Sample rate to load the data with
         **kwargs:
@@ -69,11 +71,16 @@ class AutoEncoderDataset(Dataset):
             mel_frames = audio.spectrogram.mel_spec_auto_encoder(data.wav, sr = data.sr, cut = cut, **kwargs)
 
             # Get embeddings of speech
-            if not speakers:
+            found_speaker = False
+            if use_mean_speaker_embedding:
+                for speaker in speaker_encoder.speakers.keys():
+                    if speaker in wav:
+                        embeds = speaker_encoder.speakers[speaker]
+                        found_speaker = True
+            if not found_speaker:
+                # name = 'hilde' if 'hilde' in wav else 'HaegueYang'
+                # embeds = speaker_encoder.speakers[name]
                 embeds     = speaker_encoder.embed_utterance(data.wav)
-            else:
-                name = 'hilde' if 'hilde' in wav else 'HaegueYang'
-                embeds = speaker_encoder.speakers[name]
             
             # append to data set
             if cut:
