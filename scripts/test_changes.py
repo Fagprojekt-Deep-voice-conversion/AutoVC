@@ -14,6 +14,10 @@ vc.convert("data/samples/mette_183.wav", "data/samples/chooped7.wav", save_name 
 
 
 print("Testing speaker encoder...")
-vc.SE.learn_speaker("yang", ["data/samples/chooped7.wav", "data/samples/HaegueSMK.wav", "data/samples/HaegueYang_5.wav"])
-print(vc.SE.speakers)
+# vc.SE.learn_speaker("yang", ["data/samples/chooped7.wav", "data/samples/HaegueSMK.wav", "data/samples/HaegueYang_5.wav"])
+# print(vc.SE.speakers)
+vc.learn_speakers({"yang" : ["data/samples/chooped7.wav", "data/samples/HaegueSMK.wav", "data/samples/HaegueYang_5.wav"]})
+
+print(vc.config)
+
 vc.convert("data/samples/mette_183.wav", "yang", save_name = "conversion_test2.wav", preprocess=[])

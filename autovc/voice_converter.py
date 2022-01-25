@@ -80,7 +80,9 @@ class VoiceConverter:
 
         # initialise models
         self.__init_models()
-        
+
+        # add known speakers to config
+        self.config["speaker_encoder"]["mean_speakers"] = {key : "learned_previously" for key in self.SE.speakers.keys()}        
         
 
     def convert(self, 
@@ -93,6 +95,7 @@ class VoiceConverter:
         preprocess_args = VoiceConverterParams["convert"]["preprocess_args"],
         outprocess = VoiceConverterParams["convert"]["outprocess"],
         outprocess_args = VoiceConverterParams["convert"]["outprocess_args"],
+        audio_log_dict = {},
         **kwargs
     ):
         """
@@ -171,8 +174,9 @@ class VoiceConverter:
         if save_dir == "wandb":
             # TODO log as table
             assert self.wandb_run is not None, "A wandb run has to be setup with setup_wandb() to save conversion in wandb"
-            self.wandb_run.log({save_name.replace(".wav", "") : wandb.Audio(audio_out.wav, caption = save_name, sample_rate = audio_out.sr)})
+            self.wandb_run.log({save_name.replace(".wav", "") : wandb.Audio(audio_out.wav, caption = save_name, sample_rate = audio_out.sr), **audio_log_dict})
         else:
+ 
             if save_dir is not None:
                 save_dir = save_dir if save_dir.startswith("results") else "results/" + save_dir 
                 save_name = save_dir.strip("/") + "/" + save_name
@@ -180,7 +184,7 @@ class VoiceConverter:
             else:
                 os.makedirs("results", exist_ok=True) # create folder
                 save_name = save_name if save_name.startswith("results") else "results/" + save_name 
-    
+
             sf.write(save_name, audio_out.wav, samplerate =audio_out.sr)
             print(f"Converted voice has been saved to '{save_name}'")
     
@@ -254,7 +258,18 @@ class VoiceConverter:
             print(f"Starting to train {model_type}...")
         dataset = Dataset(**self.config[model_type]["dataset"])
         dataloader = dataset.get_dataloader(**self.config[model_type]["dataloader"])
-        learn(dataloader, wandb_run = self.wandb_run, **self.config[model_type]["learn"], **self.config[model_type]["optimizer"])
+        if not convert_examples:
+            learn(dataloader, wandb_run = self.wandb_run, **self.config[model_type]["learn"], **self.config[model_type]["optimizer"])
+        else:
+            learn(
+                dataloader, 
+                wandb_run = self.wandb_run, 
+                voice_converter = self,
+                source_examples = source_examples,
+                target_examples = target_examples,
+                **self.config[model_type]["learn"], 
+                **self.config[model_type]["optimizer"]
+            )
 
         if self.verbose:
             print(f"Training finished in {time.time() - start_time}")
@@ -277,14 +292,14 @@ class VoiceConverter:
         # print(f"Training finished in {time.time() - start_time}")
 
         # conversion example
-        if convert_examples:
-            self.convert_multiple(
-                sources = source_examples,
-                targets = target_examples,
-                save_dir = "wandb" if not self.wandb_run.mode == "disabled" else "training_examples",
-                preprocess = [], # no preprocessing of example conversions
-                out_process = [],
-            )
+        # if convert_examples:
+            # self.convert_multiple(
+            #     sources = source_examples,
+            #     targets = target_examples,
+            #     save_dir = "wandb" if not self.wandb_run.mode == "disabled" else "training_examples",
+            #     preprocess = [], # no preprocessing of example conversions
+            #     out_process = [],
+            # )
 
         # if conversion_examples is None:
         #     self.convert(
@@ -356,6 +371,23 @@ class VoiceConverter:
             audio_objects.extend(self.convert_multiple(target, sources, match_method, **convert_params))
 
         return audio_objects
+
+    def learn_speakers(self, mean_speaker_path, mean_speaker_path_excluded = []):
+        """
+        Learns mean speaker embeddings.
+        """
+        if isinstance(mean_speaker_path, dict):
+            self.config["speaker_encoder"].update({"mean_speakers" : {key:val for key, val in mean_speaker_path.items()}})
+        else:
+            try:
+                self.config["speaker_encoder"].update({"mean_speakers" : {key.strip():val.strip() for key, val in [arg.split("=") for arg in mean_speaker_path]}})
+            except:
+                raise ValueError("data_path must be a dict or list of strings with 'name=' as prefix")
+        
+        for speaker, speaker_path in  self.config["speaker_encoder"]["mean_speakers"].items():
+            if not speaker_path == "learned_previously":
+                self.SE.learn_speaker(speaker, speaker_path, mean_speaker_path_excluded)
+
 
     
     def setup_wandb(self, **params):

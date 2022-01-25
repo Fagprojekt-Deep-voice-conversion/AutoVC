@@ -435,12 +435,12 @@ class SpeakerEncoder(nn.Module):
         
         return fig
 
-    def learn_speaker(self, speaker, speaker_folder):
+    def learn_speaker(self, speaker, speaker_path, speaker_path_excluded = []):
         '''
         Learns the mean speaker embedding of a speaker given a speaker and a folder of .wavs of this speaker
         Saves the embedding in self.speakers, which is saved together with the state_dict
         '''
-        wav_files = retrieve_file_paths(speaker_folder)
+        wav_files = retrieve_file_paths(speaker_path, speaker_path_excluded)
 
         embeddings = []
         print("Computing speaker embeddings...")

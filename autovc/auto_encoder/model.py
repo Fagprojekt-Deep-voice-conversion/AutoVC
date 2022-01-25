@@ -216,6 +216,9 @@ class AutoEncoder(nn.Module):
         # example_sources = ...
         ema_decay = AutoEncoderParams["learn"]["ema_decay"],
         wandb_run = None, 
+        voice_converter = None,
+        source_examples = None,
+        target_examples = None,
         **opt_params
     ):
         """
@@ -273,6 +276,7 @@ class AutoEncoder(nn.Module):
         
         for epoch in range(n_epochs):
             step_start_time = time.time()
+            self.logging["batch"] = 0 
             for X, c_org in trainloader:
                 # Compute output using the speaker embedding only of the source
                 out_decoder, out_postnet, content_codes = self(X, c_org, c_org)
@@ -297,6 +301,8 @@ class AutoEncoder(nn.Module):
                 self.logging["step"] += 1
                 self.logging["running_loss"] += loss
                 self.logging["log_steps"] += 1
+                self.logging["epoch"] = epoch+1
+                self.logging["batch"] += 1
 
                 # print information
                 if self.verbose:
@@ -312,21 +318,36 @@ class AutoEncoder(nn.Module):
 
                 if self.logging["step"] % save_freq == 0 or self.logging["step"] == N_iterations:
                     self.save(model_name, save_dir, wandb_run)
-                    
+
+            if voice_converter is not None:
+                assert source_examples is not None and target_examples is not None
+                audio_objects = voice_converter.convert_multiple(
+                    sources = source_examples,
+                    targets = target_examples,
+                    save_dir = "training_examples" if wandb_run is None or wandb_run.mode == "disabled" else "wandb",
+                    audio_log_dict = {"epoch" : self.logging["epoch"], "batch" : self.logging["batch"], "step": self.logging["step"]}
+                    # preprocess = [], # no preprocessing of example conversions
+                    # out_process = [],
+                )
+
                     
                       
         if self.verbose: close_progbar()
 
     def _log(self, wandb_run, X, out_postnet):
         wandb_run.log({
-            "loss" : self.logging["running_loss"]/self.logging["log_steps"]
-        }, step = self.logging["step"])
+            "loss" : self.logging["running_loss"]/self.logging["log_steps"],
+            "epoch" : self.logging["epoch"],
+            "batch" : self.logging["batch"],
+            "step": self.logging["step"]
+        })
         wandb_run.log({
                 'Conversion': self.plot_conversion(X[0], out_postnet[0])
             })
         plt.close()
         self.logging["running_loss"] = 0
         self.logging["log_steps"] = 0 
+        
 
     def flatten_params(self):
         '''

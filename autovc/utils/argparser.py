@@ -84,6 +84,10 @@ def parse_vc_args(args = None):
     parser.add_argument("-vocoder_params", nargs='*', action=ParseKwargs, help = "Vocoder parameters")#, default = {})
     parser.add_argument("-wandb_params", nargs='*', action=ParseKwargs, help = "WANDB parameters")#, default = {})
 
+    # mean speaker embeddings
+    parser.add_argument("-mean_speaker_path", nargs='*', type = str, help = "path to speaker data, should be in the foramt 'speaker=paths', e.g. -mean_speaker_path JohnDoe=path/to/John")
+    parser.add_argument("-mean_speaker_path_excluded", nargs='*', type = str, help = "Paths to avoid using when learning the mean speaker embedding")
+
     # return parser
     if args is None:
         # args = parser.parse_args()
@@ -93,6 +97,27 @@ def parse_vc_args(args = None):
         known_args, unknown_args = parser.parse_known_args(args.split())
 
     return known_args, unknown_args
+
+# def parse_mean_speaker_args(args = None):
+#     """
+#     Parse params for Voice Converter learn speakers function
+#     """
+
+#     parser = argparse.ArgumentParser(description="Client for parsing arguments to the voice converter", argument_default=argparse.SUPPRESS)  
+    
+
+#     # add arguments
+#     parser.add_argument("-data_path", nargs = '*', type = str, help = "path to train data, if model_type is speaker_encoder, paths can have name= in the beginning to indicate the speaker", required=True)
+
+#     # return parser
+#     if args is None:
+#         # args = parser.parse_args()
+#         known_args, unknown_args = parser.parse_known_args()
+#     else:
+#         # args = parser.parse_args(args.split())
+#         known_args, unknown_args = parser.parse_known_args(args.split())
+
+#     return known_args, unknown_args
 
 def parse_convert_args(args = None):
     """
@@ -104,6 +129,7 @@ def parse_convert_args(args = None):
     # convert multiple params
     parser.add_argument("-sources", nargs='*', type = str, help = "path to source files", required=True)
     parser.add_argument("-targets", nargs='*', type = str, help = "path to target files", required=True)
+    
     # parser.add_argument("-match_method", type = str)
     # parser.add_argument("-bidirectional", type = bool)
 
@@ -150,12 +176,28 @@ def parse_train_args(args = None):
 
 if __name__ == "__main__":
     args = "-mode train -data_path hilde=sgasb yang=sfsd hilde=dfsdg"#"# -test False -test2 Ture"
+
+    args = " ".join(param.strip() for param in [
+    # "-speaker_encoder SpeakerEncoder_SMK.pt",
+    "-mode train",
+    "-model_type auto_encoder",
+    # "-auto_encoder AutoVC_SMK.pt",
+    
+    # "-auto_encoder_params cut=True speakers=False model_name=SMK_trial_20220125.pt",
+    # "-data_path data/newest_trial",
+    "-data_path data/hilde_subset.wav data/SMK_HY_long.wav data/yang_long.wav ",
+    "-kwargs n_epochs=10 model_name=SMK_trial_20220125.pt cut=True"
+
+    # wandb
+    f"-wandb_params project={'project'} name={'test'}"
+])
+
     # print(vars(parse_vc_args(args)))
     args, _ = parse_vc_args(args)
 
     args = parse_train_args(" ".join(_))
     # print({key : val for arg in vars(args)["data_path"] for key, val in arg.split("=")})
-    print({key:val for key, val in [arg.split("=") for arg in vars(args)["data_path"]]})
+    print(args)
     # parser = parse_vc_args(args)
     # # print(parser.parse_args(args.split()))
     # print(parser.parse_known_args(args.split()))
