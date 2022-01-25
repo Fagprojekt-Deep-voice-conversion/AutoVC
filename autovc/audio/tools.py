@@ -302,8 +302,14 @@ remove_noise.__allowed_args__ = inspect.getfullargspec(remove_noise).args
 remove_noise.__allowed_kw__ = inspect.getfullargspec(nr.reduce_noise).args
 
 if __name__ == "__main__":
-    wav, sr = librosa.load("data/HY/HY1.wav", sr = 32000)
-    wavs = split_audio(wav, sr, save_name="HY1.wav", allowed_pause = 2, max_len = 5)
+    # wav, sr = librosa.load("data/SMK_train/Hilde.wav", sr = 16000)
+    # wavs = split_audio(wav, sr, save_name="hilde.wav", allowed_pause = 2, max_len = 6, save_dir = "data/newest_trial/hilde")
+
+    wav, sr = librosa.load("data/SMK_HY_long.wav", sr = 16000)
+    wavs = split_audio(wav, sr, save_name="louise.wav", allowed_pause = 2, max_len = 6, save_dir = "data/newest_trial/louise")
+
+    # wav, sr = librosa.load("data/yang_long.wav", sr = 16000)
+    # wavs = split_audio(wav, sr, save_name="yang.wav", allowed_pause = 2, max_len = 6, save_dir = "data/newest_trial/yang")
     # remove_noise(wav, sr)
 
-    # combine_audio("data/HY", filename = "combined.wav", sr = 48000)
+    # combine_audio("data/newest_trial/hilde_subset", save_name = "data/hilde_subset.wav", sr = 16000)

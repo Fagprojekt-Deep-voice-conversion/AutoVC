@@ -1,32 +1,30 @@
 from autovc.utils.hpc import create_submit
 import os, sys
 
-project = "NewSpeaker"
-job_name = "Louise"
+project = "Trials"
+job_name = "SMK_trial_20220125_short"
 
 # script = "autovc/voice_converter.py"
 args = " ".join(param.strip() for param in [
+    # "-speaker_encoder SpeakerEncoder_SMK.pt",
     "-mode train",
     "-model_type auto_encoder",
-    "-n_epochs 10",
-    "-auto_encoder models/AutoVC/AutoVC_SMK.pt",
-    "-speaker_encoder models/SpeakerEncoder/SpeakerEncoder_SMK.pt",
-    "-auto_encoder_params cut=True speakers=False model_name=Louise2",
-    "-data_path data/HY",
+    "-data_path data/newest_trial ",
+    "-kwargs n_epochs=10 model_name=SMK_trial_short_20220125.pt data_path_excluded=data/newest_trial/hilde",
 
     # wandb
     f"-wandb_params project={project} name={job_name}"
 ])
 # execution_code = ["python " + script.strip() + " " + args]
-execution_code = ["python autovc/voice_converter.py" + " " + args]
+execution_code = ["python autovc/__main__.py" + " " + args]
 
 
 # set cluster settings
 cluster_settings = {
     "overwrite" : True, 
     "n_cores" : 1, 
-    "system_memory" : 5, 
-    "walltime" : "08:00", 
+    "system_memory" : 20, 
+    "walltime" : "6:00", 
     "notifications" : True
 }
 
