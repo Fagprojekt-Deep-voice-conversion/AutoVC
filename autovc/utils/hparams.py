@@ -133,7 +133,7 @@ WandbParams = {
 VoiceConverterParams = {
 	"default_models" : {
 		"auto_encoder" : "AutoVC_seed40_200k.pt",
-		"speaker_encoer" : "SpeakerEncoder.pt",
+		"speaker_encoder" : "SpeakerEncoder.pt",
 		"vocoder" :  "WaveRNN_Pretrained.pyt",
 	},
 	"convert" : {
@@ -144,6 +144,11 @@ VoiceConverterParams = {
 		"preprocess_args" : {},
         "outprocess" : ["normalize_volume", "remove_noise"],
         "outprocess_args" : {},
+	},
+	"train" : {
+		"model_type" : "auto_encoder", 
+        "source_examples" : "data/samples/HY1_03.wav", 
+        "target_examples" : "data/samples/HaegueYang_5.wav", 
 	},
 }
 
