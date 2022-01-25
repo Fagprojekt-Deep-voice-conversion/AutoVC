@@ -14,7 +14,7 @@ args = " ".join(param.strip() for param in [
     # "-data_path data/yang_long.wav data/samples/chooped7.wav",
     "-data_path data/samples",
     "-target_examples louise", 
-    # "-kwargs n_epochs 1",
+    "-kwargs n_epochs=2 log_freq=1",
 
     # wandb
     f"-wandb_params project={project} name={job_name}"
