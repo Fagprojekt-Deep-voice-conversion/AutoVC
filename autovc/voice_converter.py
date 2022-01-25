@@ -395,10 +395,7 @@ class VoiceConverter:
             model_params = self.config.get(f"{model_type}")
             model_dir = model_params["model_dir"]
 
-            # append to lists
-            params.append(model_params["model"])
-            model_dirs.append(model_dir)
-            model_types.append(model_type)
+            
 
 
             # check if given model name and dir are valid or look in wandb otherwise
@@ -408,21 +405,25 @@ class VoiceConverter:
                     raise ValueError(f"Model {model_path} was not found locally and it was not possible to look in wandb, as the wandb mode was not set to 'online'")
                 
                 # start looking in wandb
-                print(f"Looking for model {model_path} in wandb...")
+                print(f"Looking for model {model_name} in wandb...")
                 self.setup_wandb()
-                artifact = self.wandb_run.use_artifact(model_path, type=type_to_artifact[model_type])
+                artifact = self.wandb_run.use_artifact(model_name, type=type_to_artifact[model_type])
 
                 # check if model already exists
                 model_name = os.path.basename(artifact.file())
-                model_path = model_dir.strip("/") +"/" + model_name
-                if os.path.isfile(model_path):
-                    raise ValueError(f"The model '{model_path}' already exists, please use this path instead or delete the file if you want to use the model from wandb")
+                model_dir = model_dir.strip("/") + "/artifacts"
+                model_path = model_dir +"/" + model_name
+                # if os.path.isfile(model_path):
+                #     raise ValueError(f"The model '{model_path}' already exists, please use this path instead or delete the file if you want to use the model from wandb")
 
                 # download model
                 artifact.download(model_dir)
 
-            # append model name
+            # append to lists
             model_names.append(model_name)
+            params.append(model_params["model"])
+            model_dirs.append(model_dir)
+            model_types.append(model_type)
         
         self.AE, self.SE, self.vocoder = load_models(
             model_types= model_types,
@@ -440,7 +441,7 @@ class VoiceConverter:
 
 if __name__ == "__main__":
 
-    vc = VoiceConverter(wandb_params={"project" : "Trials", "name":"Short"})
+    vc = VoiceConverter(auto_encoder = 'deep_voice_inc/NewSpeaker/Louise2:v0', wandb_params={"project" : "Trials", "name":"Short"})
 
 
     # from autovc.utils.argparser import parse_vc_args
