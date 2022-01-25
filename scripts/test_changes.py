@@ -6,7 +6,7 @@ from autovc import VoiceConverter
 vc = VoiceConverter(wandb_params = {"mode" : "online"}, speaker_encoder = "../../models/SpeakerEncoder/SpeakerEncoder.pt")
 
 print("Testing Auto Encoder training...")
-vc.train(n_epochs = 1, data_path = ["data/samples/mette_183.wav", "data/samples/chooped7.wav"], source_examples = False)
+vc.train(n_epochs = 1, log_freq = 1, data_path = ["data/samples/mette_183.wav", "data/samples/chooped7.wav"], source_examples = False)
 # vc.train(n_epochs = 1, data_path = ["data/yang_long.wav", "data/samples/chooped7.wav"], conversion_examples = False, auto_encoder_params = {"cut" : True, "speakers" : True})
 
 print("Testing conversion...")
