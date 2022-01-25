@@ -188,9 +188,9 @@ class VoiceConverter:
 
     def train(self, 
         data_path,
-        model_type = "auto_encoder", 
-        source_examples = "data/samples/hilde_1.wav", 
-        target_examples = "data/samples/HaegueYang_5.wav", 
+        model_type = VoiceConverterParams["train"]["model_type"], 
+        source_examples = VoiceConverterParams["train"]["source_examples"], 
+        target_examples = VoiceConverterParams["train"]["target_examples"], 
         **kwargs
     ):
         """
@@ -216,10 +216,7 @@ class VoiceConverter:
         # get dataset and learn function of model
         if model_type == "auto_encoder":
             Dataset = AutoEncoderDataset
-            learn = self.AE.learn
-
-            self.config[model_type]["dataset"].update({"speaker_encoder": self.SE} if model_type == "auto_encoder" else {}) # add se to params manually as wandb config converts to string
-            
+            learn = self.AE.learn           
         else:
             Dataset = SpeakerEncoderDataset
             learn = self.SE.learn
@@ -247,6 +244,8 @@ class VoiceConverter:
 
         # create a wandb run
         self.setup_wandb()
+        if model_type == "auto_encoder":
+            self.config[model_type]["dataset"].update({"speaker_encoder": self.SE}) # add se to params manually as wandb config converts to string
         
 
         # train
@@ -441,7 +440,7 @@ class VoiceConverter:
 
 if __name__ == "__main__":
 
-    vc = VoiceConverter(auto_encoder="AutoVC_SMK.pt")
+    vc = VoiceConverter(wandb_params={"project" : "Trials", "name":"Short"})
 
 
     # from autovc.utils.argparser import parse_vc_args
@@ -517,19 +516,19 @@ if __name__ == "__main__":
     # vc.setup_wandb_run()
     # vc.convert("data/samples/mette_183.wav", "data/samples/chooped7.wav")
 
-    vc.convert_multiple(
-        ["data/samples/hillary_116.wav", "data/samples/mette_183.wav"], 
-        ["data/samples/mette_183.wav", "data/samples/hillary_116.wav"],
-        method = "all_combinations",
-        save_dir = "test"    
-    )
+    # vc.convert_multiple(
+    #     ["data/samples/hillary_116.wav", "data/samples/mette_183.wav"], 
+    #     ["data/samples/mette_183.wav", "data/samples/hillary_116.wav"],
+    #     method = "all_combinations",
+    #     save_dir = "test"    
+    # )
 
     # vc.train(data = "data/SMK_train/newest_trial", n_epochs = 1)
     # vc.setup_wandb_run(name = "SMK")
     # vc.train(data = "data/SMK_train/20211104", n_epochs = 1)
     # vc.train(data = "data/SMK_train", n_epochs = 1)
-    vc.train(data_path = "data/samples", n_epochs = 1)
-    vc.convert("data/samples/mette_183.wav", "data/samples/chooped7.wav")
+    vc.train(data_path = "data/newest_trial", n_epochs=10, model_name="SMK_trial_short_20220125.pt", data_path_excluded="data/newest_trial/hilde")
+    # vc.convert("data/samples/mette_183.wav", "data/samples/chooped7.wav")
 
 
     vc.close()

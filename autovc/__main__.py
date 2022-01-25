@@ -16,11 +16,13 @@ if mode == "train":
     train_args = vars(parse_train_args(" ".join(other_args)))
     # if train_args.get("model_type", "auto_encoder"): # auto encoder is default in vc.train
     #     train_args["data_path"] = {key:val for key, val in [arg.split("=") for arg in train_args["data_path"]]}
-    vc.train(**train_args)
+    kwargs = train_args.pop("kwargs", {})
+    vc.train(**train_args, **kwargs)
 
 elif mode == "convert":
     convert_args = vars(parse_convert_args(" ".join(other_args)))
-    vc.convert_multiple(**convert_args)
+    kwargs = convert_args.pop("kwargs", {})
+    vc.convert_multiple(**convert_args, **kwargs)
 
 vc.close()
 
