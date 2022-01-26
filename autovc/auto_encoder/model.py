@@ -148,9 +148,6 @@ class AutoEncoder(nn.Module):
 
     def load(self, model_name, model_dir = AutoEncoderParams["model_dir"], device = None):
         self.device = device if device is not None else self.device
-        # try:
-        #     checkpoint = torch.load(self.params.model_dir.strip("/") + "/" + weights_fpath, map_location = self.device)
-        # except:
         model_path = model_dir.strip("/") + "/" + model_name
         checkpoint = torch.load(model_path, map_location = self.device)
         self.load_state_dict(checkpoint["model_state"])
@@ -158,6 +155,18 @@ class AutoEncoder(nn.Module):
             print("Loaded auto encoder \"%s\" trained to step %d" % (model_path, checkpoint["step"]))
 
     def save(self, model_name, save_dir = AutoEncoderParams["learn"]["save_dir"], wandb_run = None):
+        """
+        Saves the model
+
+        Parameters
+        ----------
+        model_name:
+            Name to save the model as, defaults to 'model_xxxxxx.pt'
+        model_dir:
+            Directory to save the model in, default to 'models/AutoVC
+        wandb_run:
+            A wandb Run object. If this is differnet from None, the model will be uploaded to the Run
+        """
         model_path = save_dir.strip("/") + "/" + model_name
         torch.save({
             "step": self.logging.get("step"),
@@ -212,8 +221,6 @@ class AutoEncoder(nn.Module):
         save_freq = AutoEncoderParams["learn"]["save_freq"],
         save_dir = AutoEncoderParams["learn"]["save_dir"],
         model_name = AutoEncoderParams["learn"]["model_name"],
-        example_freq = AutoEncoderParams["learn"]["example_freq"],
-        # example_sources = ...
         ema_decay = AutoEncoderParams["learn"]["ema_decay"],
         wandb_run = None, 
         voice_converter = None,
@@ -232,12 +239,26 @@ class AutoEncoder(nn.Module):
             a data loader containing the training data
         n_epochs:
             how many epochs to train the model for
-        ema_decay
-        log_freq
-        save_freq
-        model_name
-        model_dir
-        wandb_run
+        ema_decay:
+            ema decay value
+        log_freq:
+            number of steps between logging the loss to wandb
+        save_freq:
+            number of epochs between each save of the model
+        model_name:
+            Name to save the model as, defaults to 'model_xxxxxx.pt'
+        save_dir:
+            Directory to save the model in, default to 'models/AutoVC
+        wandb_run:
+            A wandb Run object. This is used for logging to wandb, if None no logging will be done
+        voice_converter:
+            A autovc.VoiceConverter object. If this is not None conversions will be done after each epoch
+        source_examples:
+            Data to use as sources, this must be differnet from None for conversions to happen after each epoch
+            To see acceptable formats have a look at `autovc.utils.retrieve_file_paths()`
+        target_examples:
+            Data to use as targets, this must be differnet from None for conversions to happen after each epoch
+            To see acceptable formats have a look at `autovc.utils.retrieve_file_paths()`
         **opt_params:
             kwargs are given to the optimizer
             If 'lr_scheduler' and 'n_warmup_steps' are specified, these are used to construct a learning rate scheduler.
@@ -316,8 +337,8 @@ class AutoEncoder(nn.Module):
                 if (self.logging["step"] % log_freq == 0 or self.logging["step"] == N_iterations) and wandb_run is not None:
                     self._log(wandb_run, X, out_postnet)
 
-                if self.logging["step"] % save_freq == 0 or self.logging["step"] == N_iterations:
-                    self.save(model_name, save_dir, wandb_run)
+            if self.logging["epoch"] % save_freq == 0 or self.logging["epoch"] == n_epochs:
+                self.save(model_name, save_dir, wandb_run)
 
             if voice_converter is not None:
                 assert source_examples is not None and target_examples is not None

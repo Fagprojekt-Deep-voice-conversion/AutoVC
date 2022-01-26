@@ -22,7 +22,7 @@ AutoEncoderParams = {
 	"learn" : {
 		"n_epochs" : 1,
 		"log_freq" : 8,
-		"save_freq" : 1024,
+		"save_freq" : 1,
 		"model_name" : "model_" + date.today().strftime("%Y%m%d") +".pt",
 		"save_dir"	: "models/AutoVC", # model dir to save to
 		"example_freq" : None,
@@ -39,7 +39,7 @@ AutoEncoderParams = {
 	},
 	"dataset" : {
 		"preprocess" : ["normalize_volume"],
-		"preprocess_args" : {"target_dBFS" : -30}
+		"preprocess_args" : {"target_dBFS" : -20}
     },
 	"dataloader" : {
 			"batch_size" : 2,
@@ -67,7 +67,7 @@ SpeakerEncoderParams = {
     "learn" : {
 		"n_epochs" : 1,
         "log_freq" : 1,
-        "save_freq" : 1024,
+        "save_freq" : 1,
 		"model_name" : "model_" + date.today().strftime("%Y%m%d") +".pt",
 		"save_dir"	: "models/SpeakerEncoder", # model dir to save to
 		"example_freq" : None,
@@ -84,7 +84,7 @@ SpeakerEncoderParams = {
 	},
 	"dataset" : {
 		"preprocess" : ["normalize_volume"],
-		"preprocess_args" : {"target_dBFS" : -30}
+		"preprocess_args" : {"target_dBFS" : -20}
     },
     "dataloader" : {
             "batch_size" : 1,
@@ -141,9 +141,9 @@ VoiceConverterParams = {
 		"save_name" : None,
 		"save_dir" : None,
 		"preprocess" : ["normalize_volume"],
-		"preprocess_args" : {},
+		"preprocess_args" : {"target_dBFS" : -20},
         "outprocess" : ["normalize_volume", "remove_noise"],
-        "outprocess_args" : {},
+        "outprocess_args" : {"target_dBFS" : -20},
 	},
 	"train" : {
 		"model_type" : "auto_encoder", 

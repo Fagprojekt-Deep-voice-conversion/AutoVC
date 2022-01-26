@@ -89,26 +89,6 @@ class SpeakerEncoder(nn.Module):
         
         return embeds
 
-    
-
-    
-    # def load(self, weights_fpath, device = None):
-    #     """
-    #     Loads the model in memory. If this function is not explicitely called, it will be run on the 
-    #     first call to embed_frames() with the default weights file.
-        
-    #     :param weights_fpath: the path to saved model weights.
-    #     """
-    #     device = device if device is not None else self.params.device
-    #     try:
-    #         checkpoint = torch.load(self.params.model_dir.strip("/") + "/" + weights_fpath, map_location = device)
-    #     except:
-    #         checkpoint = torch.load(weights_fpath, map_location = device)
-    #     self.load_state_dict(checkpoint["model_state"], strict = False)
-
-    #     self.speakers.update(checkpoint.get('speakers', {}))
-
-    #     print("Loaded speaker encoder \"%s\" trained to step %d" % (weights_fpath, checkpoint["step"]))
 
     def load(self, model_name, model_dir = SpeakerEncoderParams["model_dir"], device = None):
         self.device = device if device is not None else self.device
@@ -123,9 +103,9 @@ class SpeakerEncoder(nn.Module):
         if self.verbose:
             print("Loaded auto encoder \"%s\" trained to step %d" % (model_path, checkpoint["step"]))
 
-    def save(self, model_name, model_dir = SpeakerEncoderParams["learn"]["save_dir"], wandb_run = None):
+    def save(self, model_name, save_dir = SpeakerEncoderParams["learn"]["save_dir"], wandb_run = None):
         # save_name = self.params.model_dir.strip("/") + "/" + self.params.model_name
-        model_path = model_dir.strip("/") + "/" + model_name
+        model_path = save_dir.strip("/") + "/" + model_name
         torch.save({
             "step": self.logging.get("step"),
             "model_state": self.state_dict(),
@@ -138,32 +118,6 @@ class SpeakerEncoder(nn.Module):
             artifact.add_file(model_path)
             wandb_run.log_artifact(artifact)
 
-
-    # @stat
-    # def load_model(weights_fpath: Path, device=None):
-    #     """
-    #     Loads the model in memory. If this function is not explicitely called, it will be run on the 
-    #     first call to embed_frames() with the default weights file.
-        
-    #     :param weights_fpath: the path to saved model weights.
-    #     :param device: either a torch device or the name of a torch device (e.g. "cpu", "cuda"). The 
-    #     model will be loaded and will run on this device. Outputs will however always be on the cpu. 
-    #     If None, will default to your GPU if it"s available, otherwise your CPU.
-    #     """
-
-    #     global _model, _device
-    #     if device is None:
-    #         _device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    #     elif isinstance(device, str):
-    #         _device = torch.device(device)
-    #     # _model = SpeakerEncoder(_device, torch.device("cpu"))
-    #     _model = SpeakerEncoder(_device)
-    #     checkpoint = torch.load(weights_fpath,map_location=torch.device('cpu'))
-    #     _model.load_state_dict(checkpoint["model_state"])
-    #     _model.eval()
-    #     print("Loaded encoder \"%s\" trained to step %d" % (weights_fpath, checkpoint["step"]))
-        
-    #     return _model
         
     def embed_frames_batch(self, frames_batch):
         """
@@ -334,6 +288,40 @@ class SpeakerEncoder(nn.Module):
         **opt_params
     ):
 
+        """
+        Method for training the speaker encoder
+
+        Params
+        ------
+        The most important parameters to know are the following and a full list can be found in `autovc/utils/hparams.py`
+
+        trainloader:
+            a data loader containing the training data
+        n_epochs:
+            how many epochs to train the model for
+        log_freq:
+            number of steps between logging the loss to wandb
+        save_freq:
+            number of epochs between each save of the model
+        model_name:
+            Name to save the model as, defaults to 'model_xxxxxx.pt'
+        save_dir:
+            Directory to save the model in, default to 'models/AutoVC
+        wandb_run:
+            A wandb Run object. This is used for logging to wandb, if None no logging will be done
+        voice_converter:
+            A autovc.VoiceConverter object. If this is not None conversions will be done after each epoch
+        source_examples:
+            Data to use as sources, this must be differnet from None for conversions to happen after each epoch
+            To see acceptable formats have a look at `autovc.utils.retrieve_file_paths()`
+        target_examples:
+            Data to use as targets, this must be differnet from None for conversions to happen after each epoch
+            To see acceptable formats have a look at `autovc.utils.retrieve_file_paths()`
+        **opt_params:
+            kwargs are given to the optimizer
+            If 'lr_scheduler' and 'n_warmup_steps' are specified, these are used to construct a learning rate scheduler.
+        """
+
         # initialisation
         self.train()
         self.logging["step"] = 0
@@ -403,8 +391,8 @@ class SpeakerEncoder(nn.Module):
                 if (self.logging["step"] % log_freq == 0 or self.logging["step"] == N_iterations) and wandb_run is not None:
                     self._log(wandb_run, embeddings=embeddings)
 
-                if self.logging["step"] % save_freq == 0 or self.logging["step"] == N_iterations:
-                    self.save(model_name, save_dir, wandb_run)
+            if self.logging["epoch"] % save_freq == 0 or self.logging["epoch"] == n_epochs:
+                self.save(model_name, save_dir, wandb_run)
             
             if voice_converter is not None:
                 assert source_examples is not None and target_examples is not None
