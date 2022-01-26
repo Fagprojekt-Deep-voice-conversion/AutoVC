@@ -11,7 +11,7 @@ args = " ".join(param.strip() for param in [
     "-auto_encoder_params ",
     "-model_type auto_encoder",
     "-data_path data/hilde_subset.wav data/SMK_HY_long.wav data/yang_long.wav ",
-    "-kwargs n_epochs=20 model_name=SMK_trial_long_20220125.pt cut=True log_freq=4",
+    "-kwargs n_epochs=20 model_name=SMK_trial_long_20220126.pt cut=True log_freq=4",
     # wandb
     f"-wandb_params project={project} name={job_name}"
 ])
