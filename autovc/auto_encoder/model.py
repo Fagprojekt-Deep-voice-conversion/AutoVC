@@ -275,7 +275,7 @@ class AutoEncoder(nn.Module):
             progbar(self.logging["step"], N_iterations)
         
         for epoch in range(n_epochs):
-            step_start_time = time.time()
+            self.logging["step_start_time"] = time.time()
             self.logging["batch"] = 0 
             for X, c_org in trainloader:
                 # Compute output using the speaker embedding only of the source
@@ -306,7 +306,7 @@ class AutoEncoder(nn.Module):
 
                 # print information
                 if self.verbose:
-                    self.logging["total_time"] += (time.time()-step_start_time)
+                    self.logging["total_time"] += (time.time()-self.logging["step_start_time"])
                     progbar(self.logging["step"], N_iterations, {"sec/step": np.round(self.logging["total_time"]/self.logging["step"])})
 
                 
@@ -339,7 +339,7 @@ class AutoEncoder(nn.Module):
             "loss" : self.logging["running_loss"]/self.logging["log_steps"],
             "epoch" : self.logging["epoch"],
             "batch" : self.logging["batch"],
-            "step": self.logging["step"]
+            "step": self.logging["step"],
         })
         wandb_run.log({
                 'Conversion': self.plot_conversion(X[0], out_postnet[0])

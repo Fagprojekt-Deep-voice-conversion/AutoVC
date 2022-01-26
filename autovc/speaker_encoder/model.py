@@ -328,6 +328,9 @@ class SpeakerEncoder(nn.Module):
         save_dir = SpeakerEncoderParams["learn"]["save_dir"],
         model_name = SpeakerEncoderParams["learn"]["model_name"],
         wandb_run = None, 
+        voice_converter = None,
+        source_examples = None,
+        target_examples = None,
         **opt_params
     ):
 
@@ -369,6 +372,7 @@ class SpeakerEncoder(nn.Module):
         
         for epoch in range(n_epochs):
             self.logging["step_start_time"] = time.time()
+            self.logging["batch"] = 0 
             for batch in trainloader:
                 embeddings = self.batch_forward(batch)
 
@@ -387,6 +391,8 @@ class SpeakerEncoder(nn.Module):
                 self.logging["step"] += 1
                 self.logging["running_loss"] += loss
                 self.logging["log_steps"] += 1
+                self.logging["epoch"] = epoch+1
+                self.logging["batch"] += 1
 
                 # print information
                 if self.verbose:
@@ -399,12 +405,26 @@ class SpeakerEncoder(nn.Module):
 
                 if self.logging["step"] % save_freq == 0 or self.logging["step"] == N_iterations:
                     self.save(model_name, save_dir, wandb_run)
+            
+            if voice_converter is not None:
+                assert source_examples is not None and target_examples is not None
+                audio_objects = voice_converter.convert_multiple(
+                    sources = source_examples,
+                    targets = target_examples,
+                    save_dir = "training_examples" if wandb_run is None or wandb_run.mode == "disabled" else "wandb",
+                    audio_log_dict = {"epoch" : self.logging["epoch"], "batch" : self.logging["batch"], "step": self.logging["step"]}
+                    # preprocess = [], # no preprocessing of example conversions
+                    # out_process = [],
+                )
 
-        close_progbar()
+        if self.verbose: close_progbar()
 
     def _log(self, wandb_run, embeddings):
         wandb_run.log({
-            "loss" : self.logging["running_loss"]/self.logging["log_steps"]
+            "loss" : self.logging["running_loss"]/self.logging["log_steps"],
+            "epoch" : self.logging["epoch"],
+            "batch" : self.logging["batch"],
+            "step": self.logging["step"],
         }, step = self.logging["step"])
         wandb_run.log({
                 'TSNE': self.visualise_embedding(embeddings)
