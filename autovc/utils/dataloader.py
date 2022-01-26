@@ -152,6 +152,8 @@ class SpeakerEncoderDataset(Dataset):
         ----------
         data_path:
             dictionary with speaker name as key and data directory or list of data as key.
+        data_path_excluded:
+            List of files to exclude from the data loader
         sr:
             Sample rate to load the data with
         device:

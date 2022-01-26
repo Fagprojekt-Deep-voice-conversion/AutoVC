@@ -116,7 +116,18 @@ class VoiceConverter:
         save_dir:
             the folder/directory to store the converted file in, if this is 'wandb' the converted audio will be logged to this run
             all conversions not stored in WANDB will be saved in `results/` folder
-
+        preprocess:
+            Pipeline to use for preprocessing (see `autovc.audio.Audio.preprocess`)
+        preprocess_args:
+            Pipeline args to use for preprocessing (see `autovc.audio.Audio.preprocess`)
+        outprocess:
+            Pipeline to use for outprocessing (see `autovc.audio.Audio.preprocess`)
+        outprocess_args:
+            Pipeline args to use for outprocessing (see `autovc.audio.Audio.preprocess`)
+        audio_log_dict:
+            Values to log along with the converted audio in wandb. this requires save_dir to be 'wandb'
+        **kwargs:
+            Kwargs are given to `mel_spec_auto_encoder`
         Return
         ------
         audio_out:
@@ -204,7 +215,10 @@ class VoiceConverter:
         ---------
         model_type:
             which model type to train, can be one of ['auto_encoder', 'speaker_encoder']
-        conversion_examples:
+        source_examples:
+            files to use as sources for converting after each epoch
+        target_examples:
+            files to use as targets for converting after each epoch
 
         # make list of possible kwargs divided in learn, data loader, data set, if no overlaps do like preprocess and use annotations
 
@@ -330,10 +344,12 @@ class VoiceConverter:
             path or list of paths to source files
         targets:
             path or list of paths to target files
-        method:
+        match_method:
             tells how to match sources and targets
             'all_combinations' will match each source with each target
             'align' will match sources and targets with same index in the given list
+        bidirectional:
+            boolean telling if targets should also be converted to the source.
         **convert_params
             params to give to VoiceConverter.convert
         """
