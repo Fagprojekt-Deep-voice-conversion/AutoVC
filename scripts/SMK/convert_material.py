@@ -6,17 +6,18 @@ args = " ".join(param.strip() for param in [
     "-mode convert",
     # "-auto_encoder models/AutoVC/model_20220121H0M23N.pt",
     # "-auto_encoder models/AutoVC/Louise2",
-    "-auto_encoder models/AutoVC/AutoVC_SMK.pt",
-    "-speaker_encoder models/SpeakerEncoder/SpeakerEncoder_SMK.pt",
+    "-auto_encoder SMK_trial_short_20220125.pt",
+    "-speaker_encoder SpeakerEncoder_SMK.pt",
     # "-sources data/HY -targets HaegueYang",
     # "-sources data/HY/HY1.wav -targets HaegueYang",
-    "-sources data/splitted_wavs -targets HaegueYang",
+    "-sources data/SMK_HY_long.wav -targets HaegueYang",
     # "-convert_params pipes={source:[normalize_volume],output:[normalize_volume,remove_noise]}",
     # "-convert_params save_dir=HY1 cut=True partial_utterance_n_frames=160"
-    "-convert_params save_dir=HY1",
+    # "-kwargs save_dir=HY1",
+    "-kwargs cut=True",
 ])
 # execution_code = ["python " + script.strip() + " " + args]
-execution_code = ["python autovc/voice_converter.py" + " " + args]
+execution_code = ["python autovc/__main__.py" + " " + args]
 
 
 # set cluster settings

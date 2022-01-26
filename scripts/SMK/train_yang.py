@@ -2,16 +2,15 @@ from autovc.utils.hpc import create_submit
 import os, sys
 
 project = "Trials"
-job_name = "SMK_trial_20220125_long"
+job_name = "SMK_yang"
 
 # script = "autovc/voice_converter.py"
 args = " ".join(param.strip() for param in [
     # "-speaker_encoder SpeakerEncoder_SMK.pt",
     "-mode train",
-    "-auto_encoder_params ",
     "-model_type auto_encoder",
-    "-data_path data/hilde_subset.wav data/SMK_HY_long.wav data/yang_long.wav ",
-    "-kwargs n_epochs=20 model_name=SMK_trial_long_20220125.pt cut=True log_freq=4",
+    "-data_path data/SMK_train/HaegueYang",
+    "-kwargs n_epochs=20 model_name=SMK_yang.pt",
     # wandb
     f"-wandb_params project={project} name={job_name}"
 ])
