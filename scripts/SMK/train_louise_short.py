@@ -10,7 +10,7 @@ args = " ".join(param.strip() for param in [
     "-mode train",
     "-model_type auto_encoder",
     "-data_path data/newest_trial ",
-    "-kwargs n_epochs=10 model_name=SMK_trial_short_20220125.pt data_path_excluded=data/newest_trial/hilde",
+    "-kwargs n_epochs=10 model_name=SMK_trial_short_20220125.pt data_path_excluded=data/newest_trial/hilde shuffle=True",
 
     # wandb
     f"-wandb_params project={project} name={job_name}"
@@ -23,8 +23,8 @@ execution_code = ["python autovc/__main__.py" + " " + args]
 cluster_settings = {
     "overwrite" : True, 
     "n_cores" : 1, 
-    "system_memory" : 20, 
-    "walltime" : "6:00", 
+    "system_memory" : 10, 
+    "walltime" : "8:00", 
     "notifications" : True
 }
 
