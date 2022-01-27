@@ -94,7 +94,7 @@ class AutoEncoderDataset(Dataset):
         close_progbar()
 
     def __len__(self):
-        return len(self.wav_files)
+        return len(self.mel_spectograms)
 
     def __getitem__(self, index):
         return self.mel_spectograms[index], self.embeddings[index]
