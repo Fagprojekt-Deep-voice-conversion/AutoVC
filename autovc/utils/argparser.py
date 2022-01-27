@@ -1,4 +1,6 @@
 import argparse
+from autovc.utils.hparams import VoiceConverterParams
+# action classes
 
 class UndefSubst(dict):
     """Class for handling undefined vars when parsing lists"""
@@ -25,50 +27,11 @@ class StringToNone(argparse.Action):
         else:
             setattr(namespace, self.dest, value)
 
-# class ParseListKwargs(argparse.Action):
-#     """
-#     An argparser action which appends kwargs to a list
 
-#     Example:
-#     -PPO policy=MlpPolicy learning_rate=1e-4 
-#     For this we will have arg_name = PPO, self.dest=agents, values = [policy=MlpPolicy, learning_rate=1e-4 ]
-#     """
-#     def __call__(self, parser, namespace, values, option_string=None):
-#         arg_name = option_string.replace("-", "") # argument name
+# functions for adding params
 
-#         # set the attribute of the destination to be a list containing a dictionary with the arg_name as key
-#         # dest_vals = getattr(namespace, self.dest) if getattr(namespace, self.dest) is not None else []
-#         # dest_vals = [] if (getattr(namespace, self.dest)) is None else getattr(namespace, self.dest)
-#         # setattr(namespace, self.dest, dest_vals)
-        
-#         if not hasattr(namespace, self.dest):
-#             setattr(namespace, self.dest, [])
-#         elif getattr(namespace, self.dest) is None:
-#             setattr(namespace, self.dest, [])
-
-#         # get new values to be added to the arg_name dictionary in the destination list
-#         new_dest_vals = {}
-#         for value in values:
-#             key, value = value.split('=')
-#             try:
-#                 new_dest_vals[key] = eval(value, UndefSubst(locals())) 
-#             except:
-#                 new_dest_vals[key] = value
-        
-#         # append new values to the arg_name dictionary
-#         getattr(namespace, self.dest).append({arg_name: new_dest_vals})
-
-
-
-def parse_vc_args(args = None):
-    """
-    Parse params for Voice Converter init function
-    """
-
-    parser = argparse.ArgumentParser(description="Client for parsing arguments to the voice converter", argument_default=argparse.SUPPRESS)  
-    
-
-    # add arguments
+def add_init_args(parser):
+     # add arguments
     parser.add_argument("-mode", choices=["train", "convert"], required=True)
     parser.add_argument("-device", action=StringToNone)
     parser.add_argument("--verbose", action="store_true", default=False)
@@ -88,6 +51,98 @@ def parse_vc_args(args = None):
     parser.add_argument("-mean_speaker_path", nargs='*', type = str, help = "path to speaker data, should be in the foramt 'speaker=paths', e.g. -mean_speaker_path JohnDoe=path/to/John")
     parser.add_argument("-mean_speaker_path_excluded", nargs='*', type = str, help = "Paths to avoid using when learning the mean speaker embedding")
 
+    return parser
+
+def add_convert_multiple_args(parser):
+    parser.add_argument("-sources", nargs='*', type = str, help = "path to source files", required=True)
+    parser.add_argument("-targets", nargs='*', type = str, help = "path to target files", required=True)
+    parser.add_argument("-match_method", type = str)
+    parser.add_argument("-bidirectional", type = bool)
+
+    return parser
+
+def add_convert_args(parser):
+    parser.add_argument("-save_name", type = str)
+    parser.add_argument('-save_dir', type = str)
+    parser.add_argument('-preprocess', nargs = '*', type = str)
+    parser.add_argument('-preprocess_args', nargs='*', action=ParseKwargs)
+    parser.add_argument('-outprocess', nargs = '*', type = str)
+    parser.add_argument('-outprocess_args', nargs='*', action=ParseKwargs)
+
+    return parser
+
+def add_train_args(parser):
+    parser.add_argument('-model_type', type = str)
+    parser.add_argument('-source_examples', nargs = '*', action=StringToNone)
+    parser.add_argument('-target_examples', nargs = '*', action=StringToNone)
+
+    return parser
+
+def add_mel_spec_auto_encoder_args(parser):
+    parser.add_argument('-cut', type = bool)
+    parser.add_argument('-n_fft', type = int)
+    parser.add_argument('-hop_length', type = int)
+    parser.add_argument('-window_length', type = int)
+    parser.add_argument('-fmin', type = int)
+
+    return parser
+
+def add_mel_spec_speaker_encoder_args(parser):
+    parser.add_argument('-mel_window_length', type = int)
+    parser.add_argument('-mel_window_step')
+    parser.add_argument('-cut', type = bool)
+    parser.add_argument('-return_slices', type = bool)
+
+    return parser
+
+def add_compute_partial_slices_args(parser):
+    parser.add_argument('-partial_utterance_n_frames', type = int)
+    parser.add_argument('-min_pad_coverage', type = float)
+    parser.add_argument('-overlap', type = float)
+
+    return parser
+
+def add_learn_args(parser):
+    parser.add_argument('-n_epochs', type = int)
+    parser.add_argument('-log_freq', type = int)
+    parser.add_argument('-save_freq', type = int)
+    parser.add_argument('-model_name', type = str)
+    parser.add_argument('-save_dir', type = str)
+    parser.add_argument('-lr_scheduler', type = str)
+    parser.add_argument('-n_warmup_steps', type = int)
+    parser.add_argument("-opt_kwargs", nargs='*', action=ParseKwargs, help = "Other parameters to give to Adam optimizer")
+    parser.add_argument('-ema_decay', type = float) # only for AE
+
+
+    return parser
+
+def add_dataset_args(parser):
+    parser.add_argument('-data_path', nargs = '*', type = str)
+    parser.add_argument('-data_path_excluded', nargs = '*', type = str)
+    parser.add_argument('-use_mean_speaker_embedding', type = bool) # only for AE
+
+    return parser
+
+def add_dataloader_args(parser):
+    parser.add_argument('-batch_size', type = int)
+    parser.add_argument('-shuffle', type = bool)
+    parser.add_argument("-dataloader_kwargs", nargs='*', action=ParseKwargs, help = "Other parameters to give to torch data loader")
+
+    return parser
+
+# parse functions
+
+def parse_vc_args(args = None):
+    """
+    Parse params for Voice Converter init function
+    """
+
+    parser = argparse.ArgumentParser(description="Client for parsing arguments to the voice converter", argument_default=argparse.SUPPRESS)  
+    
+
+    # add arguments
+    parser = add_init_args(parser)
+
     # return parser
     if args is None:
         # args = parser.parse_args()
@@ -98,26 +153,7 @@ def parse_vc_args(args = None):
 
     return known_args, unknown_args
 
-# def parse_mean_speaker_args(args = None):
-#     """
-#     Parse params for Voice Converter learn speakers function
-#     """
 
-#     parser = argparse.ArgumentParser(description="Client for parsing arguments to the voice converter", argument_default=argparse.SUPPRESS)  
-    
-
-#     # add arguments
-#     parser.add_argument("-data_path", nargs = '*', type = str, help = "path to train data, if model_type is speaker_encoder, paths can have name= in the beginning to indicate the speaker", required=True)
-
-#     # return parser
-#     if args is None:
-#         # args = parser.parse_args()
-#         known_args, unknown_args = parser.parse_known_args()
-#     else:
-#         # args = parser.parse_args(args.split())
-#         known_args, unknown_args = parser.parse_known_args(args.split())
-
-#     return known_args, unknown_args
 
 def parse_convert_args(args = None):
     """
@@ -126,52 +162,55 @@ def parse_convert_args(args = None):
 
     parser = argparse.ArgumentParser(description="Client for parsing arguments to the voice converter", argument_default=argparse.SUPPRESS)  
     
-    # convert multiple params
-    parser.add_argument("-sources", nargs='*', type = str, help = "path to source files", required=True)
-    parser.add_argument("-targets", nargs='*', type = str, help = "path to target files", required=True)
     
-    # parser.add_argument("-match_method", type = str)
-    # parser.add_argument("-bidirectional", type = bool)
-
-    # kwargs
-    parser.add_argument("-kwargs", nargs='*', action=ParseKwargs, help = "Other parameters to give to convert")
+    # add arguments
+    parser = add_convert_args(parser)
+    parser = add_convert_multiple_args(parser)
+    parser = add_mel_spec_auto_encoder_args(parser)
+    parser = add_compute_partial_slices_args(parser)
 
     # return parser
     if args is None:
         args = parser.parse_args()
-        # known_args, unknown_args = parser.parse_known_args()
     else:
         args = parser.parse_args(args.split())
-        # known_args, unknown_args = parser.parse_known_args(args.split())
-
-    # return known_args, unknown_args
     return args
 
 def parse_train_args(args = None):
     """
     Parse params for Voice Converter train function
     """
-
-    parser = argparse.ArgumentParser(description="Client for parsing arguments to the voice converter", argument_default=argparse.SUPPRESS)  
+    # get model type
+    type_parser = argparse.ArgumentParser(description="Client for parsing arguments to the voice converter", argument_default=argparse.SUPPRESS)  
+    type_parser.add_argument('-model_type', type = str)
+    if args is None:
+        known_args, unknown_args = type_parser.parse_known_args()
+    else:
+        known_args, unknown_args = type_parser.parse_known_args(args.split())
     
-    # convert multiple params
-    parser.add_argument("-data_path", nargs = '*', type = str, help = "path to train data, if model_type is speaker_encoder, paths can have name= in the beginning to indicate the speaker", required=True)
-    parser.add_argument("-model_type", choices = ["auto_encoder", "speaker_encoder"], type = str, help = "type of model to train")
-    parser.add_argument("-source_examples", nargs='*', type = str, help = "path to source example files")
-    parser.add_argument("-target_examples", nargs='*', type = str, help = "path to target example files")
+    # create parser
+    parser = argparse.ArgumentParser(description="Client for parsing arguments to the voice converter", argument_default=argparse.SUPPRESS)  
 
-    # kwargs
-    parser.add_argument("-kwargs", nargs='*', action=ParseKwargs, help = "Other parameters to give to train")
+    # add general training args
+    parser = add_train_args(parser)
+    parser = add_compute_partial_slices_args(parser)
+    parser = add_dataloader_args(parser)
+    parser = add_dataset_args(parser)
+    parser = add_learn_args(parser)
 
-    # return parser
+    # add model specific args
+    if vars(known_args).get("model_type", VoiceConverterParams["train"]["model_type"]) == "auto_encoder":
+        parser = add_mel_spec_auto_encoder_args(parser)
+    else:
+        parser = add_mel_spec_speaker_encoder_args(parser)
+    
+
+    # parse general args
     if args is None:
         args = parser.parse_args()
-        # known_args, unknown_args = parser.parse_known_args()
     else:
         args = parser.parse_args(args.split())
-        # known_args, unknown_args = parser.parse_known_args(args.split())
 
-    # return known_args, unknown_args
     return args
 
 if __name__ == "__main__":
@@ -186,7 +225,9 @@ if __name__ == "__main__":
     # "-auto_encoder_params cut=True speakers=False model_name=SMK_trial_20220125.pt",
     # "-data_path data/newest_trial",
     "-data_path data/hilde_subset.wav data/SMK_HY_long.wav data/yang_long.wav ",
-    "-kwargs n_epochs=10 model_name=SMK_trial_20220125.pt cut=True"
+    "-n_epochs 10",
+    "-model_name SMK_trial_20220125.pt",
+    "-cut True",
 
     # wandb
     f"-wandb_params project={'project'} name={'test'}"

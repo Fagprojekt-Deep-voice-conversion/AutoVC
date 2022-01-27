@@ -9,12 +9,13 @@ args = " ".join(param.strip() for param in [
     "-mode train",
     "-mean_speaker_path louise=data/HY",
     "-model_type auto_encoder",
-    "-speaker_encoder SpeakerEncoder_SMK.pt",
+    # "-speaker_encoder SpeakerEncoder_SMK.pt",
     # "-auto_encoder_params cut=True speakers=True",
     # "-data_path data/yang_long.wav data/samples/chooped7.wav",
     "-data_path data/samples",
     "-target_examples louise", 
-    "-kwargs n_epochs=2 log_freq=1",
+    "-n_epochs 2",
+    "-log_freq 1",
 
     # wandb
     f"-wandb_params project={project} name={job_name}"

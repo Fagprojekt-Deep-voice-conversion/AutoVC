@@ -31,15 +31,52 @@ vc = VoiceConverter(
 )
 ```
 
+Some small usage examples are provided below. Also the script `scripts/test_changes.py` can be run to try these out. 
+
 ### Train auto encoder
+
+Example showing how to train an Auto Encoder on the data from the samples folder
+
+```python
+vc.train(model_type = "auto_encoder", data_path = "data/samples", n_epochs=10, model_name="TestModel.pt")
+vc.close()
+```
 
 ### Train speaker encoder
 
+Example showing how to train an Auto Encoder on the data from the samples folder
+
+```python
+vc.train(model_type = "speaker_encoder", data_path = {"hilde" : ["data/samples/hilde_1.wav", "data/samples/hilde_301.wav"], "mette" : "data/samples/mette_183.wav"}, n_epochs=10, model_name="TestModel.pt")
+vc.close()
+```
+
 ### Learn mean speaker embedding
+
+```python
+vc.learn_speakers({"yang" : ["data/samples/chooped7.wav", "data/samples/HaegueSMK.wav", "data/samples/HaegueYang_5.wav"]})
+vc.close()
+```
 
 ### Single conversion
 
+```python
+vc.convert("data/samples/mette_183.wav", "yang", save_name = "conversion_test2.wav", preprocess=[])
+vc.close()
+```
+
 ### Multiple conversions
+
+```python
+vc.convert_multiple(
+        ["data/samples/hillary_116.wav", "data/samples/mette_183.wav"], 
+        ["data/samples/mette_183.wav", "data/samples/hillary_116.wav"],
+        method = "all_combinations",
+        save_dir = "test"    
+    )
+
+vc.close()
+```
 
 ## Command line tool
 
@@ -146,6 +183,8 @@ The final method <b><u>learn_speakers</u></b> simply takes the parameters 'mean_
     name of a learning rate scheduler in `autovc.utils.lr_scheduler`
 - <b>n_warmup_steps</b>:
     Number of training steps to take before applying the learning rate schedule
+
+Furthermore, `torch.optim.Adam` parameters can also be used.
 
 ### SpeakerEncoder.learn
 - <b>n_epochs</b>:
