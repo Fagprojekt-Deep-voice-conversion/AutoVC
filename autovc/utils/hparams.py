@@ -25,7 +25,6 @@ AutoEncoderParams = {
 		"save_freq" : 1,
 		"model_name" : "model_" + date.today().strftime("%Y%m%d") +".pt",
 		"save_dir"	: "models/AutoVC", # model dir to save to
-		"example_freq" : None,
 		"ema_decay" : 0.9999,
 	},
 	"optimizer" : {
@@ -70,7 +69,6 @@ SpeakerEncoderParams = {
         "save_freq" : 1,
 		"model_name" : "model_" + date.today().strftime("%Y%m%d") +".pt",
 		"save_dir"	: "models/SpeakerEncoder", # model dir to save to
-		"example_freq" : None,
         "ema_decay" : 0.9999,
 	},
 	"optimizer" : {
