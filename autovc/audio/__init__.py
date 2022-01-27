@@ -3,6 +3,7 @@ A class for handling audio data
 """
 
 import librosa
+import numpy as np
 import soundfile as sf
 from autovc.audio import tools
 from autovc.audio import spectrogram
@@ -82,6 +83,11 @@ class Audio:
         self:
             An instance of the Audio class where the wav has been preprocessed
         """
+
+        if "trim_long_silences" in pipeline:
+            possible_srs = np.array([8000, 16000, 32000, 48000])
+            sr = possible_srs[np.argmin(abs(possible_srs - self.sr))]
+            self.resample(sr)
   
         for fun in pipeline:
             # get function from tools

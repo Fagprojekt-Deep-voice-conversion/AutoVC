@@ -119,6 +119,8 @@ def add_learn_args(parser):
 def add_dataset_args(parser):
     parser.add_argument('-data_path', nargs = '*', type = str)
     parser.add_argument('-data_path_excluded', nargs = '*', type = str)
+    parser.add_argument('-preprocess', nargs = '*', type = str)
+    parser.add_argument('-preprocess_args', nargs='*', action=ParseKwargs)
     parser.add_argument('-use_mean_speaker_embedding', type = bool) # only for AE
 
     return parser
