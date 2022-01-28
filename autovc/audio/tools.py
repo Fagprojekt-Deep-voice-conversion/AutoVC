@@ -325,5 +325,5 @@ if __name__ == "__main__":
 
     # combine_audio("data/newest_trial/hilde_subset", save_name = "data/hilde_subset.wav", sr = 16000)
 
-    wav, sr = librosa.load("data/HY lydspor/HY1.wav", sr = 16000)
-    wavs = split_audio(wav, sr, save_name="louise.wav", fixed_length=5, save_dir = "data/hard_split")
+    wav, sr = librosa.load("AutoVC/data/SMK_train/Hilde.wav", sr = 16000)
+    wavs = split_audio(wav, sr, save_name="hilde.wav", fixed_length=10, save_dir = "Deep_voice_conversion/data/SMK_original/hilde")
