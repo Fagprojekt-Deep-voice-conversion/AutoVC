@@ -15,6 +15,7 @@ import soundfile as sf
 import os
 import noisereduce as nr
 import math
+import shutil
 
 from autovc.utils import retrieve_file_paths
 
@@ -301,6 +302,19 @@ def remove_noise(wav, sr, **kwargs):
     """
     return nr.reduce_noise(y=wav, sr=sr, **kwargs)
 
+def rename_files(dir_path, new_dir_path, new_file_name):
+    files = os.listdir(dir_path)
+    os.makedirs(new_dir_path, exist_ok=True)
+
+    for i, file in enumerate(files):
+        save_name = os.path.join(new_dir_path, new_file_name)
+        save_name += "" if save_name.endswith(".wav") else ".wav"
+        fname = save_name.replace(".wav", f"_{str(i+1).zfill(1 + int(math.log10(len(files))))}.wav")
+
+        shutil.copy(os.path.join(dir_path, file), fname)
+
+    # print(files)
+
 
 # add annotations to use for preprocessing
 trim_long_silences.__allowed_args__ = inspect.getfullargspec(trim_long_silences).args
@@ -325,5 +339,7 @@ if __name__ == "__main__":
 
     # combine_audio("data/newest_trial/hilde_subset", save_name = "data/hilde_subset.wav", sr = 16000)
 
-    wav, sr = librosa.load("AutoVC/data/SMK_train/Hilde.wav", sr = 16000)
-    wavs = split_audio(wav, sr, save_name="hilde.wav", fixed_length=10, save_dir = "Deep_voice_conversion/data/SMK_original/hilde")
+    # wav, sr = librosa.load("AutoVC/data/SMK_train/Hilde.wav", sr = 16000)
+    # wavs = split_audio(wav, sr, save_name="hilde.wav", fixed_length=10, save_dir = "Deep_voice_conversion/data/SMK_original/hilde")
+
+    rename_files("data/HY lydspor", "data/louise", "louise.wav")
