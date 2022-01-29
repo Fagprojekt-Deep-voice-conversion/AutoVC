@@ -304,13 +304,14 @@ def remove_noise(wav, sr, **kwargs):
 
 def rename_files(dir_path, new_dir_path, new_file_name):
     files = os.listdir(dir_path)
+    files.sort()
     os.makedirs(new_dir_path, exist_ok=True)
 
     for i, file in enumerate(files):
         save_name = os.path.join(new_dir_path, new_file_name)
         save_name += "" if save_name.endswith(".wav") else ".wav"
         fname = save_name.replace(".wav", f"_{str(i+1).zfill(1 + int(math.log10(len(files))))}.wav")
-
+        print(os.path.join(dir_path, file), fname)
         shutil.copy(os.path.join(dir_path, file), fname)
 
     # print(files)
@@ -342,4 +343,6 @@ if __name__ == "__main__":
     # wav, sr = librosa.load("AutoVC/data/SMK_train/Hilde.wav", sr = 16000)
     # wavs = split_audio(wav, sr, save_name="hilde.wav", fixed_length=10, save_dir = "Deep_voice_conversion/data/SMK_original/hilde")
 
-    rename_files("data/HY lydspor", "data/louise", "louise.wav")
+    # rename_files("AutoVC/data/SMK_train/hyang_smk", "Deep_voice_conversion/data/SMK_original/yangSMK", "yangSMK.wav")
+
+    rename_files("../AutoVC/data/HY", "data/SMK_original/louise", "louise.wav")

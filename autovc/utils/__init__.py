@@ -22,6 +22,7 @@ def retrieve_file_paths(paths, excluded = []):
             paths = list()
             
             for (dirpath, dirnames, filenames) in walk:
+                filenames.sort()
                 paths += [os.path.join(dirpath, file).replace("\\", "/") for file in filenames]
         
         else:
