@@ -303,6 +303,18 @@ def remove_noise(wav, sr, **kwargs):
     return nr.reduce_noise(y=wav, sr=sr, **kwargs)
 
 def rename_files(dir_path, new_dir_path, new_file_name):
+    """
+    Takes a directory and moves them to another directory where all files get the same name with a number appended
+
+    Parameters
+    ----------
+    dir_path:
+        Path to the directory where files to be renamed are stored
+    new_dir_path:
+        Path to save the renamed files to
+    new_file_name:
+        Basename of the renamed files
+    """
     files = os.listdir(dir_path)
     files.sort()
     os.makedirs(new_dir_path, exist_ok=True)
@@ -338,11 +350,11 @@ if __name__ == "__main__":
     # wavs = split_audio(wav, sr, save_name="yang.wav", allowed_pause = 2, max_len = 6, save_dir = "data/newest_trial/yang")
     # remove_noise(wav, sr)
 
-    # combine_audio("data/newest_trial/hilde_subset", save_name = "data/hilde_subset.wav", sr = 16000)
+    # combine_audio("data/", save_name = "data/hilde_subset.wav", sr = 16000)
 
     # wav, sr = librosa.load("AutoVC/data/SMK_train/Hilde.wav", sr = 16000)
     # wavs = split_audio(wav, sr, save_name="hilde.wav", fixed_length=10, save_dir = "Deep_voice_conversion/data/SMK_original/hilde")
 
     # rename_files("AutoVC/data/SMK_train/hyang_smk", "Deep_voice_conversion/data/SMK_original/yangSMK", "yangSMK.wav")
 
-    rename_files("../AutoVC/data/HY", "data/SMK_original/louise", "louise.wav")
+    rename_files("../AutoVC/data/SMK_train/HaegueYang", "data/SMK_original/yangYT", "yangYT.wav")
