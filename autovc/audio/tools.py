@@ -15,6 +15,7 @@ import soundfile as sf
 import os
 import noisereduce as nr
 import math
+import shutil
 
 from autovc.utils import retrieve_file_paths
 
@@ -124,6 +125,7 @@ def split_audio(
     allowed_pause = 2, 
     remove_silence = False, 
     max_len = 10, 
+    fixed_length = None,
     **kwargs):
     """
     Splits the content of the wav into multiple files, based on when there is a longer period if silence.
@@ -148,6 +150,8 @@ def split_audio(
         If True the found silence is removed from the splitted audio files.
     max_length:
         The maximum length (in seconds) of a new audio file. The audio file can however exceed 10 seconds if no pauses were found.
+    fixed_length:
+        if fixed length is different from None a jhard cut of the audio file is performed with an interval of 'fixed_length' seconds, meaning no silence detection is performed
     **kwargs
         kwargs are given to `create_silence_mask()`
     
@@ -159,29 +163,37 @@ def split_audio(
 
     """
 
-    # get slince mask
-    wav, audio_mask = create_silence_mask(wav, sr, **kwargs)
+    if fixed_length is not None:
+        n_frames = fixed_length*sr
+        total_frames = len(wav)
+        split_masks = np.array([np.arange(i, i+n_frames) for i in range(0, total_frames, n_frames) if i+n_frames < total_frames])
+        # print(splits.shape)
+        # return None
+        
+    else:
+        # get slince mask
+        wav, audio_mask = create_silence_mask(wav, sr, **kwargs)
 
-    # function for finding consecutive values without silence
-    def consecutive(data, stepsize=1):
-        return np.split(data, np.where(np.diff(data) != stepsize)[0]+1)
+        # function for finding consecutive values without silence
+        def consecutive(data, stepsize=1):
+            return np.split(data, np.where(np.diff(data) != stepsize)[0]+1)
 
-    # split files
-    allowed_pause = allowed_pause*sr # get pause in frames
-    for i, split in enumerate(consecutive(np.where(audio_mask)[0])):
-        if i == 0:
-            split_masks = [split]
-        else:
-            # join last subset with new split if difference is less than allowed pause
-            new_len = (len(split) + len(split_masks[-1]))/sr
-            if (split[-1] - split_masks[-1][-1] <= allowed_pause) and new_len <= max_len:
-                prev = split_masks.pop()
-                if remove_silence:
-                    split_masks.append(np.concatenate([prev, split]))
-                else:
-                    split_masks.append(np.concatenate([prev,np.arange(prev[-1]+1, split[0]), split]))
+        # split files
+        allowed_pause = allowed_pause*sr # get pause in frames
+        for i, split in enumerate(consecutive(np.where(audio_mask)[0])):
+            if i == 0:
+                split_masks = [split]
             else:
-                split_masks.append(split)
+                # join last subset with new split if difference is less than allowed pause
+                new_len = (len(split) + len(split_masks[-1]))/sr
+                if (split[-1] - split_masks[-1][-1] <= allowed_pause) and new_len <= max_len:
+                    prev = split_masks.pop()
+                    if remove_silence:
+                        split_masks.append(np.concatenate([prev, split]))
+                    else:
+                        split_masks.append(np.concatenate([prev,np.arange(prev[-1]+1, split[0]), split]))
+                else:
+                    split_masks.append(split)
     
     # save splitted files
     if save_name is not None:
@@ -290,6 +302,32 @@ def remove_noise(wav, sr, **kwargs):
     """
     return nr.reduce_noise(y=wav, sr=sr, **kwargs)
 
+def rename_files(dir_path, new_dir_path, new_file_name):
+    """
+    Takes a directory and moves them to another directory where all files get the same name with a number appended
+
+    Parameters
+    ----------
+    dir_path:
+        Path to the directory where files to be renamed are stored
+    new_dir_path:
+        Path to save the renamed files to
+    new_file_name:
+        Basename of the renamed files
+    """
+    files = os.listdir(dir_path)
+    files.sort()
+    os.makedirs(new_dir_path, exist_ok=True)
+
+    for i, file in enumerate(files):
+        save_name = os.path.join(new_dir_path, new_file_name)
+        save_name += "" if save_name.endswith(".wav") else ".wav"
+        fname = save_name.replace(".wav", f"_{str(i+1).zfill(1 + int(math.log10(len(files))))}.wav")
+        print(os.path.join(dir_path, file), fname)
+        shutil.copy(os.path.join(dir_path, file), fname)
+
+    # print(files)
+
 
 # add annotations to use for preprocessing
 trim_long_silences.__allowed_args__ = inspect.getfullargspec(trim_long_silences).args
@@ -305,11 +343,18 @@ if __name__ == "__main__":
     # wav, sr = librosa.load("data/SMK_train/Hilde.wav", sr = 16000)
     # wavs = split_audio(wav, sr, save_name="hilde.wav", allowed_pause = 2, max_len = 6, save_dir = "data/newest_trial/hilde")
 
-    wav, sr = librosa.load("data/SMK_HY_long.wav", sr = 16000)
-    wavs = split_audio(wav, sr, save_name="louise.wav", allowed_pause = 2, max_len = 6, save_dir = "data/newest_trial/louise")
+    # wav, sr = librosa.load("data/SMK_HY_long.wav", sr = 16000)
+    # wavs = split_audio(wav, sr, save_name="louise.wav", allowed_pause = 2, max_len = 6, save_dir = "data/newest_trial/louise")
 
     # wav, sr = librosa.load("data/yang_long.wav", sr = 16000)
     # wavs = split_audio(wav, sr, save_name="yang.wav", allowed_pause = 2, max_len = 6, save_dir = "data/newest_trial/yang")
     # remove_noise(wav, sr)
 
-    # combine_audio("data/newest_trial/hilde_subset", save_name = "data/hilde_subset.wav", sr = 16000)
+    # combine_audio("data/", save_name = "data/hilde_subset.wav", sr = 16000)
+
+    # wav, sr = librosa.load("AutoVC/data/SMK_train/Hilde.wav", sr = 16000)
+    # wavs = split_audio(wav, sr, save_name="hilde.wav", fixed_length=10, save_dir = "Deep_voice_conversion/data/SMK_original/hilde")
+
+    # rename_files("AutoVC/data/SMK_train/hyang_smk", "Deep_voice_conversion/data/SMK_original/yangSMK", "yangSMK.wav")
+
+    rename_files("../AutoVC/data/SMK_train/HaegueYang", "data/SMK_original/yangYT", "yangYT.wav")

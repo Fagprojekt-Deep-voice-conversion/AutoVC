@@ -151,6 +151,7 @@ class AutoEncoder(nn.Module):
         model_path = model_dir.strip("/") + "/" + model_name
         checkpoint = torch.load(model_path, map_location = self.device)
         self.load_state_dict(checkpoint["model_state"])
+        self.share_memory()
         if self.verbose:
             print("Loaded auto encoder \"%s\" trained to step %d" % (model_path, checkpoint["step"]))
 
