@@ -21,6 +21,7 @@ class AutoEncoderDataset(Dataset):
         data_path, 
         data_path_excluded= [], 
         use_mean_speaker_embedding = False, 
+        one_hot = True,
         sr = AutoEncoderParams["spectrogram"]["sr"],
         preprocess = SpeakerEncoderParams["dataset"]["preprocess"],
         preprocess_args = SpeakerEncoderParams["dataset"]["preprocess_args"],
@@ -48,7 +49,7 @@ class AutoEncoderDataset(Dataset):
             The cut parameter defaults to True.
         """
         super(AutoEncoderDataset, self).__init__()
-
+        device = 'cuda' if torch.cuda.is_available() else 'cpu'
         # Load wav files
         self.wav_files = retrieve_file_paths(data_path, excluded=data_path_excluded)
 
@@ -77,10 +78,18 @@ class AutoEncoderDataset(Dataset):
                     if speaker in wav:
                         embeds = speaker_encoder.speakers[speaker]
                         found_speaker = True
+
+            if one_hot:
+                embeds = torch.zeros(256, dtype = torch.float32)
+                embeds[i] = 1
+                found_speaker = True
+                
             if not found_speaker:
                 # name = 'hilde' if 'hilde' in wav else 'HaegueYang'
                 # embeds = speaker_encoder.speakers[name]
                 embeds     = speaker_encoder.embed_utterance(data.wav)
+
+
             
             # append to data set
             if cut:
@@ -111,7 +120,7 @@ class AutoEncoderDataset(Dataset):
 
         return torch.stack(padded_spectrograms), torch.stack(embeddings)
 
-    def get_dataloader(self, batch_size=1, shuffle=False, **kwargs):
+    def get_dataloader(self, batch_size=1, shuffle=True, **kwargs):
         """
         Creates a data loader from the data set
 

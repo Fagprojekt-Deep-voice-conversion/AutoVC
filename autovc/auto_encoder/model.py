@@ -276,29 +276,31 @@ class AutoEncoder(nn.Module):
             wandb_run.watch(self, log_freq = log_freq)
 
         # prepare optimiser
-        AutoEncoderParams["optimizer"].update(opt_params)
+        # AutoEncoderParams["optimizer"].update(opt_params)
         lr_scheduler = AutoEncoderParams["optimizer"].pop("lr_scheduler")
         if isinstance(lr_scheduler, str):
             lr_scheduler = lr_schedulers.__dict__.get(lr_scheduler)
         lr_sch_params = {"n_warmup_steps" : AutoEncoderParams["optimizer"].pop("n_warmup_steps")}
 
         self.criterion1 = nn.MSELoss()
+        # self.criterion1 = nn.L1Loss()
         self.criterion2 = nn.L1Loss()
         self.optimiser = torch.optim.Adam(self.parameters(), **AutoEncoderParams["optimizer"])
         if lr_scheduler is not None:
             self.lr_scheduler = lr_scheduler(self.optimiser, dim_model = self.decoder.linear_projection.linear_layer.out_features, **lr_sch_params)
 
-        
+        self.lr_scheduler = torch.optim.lr_scheduler.ExponentialLR(self.optimiser, gamma = 0.95 )
 
         # begin training
         if self.verbose:
             print(f"Training Auto Encoder on {torch.cuda.get_device_name() + ' (cuda)' if 'cuda' in self.device.type else 'cpu'}...")
             progbar(self.logging["step"], N_iterations)
-        
+        device = 'cuda' if torch.cuda.is_available() else 'cpu'
         for epoch in range(n_epochs):
             self.logging["step_start_time"] = time.time()
             self.logging["batch"] = 0 
             for X, c_org in trainloader:
+                X, c_org = X.to(device), c_org.to(device)
                 # Compute output using the speaker embedding only of the source
                 out_decoder, out_postnet, content_codes = self(X, c_org, c_org)
 
@@ -310,8 +312,8 @@ class AutoEncoder(nn.Module):
                 loss.backward()
                 torch.nn.utils.clip_grad_norm_(self.parameters(), max_norm = 1) # Clip gradients (avoid exploiding gradients)
 
-                if self.lr_scheduler is not None: 
-                    self.lr_scheduler._update_learning_rate()
+                # if self.lr_scheduler is not None: 
+                #     self.lr_scheduler._update_learning_rate()
                 self.optimiser.step()
 
                 # Save exponentially smoothed parameters - can be used to avoid too large changes of parameters
@@ -324,6 +326,7 @@ class AutoEncoder(nn.Module):
                 self.logging["log_steps"] += 1
                 self.logging["epoch"] = epoch+1
                 self.logging["batch"] += 1
+                self.logging["lr"] = self.optimiser.param_groups[0]['lr']
 
                 # print information
                 if self.verbose:
@@ -346,12 +349,13 @@ class AutoEncoder(nn.Module):
                     sources = source_examples,
                     targets = target_examples,
                     save_dir = "training_examples" if wandb_run is None or wandb_run.mode == "disabled" else "wandb",
-                    audio_log_dict = {"epoch" : self.logging["epoch"], "batch" : self.logging["batch"], "step": self.logging["step"]}
+                    audio_log_dict = {"epoch" : self.logging["epoch"], "batch" : self.logging["batch"], "step": self.logging["step"]},
                     # preprocess = [], # no preprocessing of example conversions
                     # out_process = [],
+                    cut = True,
                 )
 
-                    
+            self.lr_scheduler.step()    
                       
         if self.verbose: close_progbar()
 
@@ -361,6 +365,7 @@ class AutoEncoder(nn.Module):
             "epoch" : self.logging["epoch"],
             "batch" : self.logging["batch"],
             "step": self.logging["step"],
+            "learning rate": self.logging["lr"],
         })
         wandb_run.log({
                 'Conversion': self.plot_conversion(X[0], out_postnet[0])

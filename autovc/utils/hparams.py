@@ -22,7 +22,7 @@ AutoEncoderParams = {
 	"learn" : {
 		"n_epochs" : 1,
 		"log_freq" : 8,
-		"save_freq" : 1,
+		"save_freq" : 16,
 		"model_name" : "model_" + date.today().strftime("%Y%m%d") +".pt",
 		"save_dir"	: "models/AutoVC", # model dir to save to
 		"example_freq" : None,
@@ -35,14 +35,14 @@ AutoEncoderParams = {
 		"lr" : 1e-3,
 		"weight_decay" : 0.0,
 		"lr_scheduler" : "NoamScheduler",
-		"n_warmup_steps" : 64,
+		"n_warmup_steps" : 256,
 	},
 	"dataset" : {
 		"preprocess" : ["normalize_volume"],
 		"preprocess_args" : {"target_dBFS" : -20}
     },
 	"dataloader" : {
-			"batch_size" : 2,
+			"batch_size" : 16,
 	},
 	
 
@@ -87,7 +87,7 @@ SpeakerEncoderParams = {
 		"preprocess_args" : {"target_dBFS" : -20}
     },
     "dataloader" : {
-            "batch_size" : 1,
+            "batch_size" : 64,
     },
 }
 
@@ -147,8 +147,10 @@ VoiceConverterParams = {
 	},
 	"train" : {
 		"model_type" : "auto_encoder", 
-        "source_examples" : "data/samples/HY1_03.wav", 
-        "target_examples" : "data/samples/HaegueYang_5.wav", 
+        # "source_examples" : "data/samples/HY1_03.wav", 
+        # "target_examples" : "data/samples/aaa_z0030_002.wav",
+		"source_examples": ["data/samples/hilde_1.wav","data/samples/hilde_2.wav","data/samples/hilde_3.wav"], 
+		"target_examples" : "yang", 
 	},
 }
 

@@ -57,7 +57,7 @@ class SpeakerEncoder(nn.Module):
                                 ).to(self.device)
 
         self.relu = torch.nn.ReLU().to(self.device)
-        
+        # self.optimiser = torch.optim.Adam(self.parameters(), **SpeakerEncoderParams["optimizer"])
         
     def do_gradient_ops(self):
         # Gradient scale
@@ -103,13 +103,13 @@ class SpeakerEncoder(nn.Module):
         if self.verbose:
             print("Loaded auto encoder \"%s\" trained to step %d" % (model_path, checkpoint["step"]))
 
-    def save(self, model_name, save_dir = SpeakerEncoderParams["learn"]["save_dir"], wandb_run = None):
+    def save(self, model_name, save_dir = SpeakerEncoderParams["learn"]["save_dir"], wandb_run = None, step = None):
         # save_name = self.params.model_dir.strip("/") + "/" + self.params.model_name
         model_path = save_dir.strip("/") + "/" + model_name
         torch.save({
-            "step": self.logging.get("step"),
+            "step": self.logging.get("step") if step is None else step,
             "model_state": self.state_dict(),
-            "optimizer_state": self.optimiser.state_dict(),
+            # "optimizer_state": self.optimiser.state_dict(),
             "speakers": self.speakers
         }, model_path)
 

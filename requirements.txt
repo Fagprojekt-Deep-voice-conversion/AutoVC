@@ -14,10 +14,13 @@ seaborn
 # wavenet_vocoder 
 numba==0.49.1 # for trouble, see below
 wandb
+paramiko
+torchaudio
 noisereduce
 setuptools
 appdirs
 six
+
 
 # If having trouble, try these:
 
