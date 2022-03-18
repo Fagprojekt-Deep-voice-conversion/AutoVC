@@ -98,9 +98,9 @@ def stream(message):
 #                     """)
 
 
-if __name__ == "__main__":
-    print(retrieve_file_paths(["data/samples"], excluded="data/samples/test/chooped7.wav"))
-    # print(calls)
+# if __name__ == "__main__":
+#     print(retrieve_file_paths(["data/samples"], excluded="data/samples/test/chooped7.wav"))
+#     # print(calls)
 
 
 

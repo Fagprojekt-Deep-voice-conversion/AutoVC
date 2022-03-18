@@ -96,6 +96,7 @@ class VoiceConverter:
         outprocess = VoiceConverterParams["convert"]["outprocess"],
         outprocess_args = VoiceConverterParams["convert"]["outprocess_args"],
         audio_log_dict = {},
+        device = 'cuda',
         **kwargs
     ):
         """
@@ -141,7 +142,9 @@ class VoiceConverter:
         # source data
         audio_src = Audio(source, sr)
         audio_src.preprocess(*preprocess, **preprocess_args)
-        c_source = self.SE.embed_utterance(audio_src.wav).unsqueeze(0)
+        # c_source = self.SE.embed_utterance(audio_src.wav).unsqueeze(0)
+
+        c_source = self.SE.speakers['hilde'].unsqueeze(0)
         
         # target data
         if target in self.SE.speakers.keys():
@@ -159,10 +162,16 @@ class VoiceConverter:
         # generate waveform
         if kwargs.get("cut", False):
             mel_batch = torch.stack(mel_spec) # stack list of mel slices
-            post_out = self.AE.batch_forward(mel_batch, c_source, c_target, overlap = kwargs.get("overlap", 0.5)) # overlap set to compute_partial_slices default, as they must be equal
+
+            post_out = self.AE.batch_forward(mel_batch.to(device),
+                                             c_source.to(device),
+                                             c_target.to(device),
+                                             overlap = kwargs.get("overlap", 0.5)) # overlap set to compute_partial_slices default, as they must be equal
             waveform = self.vocoder.generate(post_out.unsqueeze(0))
         else:
-            out, post_out, content_codes = self.AE(mel_spec.unsqueeze(0), c_source, c_target)
+            out, post_out, content_codes = self.AE(mel_spec.unsqueeze(0).to(device),
+                                                     c_source.to(device),
+                                                     c_target.to(device))
             waveform = self.vocoder.generate(post_out)
 
 
@@ -435,6 +444,7 @@ class VoiceConverter:
         wandb.finish()
 
     def __init_models(self):
+        device = 'cuda' if torch.cuda.is_available() else 'cpu'
         type_to_artifact = {"auto_encoder" : "AutoEncoder", "speaker_encoder" : "SpeakerEncoder"}
         # model_types, model_names = self.config["model_names"].items()
         model_types, model_names, model_dirs, params  = [], [], [], []
@@ -480,6 +490,7 @@ class VoiceConverter:
             params = params,
             device= self.config["device"]
         )
+        self.AE = self.AE.to(device)
 
 
 
