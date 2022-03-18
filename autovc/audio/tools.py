@@ -302,7 +302,7 @@ def remove_noise(wav, sr, **kwargs):
     """
     return nr.reduce_noise(y=wav, sr=sr, **kwargs)
 
-def rename_files(dir_path, new_dir_path, new_file_name):
+def rename_files(dir_path, new_dir_path, new_file_name, save_filenames = False):
     """
     Takes a directory and moves them to another directory where all files get the same name with a number appended
 
@@ -319,14 +319,22 @@ def rename_files(dir_path, new_dir_path, new_file_name):
     files.sort()
     os.makedirs(new_dir_path, exist_ok=True)
 
+    name_changes = "previous_name\t new_name \n"
+
     for i, file in enumerate(files):
         save_name = os.path.join(new_dir_path, new_file_name)
         save_name += "" if save_name.endswith(".wav") else ".wav"
         fname = save_name.replace(".wav", f"_{str(i+1).zfill(1 + int(math.log10(len(files))))}.wav")
-        print(os.path.join(dir_path, file), fname)
+        name_change = f"{os.path.join(dir_path, file)}\t {fname} \n"
+        print(name_change)
+        name_changes += name_change
         shutil.copy(os.path.join(dir_path, file), fname)
+        
 
     # print(files)
+    if save_filenames:
+        with open(os.path.join(new_dir_path, "filenames.txt"), "w") as filenames:
+            filenames.write(name_changes.replace("\\", "/"))
 
 
 # add annotations to use for preprocessing
@@ -357,4 +365,5 @@ if __name__ == "__main__":
 
     # rename_files("AutoVC/data/SMK_train/hyang_smk", "Deep_voice_conversion/data/SMK_original/yangSMK", "yangSMK.wav")
 
-    rename_files("../AutoVC/data/SMK_train/HaegueYang", "data/SMK_original/yangYT", "yangYT.wav")
+    # rename_files("../AutoVC/data/SMK_train/HaegueYang", "data/SMK_original/yangYT", "yangYT.wav")
+    rename_files("data/samples", "data/test", "test.wav")
